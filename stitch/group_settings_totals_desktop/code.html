@@ -1,0 +1,319 @@
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "inverse-primary": "#006c49",
+                  "tertiary": "#68dba9",
+                  "on-surface": "#e5e2e1",
+                  "on-primary": "#003824",
+                  "tertiary-fixed-dim": "#68dba9",
+                  "on-tertiary-container": "#00422c",
+                  "surface-container-lowest": "#0e0e0e",
+                  "on-primary-fixed": "#002113",
+                  "surface-container-high": "#2a2a2a",
+                  "secondary-fixed": "#ffdbd0",
+                  "on-background": "#e5e2e1",
+                  "primary-fixed-dim": "#4edea3",
+                  "on-error-container": "#ffdad6",
+                  "primary-container": "#10b981",
+                  "background": "#131313",
+                  "on-tertiary-fixed": "#002114",
+                  "tertiary-fixed": "#85f8c4",
+                  "on-primary-fixed-variant": "#005236",
+                  "on-secondary-container": "#ff9b7c",
+                  "surface-container-highest": "#353534",
+                  "secondary-container": "#7f2a0d",
+                  "inverse-surface": "#e5e2e1",
+                  "surface-container-low": "#1c1b1b",
+                  "surface-tint": "#4edea3",
+                  "surface-container": "#201f1f",
+                  "outline": "#86948a",
+                  "surface-bright": "#393939",
+                  "error": "#ffb4ab",
+                  "primary": "#4edea3",
+                  "on-primary-container": "#00422b",
+                  "primary-fixed": "#6ffbbe",
+                  "on-secondary": "#5e1700",
+                  "secondary": "#ffb59e",
+                  "surface": "#131313",
+                  "on-secondary-fixed": "#3a0b00",
+                  "error-container": "#93000a",
+                  "outline-variant": "#3c4a42",
+                  "on-surface-variant": "#bbcabf",
+                  "surface-dim": "#131313",
+                  "tertiary-container": "#3eb686",
+                  "on-tertiary": "#003825",
+                  "on-secondary-fixed-variant": "#7f2a0d",
+                  "surface-variant": "#353534",
+                  "secondary-fixed-dim": "#ffb59e",
+                  "inverse-on-surface": "#313030",
+                  "on-tertiary-fixed-variant": "#005137",
+                  "on-error": "#690005"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "full": "9999px"
+          },
+          "fontFamily": {
+                  "headline": ["Manrope"],
+                  "body": ["Inter"],
+                  "label": ["Inter"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body { background-color: #131313; color: #e5e2e1; }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .custom-glass {
+      background: rgba(28, 27, 27, 0.7);
+      backdrop-filter: blur(20px);
+    }
+  </style>
+</head>
+<body class="font-body selection:bg-primary/30">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#131313] flex flex-col py-8 px-6 z-50">
+<div class="mb-12">
+<h1 class="text-xl font-black text-[#4edea3] tracking-tighter font-headline">Split-It</h1>
+<p class="text-xs font-label text-gray-500 uppercase tracking-widest mt-1">Editorial Ledger</p>
+</div>
+<nav class="flex-1 space-y-2">
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-[#2a2a2a] transition-colors duration-200 text-gray-500 font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-headline font-semibold tracking-tight text-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-[#2a2a2a] transition-colors duration-200 text-gray-500 font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-headline font-semibold tracking-tight text-sm">Activity</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-[#2a2a2a] transition-colors duration-200 text-gray-500 font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-headline font-semibold tracking-tight text-sm">Friends</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl bg-[#2a2a2a] text-[#4edea3] font-bold border-r-2 border-[#4edea3] transition-colors duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-headline font-semibold tracking-tight text-sm">Groups</span>
+</a>
+</nav>
+<div class="mt-auto pt-8 border-t border-outline-variant/10 space-y-2">
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-bold py-3 rounded-xl mb-6 active:opacity-80 scale-95 duration-150">
+        New Expense
+      </button>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-[#2a2a2a] transition-colors duration-200 text-gray-500 font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-headline font-semibold tracking-tight text-sm">Settings</span>
+</a>
+<a class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-[#2a2a2a] transition-colors duration-200 text-gray-500 font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="font-headline font-semibold tracking-tight text-sm">Support</span>
+</a>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="sticky top-0 w-full z-40 flex justify-between items-center h-20 pl-72 pr-12 bg-[#131313]/80 backdrop-blur-xl">
+<div class="flex items-center bg-surface-container-lowest px-4 py-2 rounded-full w-96">
+<span class="material-symbols-outlined text-gray-500 text-sm" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm text-on-surface placeholder:text-gray-600 w-full ml-2" placeholder="Search transactions..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary cursor-pointer transition-all" data-icon="notifications">notifications</span>
+</div>
+<button class="px-6 py-2 rounded-full border border-primary text-primary font-headline text-sm font-bold hover:bg-primary/10 transition-all active:opacity-70">
+        Settle Up
+      </button>
+<div class="h-10 w-10 rounded-full overflow-hidden border-2 border-primary/20">
+<img class="h-full w-full object-cover" data-alt="Close-up professional portrait of a man with a friendly expression in studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4kEmRZkuzRuQ5IBluPWarUen_dXPj3nh_kAbUojSDqe9yAcxW94yH0DRqu1aPpI5qVH2VNKjx7dcx-uUvAFVlkJJ2Eo8fa09facBfmmfxJ1Ou9Y_19CJ7xFPaAsDJmT2wNcYkpCedDUcWX7X4PedzCKwrjJ42HSOrhJ0IGlJfC2jajwQumfM3jP-zaZTm3YzgOG0-7qHua5r6IWz7lIe5Helm6sibalakZcv59yHIgplEDzpOCRacxupuBx0PjrTg8gGFb9DMAx0"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="pl-72 pr-12 py-8 min-h-screen">
+<!-- Hero Section: Asymmetrical Layout -->
+<section class="flex flex-col md:flex-row justify-between items-end mb-12 gap-8">
+<div class="max-w-xl">
+<nav class="flex items-center gap-2 text-xs font-label text-gray-500 mb-4 tracking-widest uppercase">
+<span>Groups</span>
+<span class="material-symbols-outlined text-[10px]" data-icon="chevron_right">chevron_right</span>
+<span class="text-on-surface">Iceland Expedition</span>
+</nav>
+<h2 class="text-5xl font-headline font-extrabold tracking-tighter text-on-surface">Iceland Expedition</h2>
+<p class="text-on-surface-variant mt-4 leading-relaxed font-body">
+          Adventuring through the land of fire and ice. Track every glacier tour, 4x4 rental, and shared meal in the Highlands.
+        </p>
+</div>
+<div class="bg-surface-container-high p-10 rounded-[2.5rem] flex flex-col items-end min-w-[320px] relative overflow-hidden group">
+<!-- Abstract gradient decorative element -->
+<div class="absolute -top-12 -right-12 w-32 h-32 bg-primary/10 rounded-full blur-3xl group-hover:bg-primary/20 transition-all"></div>
+<p class="text-xs font-label text-primary uppercase tracking-[0.2em] mb-2 font-bold">Total Group Spend</p>
+<div class="text-5xl font-headline font-bold text-on-surface tracking-tighter">$4,280.50</div>
+</div>
+</section>
+<!-- Bento Grid Content -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Balance Summaries -->
+<div class="col-span-12 md:col-span-4 space-y-6">
+<div class="bg-surface-container-low p-8 rounded-[2rem] border border-outline-variant/5">
+<div class="flex items-center gap-4 mb-8">
+<div class="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="trending_up">trending_up</span>
+</div>
+<div>
+<p class="text-xs font-label text-gray-500 uppercase tracking-widest">You are owed</p>
+<h3 class="text-2xl font-headline font-bold text-primary">$1,240.00</h3>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="trending_down">trending_down</span>
+</div>
+<div>
+<p class="text-xs font-label text-gray-500 uppercase tracking-widest">You owe</p>
+<h3 class="text-2xl font-headline font-bold text-secondary">$342.15</h3>
+</div>
+</div>
+</div>
+<!-- Settings Section -->
+<div class="bg-surface-container-low p-8 rounded-[2rem] border border-outline-variant/5">
+<h4 class="text-xs font-label text-gray-500 uppercase tracking-[0.2em] mb-6">Group Settings</h4>
+<ul class="space-y-2">
+<li>
+<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-surface-bright transition-all group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary" data-icon="edit">edit</span>
+<span class="font-headline font-semibold text-sm">Edit Group Name</span>
+</div>
+<span class="material-symbols-outlined text-gray-700 text-sm" data-icon="chevron_right">chevron_right</span>
+</button>
+</li>
+<li>
+<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-surface-bright transition-all group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary" data-icon="person_add">person_add</span>
+<span class="font-headline font-semibold text-sm">Add Members</span>
+</div>
+<span class="material-symbols-outlined text-gray-700 text-sm" data-icon="chevron_right">chevron_right</span>
+</button>
+</li>
+<li>
+<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-surface-bright transition-all group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary" data-icon="download">download</span>
+<span class="font-headline font-semibold text-sm">Export CSV</span>
+</div>
+<span class="material-symbols-outlined text-gray-700 text-sm" data-icon="chevron_right">chevron_right</span>
+</button>
+</li>
+<li class="pt-4 mt-4 border-t border-outline-variant/10">
+<button class="w-full flex items-center justify-between p-4 rounded-xl hover:bg-error/10 transition-all group">
+<div class="flex items-center gap-4 text-error">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+<span class="font-headline font-semibold text-sm">Delete Group</span>
+</div>
+</button>
+</li>
+</ul>
+</div>
+</div>
+<!-- Member Balances List -->
+<div class="col-span-12 md:col-span-8 bg-surface-container-low rounded-[2rem] border border-outline-variant/5 overflow-hidden">
+<div class="p-8 border-b border-outline-variant/5 flex justify-between items-center">
+<h4 class="text-xs font-label text-gray-500 uppercase tracking-[0.2em]">Member Balances</h4>
+<span class="text-xs text-on-surface-variant font-label">6 Members Total</span>
+</div>
+<div class="p-4 space-y-3">
+<!-- Member Row 1 -->
+<div class="flex items-center justify-between p-6 rounded-2xl hover:bg-surface-container-high transition-all">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-full overflow-hidden bg-surface-bright">
+<img class="w-full h-full object-cover" data-alt="Portrait of a woman with curly hair smiling in a vibrant outdoor setting with natural soft light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRjdk5_-SHgAKnqEqUqKhmoBw0qzpnMAzZ8hdDy8ETuPMlNFBbiVifl3EuG_I0BpeJL0IJYmoQ0vexxLIafZq6-jHc6f47NS_pTFauj9_4Nip1BFP3nhQXm-wQ5CjdoyBM5f4aItu1ya05LuaH4HfcTW8_k4H_iWzKGh6ayx0V6AF4UtD5ySb63qPA3m7guG3Tn5ABh0w9HxtLtj_qBxkjQAu19nAsMUXAqlj7sEGpPufAgYYA2zH7JXKrPTrWScLFnJAxEjAAl30"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Elena Rodriguez</p>
+<p class="text-xs font-label text-primary bg-primary/10 px-2 py-0.5 rounded inline-block mt-1">Paid for Gas</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-xs font-label text-gray-500 uppercase tracking-widest mb-1">Owed</p>
+<p class="text-xl font-headline font-bold text-primary">+$542.00</p>
+</div>
+</div>
+<!-- Member Row 2 -->
+<div class="flex items-center justify-between p-6 rounded-2xl hover:bg-surface-container-high transition-all">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-full overflow-hidden bg-surface-bright">
+<img class="w-full h-full object-cover" data-alt="Portrait of a young man with a casual style against a neutral gray background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB7KFjMw6vtC4eTM9zXBtZhDzquOgHt5KCECa48nXZFh3YHo2MyFsKHmzrXE7G8qcgjF8FJ-4JQwqF94R4o3p_Yc-1iJuVHgMqCHRzb5rpaOT1CdPRxEfONO6UYW3gVyZOnrEWSgT0aZcFyYkfuNGfIXBw13cVd8anqKoM2vxFZtwhVJrsTbpvGDrt13USKeQgepiNFdsj1LaOacgxQKMaMNXkJg-7Tt9W7Ynrxvxf8CLOJMb2mpZjCOYr2cLjtrY4Mj7QYwPT8OyI"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Marcus Thorne</p>
+<p class="text-xs font-label text-secondary bg-secondary/10 px-2 py-0.5 rounded inline-block mt-1">Needs to settle up</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-xs font-label text-gray-500 uppercase tracking-widest mb-1">Owes</p>
+<p class="text-xl font-headline font-bold text-secondary">-$210.50</p>
+</div>
+</div>
+<!-- Member Row 3 -->
+<div class="flex items-center justify-between p-6 rounded-2xl hover:bg-surface-container-high transition-all">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-full overflow-hidden bg-surface-bright">
+<img class="w-full h-full object-cover" data-alt="Clear headshot of a woman with a confident gaze in warm sunset lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCn-s6kuVoGG-sk-uwzzTqGmTTK1l6PbjqVvxlCfGYN5BIbtuYjc9kLMzedVHGQOu9umobWBzOD3n1YOQkH5HCYnAo5yuU8ai47l9Y7xUFG-FnXeAcDJ4JS3I2SFsZtO_XCjP-aZ2cEmabrtX_IglxjdAGLAsi84ASR5YI2In1VWuSBdC7PyWEngUSuDYk3tNQ_5evmKowoUhOZOS6c5tx0vrzOTFUMrTTszIXbxwTiBP8N87FAWlgKZL0ao4wcnjlN-2rCTl8Cubs"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">Sarah Jenkins</p>
+<p class="text-xs font-label text-gray-500 bg-surface-bright px-2 py-0.5 rounded inline-block mt-1">Settled</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-xs font-label text-gray-500 uppercase tracking-widest mb-1">Balance</p>
+<p class="text-xl font-headline font-bold text-on-surface-variant">$0.00</p>
+</div>
+</div>
+<!-- Member Row 4 -->
+<div class="flex items-center justify-between p-6 rounded-2xl hover:bg-surface-container-high transition-all">
+<div class="flex items-center gap-4">
+<div class="w-14 h-14 rounded-full overflow-hidden bg-surface-bright">
+<img class="w-full h-full object-cover" data-alt="Professional portrait of a middle-aged man with short hair and a focused expression" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAUDPuTnlo2aY4qmnS3FmrzRnnP79DVqQ569ujWfsq7hs7KLGN9FjvJtC9rd4VvFoxwqVOdDodnPtaOMIjFSELrZRTg3g-Y6cfghztJwS9gh6WxAMApHDJSN3nm0kws_9S7iawotGm2faD4uzyW1uemGNmtHDsOBFMzHgw0evbwquGDt1qE_4n6sVHxGTzNfXXbdPimrxclIAY5q_E8BBP3MIqecLu5109VljTHmsDdFfZyPPu6azb_KPjU4mtFPyak_zPuzGsbFA"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface">David Chen</p>
+<p class="text-xs font-label text-secondary bg-secondary/10 px-2 py-0.5 rounded inline-block mt-1">Needs to settle up</p>
+</div>
+</div>
+<div class="text-right">
+<p class="text-xs font-label text-gray-500 uppercase tracking-widest mb-1">Owes</p>
+<p class="text-xl font-headline font-bold text-secondary">-$131.65</p>
+</div>
+</div>
+</div>
+<div class="p-8 bg-surface-container-low/50 border-t border-outline-variant/5">
+<button class="text-primary font-headline font-bold text-sm flex items-center gap-2 hover:underline">
+            View All Settlement History
+            <span class="material-symbols-outlined text-sm" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed bottom-8 right-8 w-14 h-14 rounded-full bg-gradient-to-tr from-primary to-primary-container text-on-primary shadow-2xl flex items-center justify-center group active:scale-90 transition-transform z-50">
+<div class="absolute inset-0 rounded-full border-t border-white/10 pointer-events-none"></div>
+<span class="material-symbols-outlined text-2xl" data-icon="add">add</span>
+</button>
+</body></html>

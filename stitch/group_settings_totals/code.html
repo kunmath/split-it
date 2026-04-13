@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Iceland Expedition - split-it</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#3eb686",
+                        "on-tertiary-fixed": "#002114",
+                        "primary-container": "#10b981",
+                        "inverse-surface": "#e5e2e1",
+                        "on-surface": "#e5e2e1",
+                        "surface-container-low": "#1c1b1b",
+                        "secondary": "#ffb59e",
+                        "tertiary": "#68dba9",
+                        "primary-fixed-dim": "#4edea3",
+                        "outline-variant": "#3c4a42",
+                        "secondary-container": "#7f2a0d",
+                        "surface-container-high": "#2a2a2a",
+                        "on-primary-fixed": "#002113",
+                        "surface-variant": "#353534",
+                        "outline": "#86948a",
+                        "on-tertiary-container": "#00422c",
+                        "surface-dim": "#131313",
+                        "primary": "#4edea3",
+                        "on-tertiary": "#003825",
+                        "background": "#131313",
+                        "surface": "#131313",
+                        "secondary-fixed-dim": "#ffb59e",
+                        "on-primary": "#003824",
+                        "on-error": "#690005",
+                        "on-background": "#e5e2e1",
+                        "error-container": "#93000a",
+                        "on-secondary": "#5e1700",
+                        "on-surface-variant": "#bbcabf",
+                        "inverse-on-surface": "#313030",
+                        "inverse-primary": "#006c49",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed": "#85f8c4",
+                        "surface-container-highest": "#353534",
+                        "tertiary-fixed-dim": "#68dba9",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-secondary-fixed-variant": "#7f2a0d",
+                        "on-primary-container": "#00422b",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed": "#3a0b00",
+                        "primary-fixed": "#6ffbbe",
+                        "on-tertiary-fixed-variant": "#005137",
+                        "surface-container": "#201f1f",
+                        "on-primary-fixed-variant": "#005236",
+                        "surface-bright": "#393939",
+                        "secondary-fixed": "#ffdbd0",
+                        "surface-tint": "#4edea3",
+                        "on-secondary-container": "#ff9b7c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #131313;
+            color: #e5e2e1;
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#131313]/80 backdrop-blur-xl">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-screen-xl mx-auto">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high border border-outline-variant/20">
+<img alt="User profile" data-alt="Stylized modern avatar of a person with short dark hair and a friendly expression, minimalist vector style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0h6kPlmbQWA0XgHcCDvMlqB6ImEEf5TNEwj8SRkr4St69iK8xbQ0XtXubbjFBykJmjXARWugCnH9cLkWoAXAKsabSgHnlHWpssUZtB_09QU_Wf0ua0C5PSZU2IhtkGuBTukuJNRxdKldjcyKzAXQj17kXUhdPd8tK9RnfMEEzSukF3UNJc1LXbvbX5AYc3_n_cNZOvnpToEb9M2SgJkaTCJzGIFHKD4tm3D-ytLe8_nUf7JnTidIAlxWFiJDUbT-XM9nbWXVggVc"/>
+</div>
+<span class="text-[#4edea3] font-manrope font-bold text-xl tracking-tight">split-it</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-[#4edea3] hover:bg-zinc-800/50 transition-colors p-2 rounded-full active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</div>
+</header>
+<main class="pt-24 px-6 max-w-screen-xl mx-auto space-y-10">
+<!-- Hero Section: Total Group Spend -->
+<section class="relative overflow-hidden rounded-3xl bg-surface-container-low p-8">
+<div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-primary/10 rounded-full blur-3xl"></div>
+<div class="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+<div>
+<h2 class="text-on-surface-variant font-label text-sm uppercase tracking-[0.2em] mb-2">Iceland Expedition</h2>
+<h1 class="font-headline font-extrabold text-5xl md:text-6xl text-on-surface">Total Group Spend</h1>
+</div>
+<div class="text-right">
+<span class="font-headline font-bold text-4xl md:text-6xl text-primary">$4,280.50</span>
+</div>
+</div>
+</section>
+<!-- Balance Summary Bento -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-surface-container-high p-8 rounded-[2rem] flex flex-col justify-between min-h-[160px] active:scale-[0.98] transition-transform">
+<span class="text-on-surface-variant font-body text-sm font-medium">You are owed</span>
+<div class="flex items-baseline gap-2">
+<span class="font-headline font-extrabold text-4xl text-primary">$842.00</span>
+<span class="material-symbols-outlined text-primary text-xl" data-icon="trending_up">trending_up</span>
+</div>
+</div>
+<div class="bg-surface-container-high p-8 rounded-[2rem] flex flex-col justify-between min-h-[160px] active:scale-[0.98] transition-transform">
+<span class="text-on-surface-variant font-body text-sm font-medium">You owe</span>
+<div class="flex items-baseline gap-2">
+<span class="font-headline font-extrabold text-4xl text-secondary">$120.40</span>
+<span class="material-symbols-outlined text-secondary text-xl" data-icon="trending_down">trending_down</span>
+</div>
+</div>
+</section>
+<!-- Member Balances -->
+<section class="space-y-6">
+<div class="flex justify-between items-center px-2">
+<h3 class="font-headline font-semibold text-xl text-on-surface">Member Balances</h3>
+<span class="text-on-surface-variant text-sm font-body">6 Members</span>
+</div>
+<div class="bg-surface-container-lowest rounded-3xl overflow-hidden p-2 space-y-2">
+<!-- Member Item -->
+<div class="flex items-center justify-between p-4 bg-surface-container-low/40 rounded-2xl hover:bg-surface-bright transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl overflow-hidden bg-surface-variant">
+<img alt="Sarah Johnson" data-alt="Portrait of Sarah, a woman with long wavy blonde hair, wearing a green sweater, clean vector illustration" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAoEyp9-7biMqW-09d8q5XhJrH_Ydd5Qsv59Z0rY2TPYIk2jKqC6y3hvTtfmIJkZDfJvLkSKzyeowwLR0K-u7jCCaT9Msi0hpuVRJ5WNup97hiSpR1t_93ECd6M21QKW2q8vUtCNzH4npgglwgcHP2D0NSH6uNm7Q1rcPnWKIGagIiThpzDfPLFAh3nNR9qn9Jr3FpwA2zXI-xRQEJjjgtbTj15AmuQmEiiliH99QLFoDlaVIwJWycHY0HXLDGVPWpW2kixodYn0KI"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface group-hover:text-primary transition-colors">Sarah Johnson</p>
+<p class="text-on-surface-variant text-xs font-body">Paid for Car Rental</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline font-bold text-primary">+$1,200.00</p>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-label">Owed</p>
+</div>
+</div>
+<!-- Member Item -->
+<div class="flex items-center justify-between p-4 bg-surface-container-low/40 rounded-2xl hover:bg-surface-bright transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl overflow-hidden bg-surface-variant">
+<img alt="Mike Chen" data-alt="Portrait of Mike, a man with short black hair and glasses, wearing a minimalist black t-shirt, vector art" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBU6tv3hrjY9-OZDE_54S3REqWX004SMWE8NCkSO-eD11ijKOgA9-SpofntmON0dXnqCKzr8d0rINZj--Np8sTosFaqDe5H5seamWJFKDD_1jfRJ5L8kq8NBWrki3HIYArkSQInPNup8t7U6VsZow4qNTXWcVJuEwitiLfNkAj4zTZdeRCOV9XUA9TVoXkRWt-aiixWUIuy9LvzPCDY9XeXp-xYg_wZQ3_ZO_NBiDw0UJSF7iIj3PDfCyOnej64emYWn9VJeNtu-ss"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface group-hover:text-secondary transition-colors">Mike Chen</p>
+<p class="text-on-surface-variant text-xs font-body">Needs to settle up</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline font-bold text-secondary">-$450.00</p>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-label">Owes</p>
+</div>
+</div>
+<!-- Member Item -->
+<div class="flex items-center justify-between p-4 bg-surface-container-low/40 rounded-2xl hover:bg-surface-bright transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl overflow-hidden bg-surface-variant">
+<img alt="Elena Rodriguez" data-alt="Portrait of Elena, a woman with curly brown hair and bright earrings, professional vector character style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbBMtSbGSe0t0sRQrZ9XUlzbDqOpoXCw14Eya9fxTSQcchCNCcjVgBZ1Ch_eR8jvA5J83RMa2Q7kWzXVVibPNcE2pVG5KqoEr0aQo7glBv0stNEzR7GivCzKJz3xZH6Tgim1EKJGnAcz1CKYxNeZ9z6sWaDFX8XP0urzzLw1EEFd49PyPkTghbTkVm8O7PxJ2vkY0z0jzTvFioI9b9KASwyi_b39YGqVINsXZAIXHYgyjHNWdr1K4VHRfP_BeEWO-FEsjz-zH9-uE"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface group-hover:text-primary transition-colors">Elena Rodriguez</p>
+<p class="text-on-surface-variant text-xs font-body">Paid for Gas</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline font-bold text-primary">+$325.50</p>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-label">Owed</p>
+</div>
+</div>
+<!-- Member Item -->
+<div class="flex items-center justify-between p-4 bg-surface-container-low/40 rounded-2xl hover:bg-surface-bright transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-xl overflow-hidden bg-surface-variant">
+<img alt="David Kim" data-alt="Portrait of David, a man with short brown hair and a beard, wearing a gray hoodie, vector illustration" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI9Ym1FCIA7VDhrdKHWs8nZ0xtE8UW6tR6ssfZzN_USyx4rXqFWxi65LZtVGqUlx_45yUQn76nBur-brT88rHkqcmaUvH2aNtbfO_UNaDS7AtPxDsJmpeyk_92CbriwSBubhpGw334TgIbLCoWbOJeHv513UagWldcEXOwgmKWpuKl1MRWIhd0GS9O2faj7kqK9BIZbsVbO82cTkES0LU2PO8H_x5s_SVPpP80p4mzJwVI9uhyghst4oYzGNDA3CKvPMohNqXjoY0"/>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface group-hover:text-secondary transition-colors">David Kim</p>
+<p class="text-on-surface-variant text-xs font-body">Pending settlements</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline font-bold text-secondary">-$210.00</p>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant font-label">Owes</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Settings Section -->
+<section class="space-y-6">
+<h3 class="font-headline font-semibold text-xl text-on-surface px-2">Settings</h3>
+<div class="space-y-4">
+<button class="w-full flex items-center justify-between p-6 bg-surface-container-high rounded-2xl hover:bg-surface-bright transition-all group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="edit">edit</span>
+<span class="font-headline font-bold">Edit Group Name</span>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-6 bg-surface-container-high rounded-2xl hover:bg-surface-bright transition-all group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="person_add">person_add</span>
+<span class="font-headline font-bold">Add Members</span>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-6 bg-surface-container-high rounded-2xl hover:bg-surface-bright transition-all group">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="download">download</span>
+<span class="font-headline font-bold">Export CSV</span>
+</div>
+<span class="material-symbols-outlined text-outline" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full flex items-center justify-between p-6 bg-secondary/10 rounded-2xl hover:bg-secondary/20 transition-all group">
+<div class="flex items-center gap-4 text-secondary">
+<span class="material-symbols-outlined" data-icon="delete">delete</span>
+<span class="font-headline font-bold">Delete Group</span>
+</div>
+</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-[#131313]/80 backdrop-blur-xl pb-6 pt-3 px-4">
+<div class="max-w-screen-xl mx-auto flex justify-around items-center">
+<a class="flex flex-col items-center justify-center text-[#4edea3] bg-zinc-800/40 rounded-2xl px-4 py-2 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-inter text-[10px] uppercase tracking-widest font-medium">Groups</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 hover:text-[#4edea3] transition-all px-4 py-2 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-inter text-[10px] uppercase tracking-widest font-medium">Friends</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 hover:text-[#4edea3] transition-all px-4 py-2 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="notifications">notifications</span>
+<span class="font-inter text-[10px] uppercase tracking-widest font-medium">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 hover:text-[#4edea3] transition-all px-4 py-2 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="account_circle">account_circle</span>
+<span class="font-inter text-[10px] uppercase tracking-widest font-medium">Account</span>
+</a>
+</div>
+</nav>
+<!-- Contextual FAB (Hidden on Settings as per rules, but shown here for reference if it was home) -->
+<!-- Suppressed based on "Task-Focused / Settings area" visibility rules -->
+</body></html>

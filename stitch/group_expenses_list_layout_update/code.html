@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-lowest": "#0e0e0e",
+                    "outline": "#86948a",
+                    "primary-container": "#10b981",
+                    "on-tertiary-fixed-variant": "#005137",
+                    "on-primary-fixed": "#002113",
+                    "primary-fixed": "#6ffbbe",
+                    "secondary-container": "#7f2a0d",
+                    "on-primary-container": "#00422b",
+                    "surface-tint": "#4edea3",
+                    "error-container": "#93000a",
+                    "surface-container": "#201f1f",
+                    "on-error-container": "#ffdad6",
+                    "on-secondary-fixed-variant": "#7f2a0d",
+                    "on-surface": "#e5e2e1",
+                    "on-error": "#690005",
+                    "surface-container-high": "#2a2a2a",
+                    "tertiary-container": "#3eb686",
+                    "tertiary": "#68dba9",
+                    "secondary-fixed-dim": "#ffb59e",
+                    "inverse-primary": "#006c49",
+                    "surface-bright": "#393939",
+                    "primary-fixed-dim": "#4edea3",
+                    "secondary-fixed": "#ffdbd0",
+                    "surface-container-highest": "#353534",
+                    "on-primary-fixed-variant": "#005236",
+                    "outline-variant": "#3c4a42",
+                    "surface-container-low": "#1c1b1b",
+                    "on-background": "#e5e2e1",
+                    "secondary": "#ffb4ab",
+                    "surface": "#131313",
+                    "error": "#ffb4ab",
+                    "on-secondary-container": "#ff9b7c",
+                    "tertiary-fixed-dim": "#68dba9",
+                    "surface-variant": "#353534",
+                    "on-tertiary-fixed": "#002114",
+                    "on-secondary": "#5e1700",
+                    "on-secondary-fixed": "#3a0b00",
+                    "tertiary-fixed": "#85f8c4",
+                    "primary": "#4edea3",
+                    "inverse-on-surface": "#313030",
+                    "on-tertiary": "#003825",
+                    "on-surface-variant": "#bbcabf",
+                    "surface-dim": "#131313",
+                    "on-tertiary-container": "#00422c",
+                    "background": "#131313",
+                    "inverse-surface": "#e5e2e1",
+                    "on-primary": "#003824"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.5rem",
+                    "lg": "0.75rem",
+                    "xl": "1rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-header {
+            background: rgba(19, 19, 19, 0.8);
+            backdrop-filter: blur(20px);
+        }
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 glass-header">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-screen-xl mx-auto">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:bg-surface-bright p-2 rounded-full transition-colors">arrow_back</span>
+<span class="font-headline font-semibold text-lg tracking-tight text-on-surface">Group Details</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-zinc-500 hover:bg-zinc-800/50 p-2 rounded-full transition-colors cursor-pointer">search</span>
+<a class="material-symbols-outlined text-zinc-500 hover:bg-zinc-800/50 p-2 rounded-full transition-colors cursor-pointer" href="#" title="Group Settings &amp; Totals">settings</a>
+</div>
+</div>
+</header>
+<main class="pt-20 pb-32 px-6 max-w-screen-xl mx-auto">
+<!-- Cohesive Hero Section -->
+<div class="relative h-64 rounded-3xl overflow-hidden group mb-4 shadow-2xl">
+<img alt="dramatic icelandic landscape" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYbOIvhnMhRy3S3kd4iBAC5zO2N7c6hJr2JPe_HyOYh-inCXKZXEdKwjyIyK8yE6aTzQzt5rjg1pr6rzL9adZo8D3QHR9H7ImgM8brX7KLiTOjRvhT5YKx93f6CRarBE9z9CY-jIrDXATwvXUVvUXtWZltDCx3jUC7poPtPU9SorWI4atouWQPppwVK_uj_Ht27010kEDXQ4WtyxofK8tBHWcP7P8xzzvLJgYKMzgQU4yY-XrStpqFhoCgSBogYQ8Qo4vTooWMq78"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20"></div>
+<div class="absolute bottom-8 left-8 right-8 flex justify-between items-end">
+<div>
+<h1 class="font-headline text-white text-3xl font-extrabold tracking-tight mb-1">Iceland Expedition</h1>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">group</span>
+<p class="text-zinc-300 text-sm font-medium">6 members</p>
+</div>
+</div>
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-surface-container bg-zinc-700 flex items-center justify-center text-[10px] text-white">JD</div>
+<div class="w-8 h-8 rounded-full border-2 border-surface-container bg-primary flex items-center justify-center text-[10px] text-on-primary font-bold">SM</div>
+<div class="w-8 h-8 rounded-full border-2 border-surface-container bg-zinc-600 flex items-center justify-center text-[10px] text-white">+4</div>
+</div>
+</div>
+</div>
+<!-- Balance Summary Card -->
+<div class="bg-surface-container-high rounded-3xl p-6 mb-10 flex flex-col justify-between border border-outline-variant/10">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary bg-primary/10 p-3 rounded-2xl" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="text-[10px] font-label text-primary font-bold tracking-widest uppercase">Current Standing</span>
+</div>
+<div>
+<p class="text-sm text-zinc-400 mb-1">Overall Balance</p>
+<div class="flex items-baseline gap-2">
+<p class="font-headline text-3xl font-extrabold text-primary">You are owed $842.00</p>
+<span class="material-symbols-outlined text-primary text-xl translate-y-0.5">trending_up</span>
+</div>
+</div>
+</div>
+<!-- Expense List -->
+<div class="space-y-4">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline font-bold text-lg text-zinc-400">Recent Transactions</h3>
+<span class="text-xs text-primary font-semibold cursor-pointer">View All</span>
+</div>
+<!-- Expense Item 1 -->
+<div class="group flex items-center justify-between p-4 bg-surface-container-low rounded-2xl hover:bg-surface-bright transition-all duration-300 cursor-pointer border border-transparent hover:border-outline-variant/10">
+<div class="flex items-center gap-4">
+<!-- Col 1: Date -->
+<div class="flex flex-col items-center justify-center w-10">
+<span class="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Aug</span>
+<span class="text-lg font-headline font-extrabold text-on-surface leading-none">18</span>
+</div>
+<!-- Col 2: Icon + Name -->
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 bg-surface-container-highest rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-zinc-300 text-xl" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface tracking-tight text-sm">Reykjavik Kitchen</p>
+<!-- Col 3: Subtext -->
+<p class="text-[10px] text-zinc-500 font-medium uppercase tracking-widest mt-0.5">Paid by Sarah</p>
+</div>
+</div>
+</div>
+<!-- Col 4: Right -->
+<div class="text-right">
+<p class="font-headline text-base font-bold text-on-surface">$180.00</p>
+<p class="text-xs text-primary font-bold">+$45.00</p>
+</div>
+</div>
+<!-- Expense Item 2 -->
+<div class="group flex items-center justify-between p-4 bg-surface-container-low rounded-2xl hover:bg-surface-bright transition-all duration-300 cursor-pointer border border-transparent hover:border-outline-variant/10">
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-center justify-center w-10">
+<span class="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Aug</span>
+<span class="text-lg font-headline font-extrabold text-on-surface leading-none">17</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 bg-surface-container-highest rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-zinc-300 text-xl" style="font-variation-settings: 'FILL' 1;">directions_car</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface tracking-tight text-sm">4x4 Rental Deposit</p>
+<p class="text-[10px] text-zinc-500 font-medium uppercase tracking-widest mt-0.5">Paid by Marcus</p>
+</div>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline text-base font-bold text-on-surface">$329.60</p>
+<p class="text-xs text-secondary font-bold">-$82.40</p>
+</div>
+</div>
+<!-- Expense Item 3 -->
+<div class="group flex items-center justify-between p-4 bg-surface-container-low rounded-2xl hover:bg-surface-bright transition-all duration-300 cursor-pointer border border-transparent hover:border-outline-variant/10">
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-center justify-center w-10">
+<span class="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Aug</span>
+<span class="text-lg font-headline font-extrabold text-on-surface leading-none">16</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 bg-surface-container-highest rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-zinc-300 text-xl" style="font-variation-settings: 'FILL' 1;">local_gas_station</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface tracking-tight text-sm">N1 Fuel Station</p>
+<p class="text-[10px] text-zinc-500 font-medium uppercase tracking-widest mt-0.5">Paid by Sarah</p>
+</div>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline text-base font-bold text-on-surface">$98.00</p>
+<p class="text-xs text-primary font-bold">+$24.50</p>
+</div>
+</div>
+<!-- Expense Item 4 -->
+<div class="group flex items-center justify-between p-4 bg-surface-container-low rounded-2xl hover:bg-surface-bright transition-all duration-300 cursor-pointer border border-transparent hover:border-outline-variant/10">
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-center justify-center w-10">
+<span class="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Aug</span>
+<span class="text-lg font-headline font-extrabold text-on-surface leading-none">15</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 bg-surface-container-highest rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-zinc-300 text-xl" style="font-variation-settings: 'FILL' 1;">hotel</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface tracking-tight text-sm">Luxury Cabin Vik</p>
+<p class="text-[10px] text-zinc-500 font-medium uppercase tracking-widest mt-0.5">Paid by John</p>
+</div>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline text-base font-bold text-on-surface">$2,880.00</p>
+<p class="text-xs text-primary font-bold">+$720.00</p>
+</div>
+</div>
+<!-- Expense Item 5 -->
+<div class="group flex items-center justify-between p-4 bg-surface-container-low rounded-2xl hover:bg-surface-bright transition-all duration-300 cursor-pointer border border-transparent hover:border-outline-variant/10">
+<div class="flex items-center gap-4">
+<div class="flex flex-col items-center justify-center w-10">
+<span class="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Aug</span>
+<span class="text-lg font-headline font-extrabold text-on-surface leading-none">14</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 bg-surface-container-highest rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-zinc-300 text-xl" style="font-variation-settings: 'FILL' 1;">shopping_cart</span>
+</div>
+<div>
+<p class="font-headline font-bold text-on-surface tracking-tight text-sm">Bonus Supermarket</p>
+<p class="text-[10px] text-zinc-500 font-medium uppercase tracking-widest mt-0.5">Paid by Sarah</p>
+</div>
+</div>
+</div>
+<div class="text-right">
+<p class="font-headline text-base font-bold text-on-surface">$152.00</p>
+<p class="text-xs text-secondary font-bold">-$38.00</p>
+</div>
+</div>
+</div>
+</main>
+<!-- FAB: Add Expense -->
+<button class="fixed bottom-28 right-6 w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary-container text-on-primary shadow-[0_10px_40px_rgba(78,222,163,0.4)] flex items-center justify-center active:scale-90 transition-transform duration-200 z-50">
+<span class="material-symbols-outlined text-3xl font-bold">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-8 pt-3 glass-header rounded-t-[32px] z-50 border-t border-outline-variant/10">
+<a class="flex flex-col items-center justify-center text-[#4edea3] bg-primary/10 rounded-2xl px-5 py-2 transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-inter text-[10px] uppercase tracking-widest font-bold mt-1">Groups</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 px-4 py-2 hover:text-[#4edea3] transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="font-inter text-[10px] uppercase tracking-widest font-medium mt-1">Friends</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 px-4 py-2 hover:text-[#4edea3] transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">notifications</span>
+<span class="font-inter text-[10px] uppercase tracking-widest font-medium mt-1">Activity</span>
+</a>
+<a class="flex flex-col items-center justify-center text-zinc-500 px-4 py-2 hover:text-[#4edea3] transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">account_circle</span>
+<span class="font-inter text-[10px] uppercase tracking-widest font-medium mt-1">Account</span>
+</a>
+</nav>
+</body></html>

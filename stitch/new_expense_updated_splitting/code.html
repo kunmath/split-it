@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add New Expense | Ledger</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#0e0e0e",
+                        "outline": "#86948a",
+                        "primary-container": "#10b981",
+                        "on-tertiary-fixed-variant": "#005137",
+                        "on-primary-fixed": "#002113",
+                        "primary-fixed": "#6ffbbe",
+                        "secondary-container": "#7f2a0d",
+                        "on-primary-container": "#00422b",
+                        "surface-tint": "#4edea3",
+                        "error-container": "#93000a",
+                        "surface-container": "#201f1f",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#7f2a0d",
+                        "on-surface": "#e5e2e1",
+                        "on-error": "#690005",
+                        "surface-container-high": "#2a2a2a",
+                        "tertiary-container": "#3eb686",
+                        "tertiary": "#68dba9",
+                        "secondary-fixed-dim": "#ffb59e",
+                        "inverse-primary": "#006c49",
+                        "surface-bright": "#393939",
+                        "primary-fixed-dim": "#4edea3",
+                        "secondary-fixed": "#ffdbd0",
+                        "surface-container-highest": "#353534",
+                        "on-primary-fixed-variant": "#005236",
+                        "outline-variant": "#3c4a42",
+                        "surface-container-low": "#1c1b1b",
+                        "on-background": "#e5e2e1",
+                        "secondary": "#ffb59e",
+                        "surface": "#131313",
+                        "error": "#ffb4ab",
+                        "on-secondary-container": "#ff9b7c",
+                        "tertiary-fixed-dim": "#68dba9",
+                        "surface-variant": "#353534",
+                        "on-tertiary-fixed": "#002114",
+                        "on-secondary": "#5e1700",
+                        "on-secondary-fixed": "#3a0b00",
+                        "tertiary-fixed": "#85f8c4",
+                        "primary": "#4edea3",
+                        "inverse-on-surface": "#313030",
+                        "on-tertiary": "#003825",
+                        "on-surface-variant": "#bbcabf",
+                        "surface-dim": "#131313",
+                        "on-tertiary-container": "#00422c",
+                        "background": "#131313",
+                        "inverse-surface": "#e5e2e1",
+                        "on-primary": "#003824"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #131313;
+            color: #e5e2e1;
+            font-family: 'Inter', sans-serif;
+        }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-[#131313]/80 backdrop-blur-xl">
+<div class="flex justify-between items-center px-6 h-16 w-full max-w-screen-xl mx-auto">
+<div class="flex items-center gap-3">
+<button class="p-2 -ml-2 text-zinc-500 hover:bg-zinc-800/50 transition-colors active:scale-95 duration-200 rounded-full">
+<span class="material-symbols-outlined">close</span>
+</button>
+<h1 class="font-manrope font-semibold text-2xl tracking-tight text-[#4edea3]">Add New Expense</h1>
+</div>
+<button class="bg-gradient-to-r from-primary to-primary-container text-on-primary px-6 py-2 rounded-full font-headline font-bold text-sm hover:opacity-90 active:scale-95 transition-all">
+                Save
+            </button>
+</div>
+</header>
+<main class="pt-24 px-6 max-w-xl mx-auto space-y-10">
+<!-- Form Section: Primary Data -->
+<section class="space-y-8">
+<div class="flex flex-col gap-6">
+<!-- Amount Hero Input -->
+<div class="text-center space-y-2">
+<label class="block font-label text-xs uppercase tracking-[0.2em] text-zinc-500">Amount</label>
+<div class="relative inline-block w-full">
+<span class="absolute left-0 top-1/2 -translate-y-1/2 text-4xl font-headline font-extrabold text-[#4edea3]">$</span>
+<input class="w-full bg-transparent border-none text-center font-headline font-extrabold text-6xl focus:ring-0 placeholder-zinc-800 text-on-surface selection:bg-primary/30" placeholder="0.00" type="number"/>
+</div>
+</div>
+<!-- Description & Date Bento -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-surface-container-low p-5 rounded-xl space-y-2">
+<label class="block font-label text-xs font-semibold text-zinc-500 uppercase tracking-wider">Description</label>
+<input class="w-full bg-transparent border-none p-0 text-on-surface font-body text-lg focus:ring-0 placeholder-zinc-600" placeholder="What was it for?" type="text"/>
+</div>
+<div class="bg-surface-container-low p-5 rounded-xl space-y-2">
+<label class="block font-label text-xs font-semibold text-zinc-500 uppercase tracking-wider">Date</label>
+<input class="w-full bg-transparent border-none p-0 text-on-surface font-body text-lg focus:ring-0 [color-scheme:dark]" type="date" value="2023-10-27"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Payer Selection -->
+<section class="space-y-4">
+<h2 class="font-headline font-bold text-xl tracking-tight flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">payments</span>
+                Paid by
+            </h2>
+<div class="flex flex-wrap gap-3">
+<button class="flex items-center gap-2 bg-surface-bright border border-outline-variant/20 px-4 py-2.5 rounded-full text-on-surface active:scale-95 transition-all">
+<img alt="User" class="w-6 h-6 rounded-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtVVhvmlze-ZuNsPhkFqXQXy0V_Y3eKpSYIJ5V6lkxBxeakMtvml11w1zRd44P1_g4_eEAoyD1thW0ZX61a5UrURDZuymKPLhownbow6QC75i2eFfymv_hxgMAe5rVh9GsgVIV0GI6JePV8XRPgay6rbBoAv28sPl6JMf2nyb9cdNY4kOwp9vxQ0FJj-OdMHQtJG6AnvkfI_QKHoTMJZ3953Sbwm_KqWup4E9TNk7IjfxbKo6zxVxoT9LCixcYCqLLFXdGMAsF1gA"/>
+<span class="font-body font-medium">You</span>
+</button>
+<button class="flex items-center gap-2 bg-surface-container-low hover:bg-surface-container-high px-4 py-2.5 rounded-full text-zinc-400 transition-all">
+<span class="material-symbols-outlined text-sm">add</span>
+<span class="font-body font-medium">Change payer</span>
+</button>
+</div>
+</section>
+<!-- Split Selection -->
+<section class="space-y-6">
+<div class="flex justify-between items-end">
+<h2 class="font-headline font-bold text-xl tracking-tight flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">group</span>
+                    Split with
+                </h2>
+<button class="text-primary font-label text-sm font-semibold hover:underline">Select all</button>
+</div>
+<!-- Split Method Toggle -->
+<div class="bg-surface-container-low p-1 rounded-xl flex gap-1">
+<button class="flex-1 py-2 text-sm font-headline font-semibold rounded-lg bg-surface-container-high text-primary shadow-sm transition-all">
+                    Split Equally
+                </button>
+<button class="flex-1 py-2 text-sm font-headline font-semibold rounded-lg text-zinc-500 hover:text-on-surface transition-all">
+                    Split by Amount
+                </button>
+</div>
+<!-- Member List -->
+<div class="space-y-3">
+<!-- Member Item 1 -->
+<div class="group flex items-center justify-between p-4 bg-surface-container-low rounded-xl transition-colors">
+<div class="flex items-center gap-4">
+<div class="relative">
+<img alt="Sarah" class="w-12 h-12 rounded-xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSm0w8dmVn_eElXCgItrxGGAI_XEJ2ZTz4iWBy8-Z39iFTe7jWgb3KVyKVoL-T2Mmc8thpfXktVfVT8wm9xcuzsln5vzPIhnMz3V30EQ3rJrGYOYp4_wUU1ocjEtXrHQ8asAdRGXx35ujpIauSKs4VVzhtoyX3CZxvUUhwn1RxHPINgnp35E3BxA_XHHj7U7VC4Y1j7uX4kjJkGJOuQ1rbFdRon9TOh0baqnxtI5sCH9-OXqdshSAvvBdinM5LhLxSNpWvsrTWzMg"/>
+<div class="absolute -bottom-1 -right-1 bg-surface-container-highest p-0.5 rounded-full">
+<div class="w-3 h-3 bg-primary rounded-full"></div>
+</div>
+</div>
+<div>
+<p class="font-headline font-semibold text-on-surface">Sarah Johnson</p>
+</div>
+</div>
+<!-- Split Equally Mode (Checkbox) -->
+<div class="relative flex items-center">
+<input checked="" class="peer h-6 w-6 rounded-md bg-zinc-800 border-none text-primary focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer" type="checkbox"/>
+<span class="material-symbols-outlined absolute opacity-0 peer-checked:opacity-100 pointer-events-none text-on-primary text-sm left-1/2 -translate-x-1/2 font-bold" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<!-- Split by Amount Mode (Hidden in current view example) -->
+<!-- 
+                    <div class="flex items-center gap-2 bg-surface-container-high px-3 py-1.5 rounded-lg border border-outline-variant/10">
+                        <span class="text-zinc-500 text-sm">$</span>
+                        <input type="number" class="w-16 bg-transparent border-none p-0 text-right focus:ring-0 text-on-surface font-body font-medium" value="0.00" />
+                    </div> 
+                    -->
+</div>
+<!-- Member Item 2 -->
+<div class="group flex items-center justify-between p-4 bg-surface-container-low rounded-xl transition-colors">
+<div class="flex items-center gap-4">
+<img alt="Mike" class="w-12 h-12 rounded-xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7hqooGGInDsIjpTnoOifDssvsSIT3Xbk47VBoflWSp0ShwZz6I-ys8achqDOdVw99ICO4rjUu1B1ziprBp3nKwTcOmI6K5pgdiU39tBGOBVITjSF8BqjkfJtdvi0fliCjKO-pa8Y6KTvyoxMDrHgBFiQBeGhPl7pRmjrmdftA8YRfMShQHo0ooP6fFKTs1djM2nCa9TKk2tA9XDiWP_5_32gfhA1UXLXPQtNx3AuWKKHAx-ADbuIUzPEpSC-OaB2AspZKPbV1atU"/>
+<div>
+<p class="font-headline font-semibold text-on-surface">Mike Chen</p>
+</div>
+</div>
+<div class="relative flex items-center">
+<input checked="" class="peer h-6 w-6 rounded-md bg-zinc-800 border-none text-primary focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer" type="checkbox"/>
+<span class="material-symbols-outlined absolute opacity-0 peer-checked:opacity-100 pointer-events-none text-on-primary text-sm left-1/2 -translate-x-1/2 font-bold" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</div>
+<!-- Member Item 3 -->
+<div class="group flex items-center justify-between p-4 bg-surface-container-low rounded-xl transition-colors">
+<div class="flex items-center gap-4">
+<img alt="Elena" class="w-12 h-12 rounded-xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRH5FzAglv7W3oQZNeXb5NPXc1BxdHJO7KV967II1IpsOQHFJgmilYrflTNjA87OZGWn0p_Ej9n71kKTQ8M6gOiyKrT3ql_l0DNN0gvYLYrTVVDbNp7Hkwptem13906CXg0miR1fD50nH6emLdInL-HlXelk1hHOVqhQQustxmire10vtJsoorOnpnfnl2D9GYnklkXkT6u3PJTURyyCCAP7MCR3rbyZFeCQyiVXICTNfWSZTmKAUtgnh051ToQntuweatAlW-i5Q"/>
+<div>
+<p class="font-headline font-semibold text-on-surface">Elena Rodriguez</p>
+</div>
+</div>
+<div class="relative flex items-center">
+<input class="peer h-6 w-6 rounded-md bg-zinc-800 border-none text-primary focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer" type="checkbox"/>
+<span class="material-symbols-outlined absolute opacity-0 peer-checked:opacity-100 pointer-events-none text-on-primary text-sm left-1/2 -translate-x-1/2 font-bold" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Advanced Toggle -->
+<div class="flex items-center justify-center pt-4">
+<button class="flex items-center gap-2 text-zinc-500 font-label text-xs uppercase tracking-widest hover:text-on-surface transition-colors">
+                Advanced Split Options
+                <span class="material-symbols-outlined text-sm">expand_more</span>
+</button>
+</div>
+</main>
+<!-- Contextual Summary Card -->
+<div class="fixed bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-3rem)] max-w-xl z-40">
+<div class="bg-surface-container-high p-4 rounded-2xl flex items-center justify-between shadow-[0_10px_40px_rgba(0,0,0,0.4)] border border-outline-variant/10 backdrop-blur-md">
+<div class="space-y-0.5">
+<p class="font-label text-[10px] text-zinc-500 uppercase tracking-widest">Split Summary</p>
+<p class="font-headline font-bold text-on-surface">
+                    $0.00 <span class="font-body font-normal text-sm text-zinc-400">/ person</span>
+</p>
+</div>
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-surface-container-high bg-zinc-700 flex items-center justify-center text-[10px] font-bold">SJ</div>
+<div class="w-8 h-8 rounded-full border-2 border-surface-container-high bg-zinc-700 flex items-center justify-center text-[10px] font-bold">MC</div>
+<div class="w-8 h-8 rounded-full border-2 border-surface-container-high bg-primary/20 text-primary flex items-center justify-center text-[10px] font-bold text-center leading-none">
+<span class="material-symbols-outlined text-xs">add</span>
+</div>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "inverse-primary": "#006c49",
+            "tertiary": "#68dba9",
+            "on-surface": "#e5e2e1",
+            "on-primary": "#003824",
+            "tertiary-fixed-dim": "#68dba9",
+            "on-tertiary-container": "#00422c",
+            "surface-container-lowest": "#0e0e0e",
+            "on-primary-fixed": "#002113",
+            "surface-container-high": "#2a2a2a",
+            "secondary-fixed": "#ffdbd0",
+            "on-background": "#e5e2e1",
+            "primary-fixed-dim": "#4edea3",
+            "on-error-container": "#ffdad6",
+            "primary-container": "#10b981",
+            "background": "#131313",
+            "on-tertiary-fixed": "#002114",
+            "tertiary-fixed": "#85f8c4",
+            "on-primary-fixed-variant": "#005236",
+            "on-secondary-container": "#ff9b7c",
+            "surface-container-highest": "#353534",
+            "secondary-container": "#7f2a0d",
+            "inverse-surface": "#e5e2e1",
+            "surface-container-low": "#1c1b1b",
+            "surface-tint": "#4edea3",
+            "surface-container": "#201f1f",
+            "outline": "#86948a",
+            "surface-bright": "#393939",
+            "error": "#ffb4ab",
+            "primary": "#4edea3",
+            "on-primary-container": "#00422b",
+            "primary-fixed": "#6ffbbe",
+            "on-secondary": "#5e1700",
+            "secondary": "#ffb59e",
+            "surface": "#131313",
+            "on-secondary-fixed": "#3a0b00",
+            "error-container": "#93000a",
+            "outline-variant": "#3c4a42",
+            "on-surface-variant": "#bbcabf",
+            "surface-dim": "#131313",
+            "tertiary-container": "#3eb686",
+            "on-tertiary": "#003825",
+            "on-secondary-fixed-variant": "#7f2a0d",
+            "surface-variant": "#353534",
+            "secondary-fixed-dim": "#ffb59e",
+            "inverse-on-surface": "#313030",
+            "on-tertiary-fixed-variant": "#005137",
+            "on-error": "#690005"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "fontFamily": {
+            "headline": ["Manrope"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body { background-color: #131313; color: #e5e2e1; font-family: 'Inter', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .glass-nav { background: rgba(19, 19, 19, 0.8); backdrop-filter: blur(20px); }
+  </style>
+</head>
+<body class="flex min-h-screen overflow-hidden">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-[#131313] flex flex-col py-8 px-6 z-50">
+<div class="mb-12">
+<h1 class="text-xl font-black text-[#4edea3] tracking-tighter font-headline">Split-It</h1>
+<p class="text-xs text-gray-500 font-label">Editorial Ledger</p>
+</div>
+<nav class="flex-1 space-y-2">
+<div class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors duration-200 hover:bg-[#2a2a2a] text-gray-500 font-medium font-body group">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm">Dashboard</span>
+</div>
+<div class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors duration-200 hover:bg-[#2a2a2a] text-gray-500 font-medium font-body">
+<span class="material-symbols-outlined">history</span>
+<span class="text-sm">Activity</span>
+</div>
+<div class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors duration-200 hover:bg-[#2a2a2a] text-gray-500 font-medium font-body">
+<span class="material-symbols-outlined">group</span>
+<span class="text-sm">Friends</span>
+</div>
+<div class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors duration-200 hover:bg-[#2a2a2a] text-gray-500 font-medium font-body">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-sm">Groups</span>
+</div>
+</nav>
+<div class="pt-8 mt-auto border-t border-outline-variant/10 space-y-2">
+<div class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors duration-200 hover:bg-[#2a2a2a] text-gray-500 font-medium font-body">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-label">Settings</span>
+</div>
+<div class="flex items-center gap-4 px-4 py-3 rounded-xl transition-colors duration-200 hover:bg-[#2a2a2a] text-gray-500 font-medium font-body">
+<span class="material-symbols-outlined">help_outline</span>
+<span class="text-sm font-label">Support</span>
+</div>
+</div>
+</aside>
+<main class="flex-1 ml-64 min-h-screen relative overflow-y-auto no-scrollbar pb-24">
+<!-- TopNavBar -->
+<header class="sticky top-0 w-full z-40 flex justify-between items-center h-20 px-12 glass-nav">
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-bright rounded-full transition-colors active:scale-95 duration-150">
+<span class="material-symbols-outlined text-on-surface">close</span>
+</button>
+<h2 class="font-headline text-lg font-bold text-white tracking-tight">New Expense</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-4 text-white">
+<span class="material-symbols-outlined hover:text-[#4edea3] cursor-pointer transition-all">notifications</span>
+<span class="material-symbols-outlined hover:text-[#4edea3] cursor-pointer transition-all">search</span>
+</div>
+<button class="bg-gradient-to-r from-primary to-primary-container text-on-primary font-headline font-bold py-2 px-8 rounded-full shadow-lg hover:opacity-90 active:scale-95 transition-all text-sm uppercase tracking-wider">
+          Save
+        </button>
+</div>
+</header>
+<div class="px-12 pt-12 grid grid-cols-12 gap-12 max-w-7xl mx-auto">
+<!-- Left side: Details -->
+<section class="col-span-7 space-y-12">
+<div class="space-y-2">
+<label class="text-xs font-bold font-label uppercase tracking-widest text-on-surface-variant">Expense Amount</label>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-headline font-extrabold text-primary">$</span>
+<input class="bg-transparent border-none focus:ring-0 text-7xl font-headline font-black text-white p-0 w-full placeholder-surface-bright selection:bg-primary-container/30" placeholder="0.00" type="text"/>
+</div>
+</div>
+<div class="grid grid-cols-1 gap-8">
+<div class="space-y-3">
+<label class="text-xs font-bold font-label uppercase tracking-widest text-on-surface-variant">What is this for?</label>
+<input class="w-full bg-surface-container-lowest border-none rounded-xl p-4 text-white font-body focus:ring-2 focus:ring-primary/20 placeholder-gray-600" placeholder="e.g. Sushi Dinner with the team" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-8">
+<div class="space-y-3">
+<label class="text-xs font-bold font-label uppercase tracking-widest text-on-surface-variant">Date</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border-none rounded-xl p-4 pl-12 text-white font-body focus:ring-2 focus:ring-primary/20" type="text" value="Today, Oct 24"/>
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-primary text-xl">calendar_today</span>
+</div>
+</div>
+<div class="space-y-3">
+<label class="text-xs font-bold font-label uppercase tracking-widest text-on-surface-variant">Paid By</label>
+<div class="flex items-center gap-3 bg-surface-container-lowest p-3 rounded-xl border border-transparent hover:border-outline-variant/20 cursor-pointer transition-all">
+<img alt="User" class="w-8 h-8 rounded-full bg-surface-bright" data-alt="minimalist close-up portrait of a professional male in dark studio lighting with soft emerald green rim light" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZpk3q4ivZQOrpRM5jv1PSN_LKxZFh_uZiK-O9sHoEtebZibrn29cbnEh2Id0Of_q0I0WGO0sndwHMy5TZvChEQx6Pxg6qFbPi2eV4-KJcW6lMRD2gQRpgFVY7PW5mm3P9mD4vlEv_EyIqoG0lgwnywGZBgLfeNoyDrtanyU4vBGkJEvC4-5hzIaqvuEibeVvruRx3lYkr8H5FkgZ_IF8X2td9XdahtCI1oxQQcv20NUYTS-XZPJ7s0MnMRJuXgwSc_Xd003S0cis"/>
+<span class="font-body font-medium text-white">You</span>
+<span class="material-symbols-outlined ml-auto text-on-surface-variant">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<div class="p-8 bg-surface-container-low rounded-3xl space-y-6">
+<h3 class="font-headline font-bold text-xl text-white">Notes &amp; Receipts</h3>
+<div class="flex items-center justify-center border-2 border-dashed border-outline-variant rounded-2xl h-48 group hover:bg-surface-container-high transition-all cursor-pointer">
+<div class="text-center">
+<span class="material-symbols-outlined text-4xl text-on-surface-variant group-hover:text-primary transition-colors">add_photo_alternate</span>
+<p class="text-sm font-label text-on-surface-variant mt-2">Drop receipt here or click to upload</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Right side: Split with -->
+<section class="col-span-5 flex flex-col gap-8">
+<div class="bg-surface-container-low rounded-3xl overflow-hidden flex flex-col min-h-[500px]">
+<div class="p-6 pb-0">
+<h3 class="font-headline font-bold text-xl text-white mb-6">Split with</h3>
+<div class="flex gap-1 bg-surface-container-lowest p-1 rounded-2xl mb-8">
+<button class="flex-1 py-3 px-4 rounded-xl text-sm font-bold font-headline transition-all bg-surface-bright text-primary shadow-lg">
+                Split Equally
+              </button>
+<button class="flex-1 py-3 px-4 rounded-xl text-sm font-bold font-headline transition-all text-on-surface-variant hover:text-white">
+                By Amount
+              </button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto px-6 space-y-4 no-scrollbar pb-6">
+<!-- Member Row 1 -->
+<div class="flex items-center gap-4 p-4 bg-surface-container-high rounded-2xl transition-all hover:bg-surface-bright">
+<input checked="" class="w-6 h-6 rounded-md bg-surface-container-lowest border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+<img alt="John" class="w-10 h-10 rounded-full object-cover" data-alt="professional headshot of a smiling woman with dark hair in a sleek emerald green business suit with warm interior lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBDdcCiLfvZ6T2pM7z5QB3No1Ccv8hqvgHaS-lZWOMSmf7YZyWlGKFEidw5DLrKGUl0wpNFLBGCfKsnnYSYEKaGpdLSJw6BBgBtGnYJSW_BCT6v7vsmwhhhxRm2ToSqK4JHmaZCp_hpkhiOGrT22REFX75SiP3lz9wIdtrbhwrQcHySFEFtqGDnX9tyzKPpsO_xM3T22XDgqitlWrgcHqlXsNiwWMiJngh2lYk9kBdQuhPac4ncOFcV_0hYLJFxFtC2dVjhU134CbA"/>
+<div class="flex-1">
+<p class="font-body font-semibold text-white">Jessica Smith</p>
+<p class="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Frequent Friend</p>
+</div>
+<span class="font-headline font-bold text-primary">$0.00</span>
+</div>
+<!-- Member Row 2 -->
+<div class="flex items-center gap-4 p-4 bg-surface-container-high rounded-2xl transition-all hover:bg-surface-bright">
+<input checked="" class="w-6 h-6 rounded-md bg-surface-container-lowest border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+<img alt="Marcus" class="w-10 h-10 rounded-full object-cover" data-alt="candid close-up of a stylish man wearing glasses and a minimalist charcoal sweater in a high-end cafe setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5gKvPbEGcan4vps5R46ORv-6vcj_C2KVf-ZtbIwWJrhJ9QzmTt0RFXZqFYJwvng7JTh-azUWSWl7DnnqYT1KeA81JQdlRpG1CNt1pQUnn37LyiJgAepk2ElsJ9k64kMrE_5j-nV3DOWjXF5wuqj7lHSbUAIBfn0PAZ_GSGPI-nFgSF6q4VNq9GD4cK_EvXuY7pe_jL7Uy8jdj3Km6uE6ieGCUjR2W5n-yB-MlfZMGkGL1uyW4sllAux2xcJHPDgEaTuzfw-UwKV0"/>
+<div class="flex-1">
+<p class="font-body font-semibold text-white">Marcus Davids</p>
+<p class="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">Groups: House</p>
+</div>
+<span class="font-headline font-bold text-primary">$0.00</span>
+</div>
+<!-- Member Row 3 -->
+<div class="flex items-center gap-4 p-4 bg-surface-container-high rounded-2xl transition-all hover:bg-surface-bright opacity-60">
+<input class="w-6 h-6 rounded-md bg-surface-container-lowest border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+<img alt="Leo" class="w-10 h-10 rounded-full object-cover" data-alt="portrait of a young man with curly hair in a vibrant artistic studio environment with neon green accent lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFYMJsMgK9_1ZbXkf5UGTEtItqePUDUpN4NA5BcfU-ODspkNdFWj7y2ARJpXluYlV8apdpGeFtkf-Jnv2WVnUf15dphxVjz_5eWuFI2m-Td8IKKzUBZrIxfkBddi4tlX4Zzd44eADq1n_zkE7F9y8OMxAeyqdx32032nkJ1caPUnoVbLry0ymJJ0AVRTQjkCOIkgFeudOd4DI-qbDtMCD6w07tEfNH4BT7PO6zISc9Ww1AmKQQ_EO3CmyO_QTD9I7UzYrhbpvUhTs"/>
+<div class="flex-1">
+<p class="font-body font-semibold text-white">Peter Leo</p>
+<p class="text-[10px] font-label uppercase tracking-widest text-on-surface-variant">New Member</p>
+</div>
+<span class="font-headline font-bold text-on-surface-variant">$0.00</span>
+</div>
+<button class="w-full py-4 border-2 border-dashed border-outline-variant/30 rounded-2xl flex items-center justify-center gap-3 text-on-surface-variant hover:text-primary hover:border-primary/50 transition-all font-body font-medium">
+<span class="material-symbols-outlined">person_add</span>
+              Add another friend
+            </button>
+</div>
+</div>
+</section>
+</div>
+<!-- Split Summary Card (Bottom Right Anchor) -->
+<div class="fixed bottom-12 right-12 w-96 bg-surface-container-highest/90 backdrop-blur-xl p-8 rounded-[2rem] shadow-2xl border border-outline-variant/10">
+<div class="space-y-6">
+<div class="flex justify-between items-end">
+<div>
+<h4 class="text-[10px] font-bold font-label uppercase tracking-widest text-on-surface-variant mb-1">Total Amount</h4>
+<p class="text-3xl font-headline font-black text-white">$420.00</p>
+</div>
+<div class="text-right">
+<h4 class="text-[10px] font-bold font-label uppercase tracking-widest text-on-surface-variant mb-1">Your Share</h4>
+<p class="text-3xl font-headline font-black text-primary">$210.00</p>
+</div>
+</div>
+<div class="h-px bg-outline-variant/20"></div>
+<div class="space-y-3">
+<div class="flex justify-between items-center text-sm font-body">
+<span class="text-on-surface-variant">Splitting between</span>
+<span class="text-white font-semibold">2 people</span>
+</div>
+<div class="flex justify-between items-center text-sm font-body">
+<span class="text-on-surface-variant">Per person</span>
+<span class="text-secondary font-bold">$210.00</span>
+</div>
+</div>
+<button class="w-full bg-white text-black font-headline font-extrabold py-4 rounded-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2">
+          Confirm Transaction
+          <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</main>
+<style>
+    /* Custom radio/checkbox styles to match design system */
+    input[type="checkbox"]:checked {
+      background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='black' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+    }
+  </style>
+</body></html>
