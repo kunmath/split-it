@@ -39,6 +39,7 @@ export default function RootLayout({
           mode={env.placeholderMode}
           isClerkConfigured={env.isClerkConfigured}
           isConvexConfigured={env.isConvexConfigured}
+          isAuthBridgeConfigured={env.isAuthBridgeConfigured}
         >
           {children}
         </AppProviders>

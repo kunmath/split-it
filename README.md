@@ -1,13 +1,13 @@
 # split-it
 
-Phase 0 bootstraps the project with Next.js App Router, Tailwind v4, Clerk and Convex packages, a reusable editorial dark design system, and a Docker-first local workflow. Real auth, schema, and mutations are intentionally deferred.
+Phase 1 adds the MVP Convex schema, Clerk-to-Convex auth plumbing, user sync, reusable backend permission helpers, and cents-based money utilities on top of the existing Next.js shell.
 
 ## Stack
 
 - Next.js 16 App Router + TypeScript
 - Tailwind CSS v4 theme variables
-- Clerk package bootstrapped in placeholder-friendly mode
-- Convex package and dev workflow bootstrapped for later phases
+- Clerk package wired in placeholder-friendly mode
+- Convex schema and typed backend helpers
 - Docker Compose for local development
 
 ## Prerequisites
@@ -28,9 +28,10 @@ The app will be available at `http://localhost:3000`.
 
 ## Placeholder Mode
 
-Phase 0 is designed to boot even when Clerk and Convex values are blank.
+The app is designed to boot even when Clerk or Convex are only partially configured.
 
 - If Clerk keys are missing, the app still renders and surfaces mock-mode hints in the shell.
+- If `CLERK_JWT_ISSUER_DOMAIN` is missing, Clerk UI can still mount but Convex auth stays in placeholder mode.
 - If Convex is not configured, the `convex-dev` service stays alive and prints the recommended bootstrap commands instead of failing the stack.
 
 ## Convex Bootstrap
@@ -53,6 +54,14 @@ After either path completes, restart the stack:
 docker compose up --build
 ```
 
+If you are using Clerk with Convex auth, replace the placeholder issuer with your real Clerk issuer:
+
+```bash
+CLERK_JWT_ISSUER_DOMAIN=https://your-clerk-issuer
+```
+
+`middleware.ts` is now present for Clerk plumbing, but all routes remain public until the dedicated auth phase.
+
 ## Useful Commands
 
 ```bash
@@ -63,7 +72,13 @@ docker compose exec web npm run lint
 docker compose exec web npm run typecheck
 ```
 
-## Phase 0 Routes
+## Phase 1 Backend Additions
+
+- Full Convex schema for `users`, `groups`, `groupMembers`, `groupInvites`, `expenses`, and `expenseShares`
+- `users.storeCurrentUser` mutation for idempotent authenticated user sync
+- Reusable backend helpers for current user lookup, group membership, ownership, expense edit permission, and cents-based money math
+
+## Current Routes
 
 - `/sign-in`
 - `/sign-up`
@@ -81,4 +96,5 @@ docker compose exec web npm run typecheck
 
 - The authenticated shell is responsive: mobile uses a bottom nav, desktop uses a left rail plus utility bar.
 - The design system follows the supplied emerald-ledger guidance: tonal layers, no hard dividers, large money typography, emerald/coral semantic balances.
-- Screens use reusable primitives rather than pasted HTML from the design exports.
+- Screens still use reusable primitives rather than pasted HTML from the design exports.
+- This phase does not add the final auth screens, dashboard data, invites, or expense mutations yet.

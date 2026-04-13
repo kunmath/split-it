@@ -1,9 +1,11 @@
 "use client";
 
-import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkProvider, useAuth } from "@clerk/nextjs";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
+import { CurrentUserSync } from "@/components/providers/current-user-sync";
 import type { PlaceholderMode } from "@/lib/env";
 
 type PlaceholderContextValue = {
@@ -25,6 +27,7 @@ type AppProvidersProps = {
   mode: PlaceholderMode;
   isClerkConfigured: boolean;
   isConvexConfigured: boolean;
+  isAuthBridgeConfigured: boolean;
 };
 
 export function AppProviders({
@@ -34,10 +37,12 @@ export function AppProviders({
   mode,
   isClerkConfigured,
   isConvexConfigured,
+  isAuthBridgeConfigured,
 }: AppProvidersProps) {
   const [convexClient] = useState(() => {
     return convexUrl ? new ConvexReactClient(convexUrl) : null;
   });
+  const shouldUseAuthBridge = Boolean(convexClient && isAuthBridgeConfigured && clerkPublishableKey);
 
   let tree = (
     <PlaceholderModeContext.Provider value={{ mode, isClerkConfigured, isConvexConfigured }}>
@@ -45,12 +50,23 @@ export function AppProviders({
     </PlaceholderModeContext.Provider>
   );
 
-  if (convexClient) {
+  if (convexClient && !shouldUseAuthBridge) {
     tree = <ConvexProvider client={convexClient}>{tree}</ConvexProvider>;
   }
 
   if (clerkPublishableKey) {
-    tree = <ClerkProvider publishableKey={clerkPublishableKey}>{tree}</ClerkProvider>;
+    const clerkTree = shouldUseAuthBridge && convexClient
+      ? (
+          <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
+            <CurrentUserSync />
+            {tree}
+          </ConvexProviderWithClerk>
+        )
+      : tree;
+
+    tree = (
+      <ClerkProvider publishableKey={clerkPublishableKey}>{clerkTree}</ClerkProvider>
+    );
   }
 
   return tree;
