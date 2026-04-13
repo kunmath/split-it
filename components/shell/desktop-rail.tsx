@@ -5,10 +5,15 @@ import { usePathname } from "next/navigation";
 
 import { ShellSessionCard } from "@/components/shell/shell-session-controls";
 import { buttonVariants } from "@/components/ui/button";
+import type { AppRouteMeta } from "@/lib/route-meta";
 import { desktopPrimaryNav, desktopSecondaryNav, getSectionFromPathname } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
-export function DesktopRail() {
+type DesktopRailProps = {
+  meta: AppRouteMeta;
+};
+
+export function DesktopRail({ meta }: DesktopRailProps) {
   const pathname = usePathname();
   const activeSection = getSectionFromPathname(pathname);
 
@@ -49,12 +54,14 @@ export function DesktopRail() {
       </nav>
 
       <div className="mt-auto space-y-6 border-t border-white/5 pt-8">
-        <Link
-          href="/groups/demo-group/expenses/new"
-          className={buttonVariants({ variant: "primary", size: "lg", fullWidth: true })}
-        >
-          New Expense
-        </Link>
+        {meta.railActionHref && meta.railActionLabel ? (
+          <Link
+            href={meta.railActionHref}
+            className={buttonVariants({ variant: "primary", size: "lg", fullWidth: true })}
+          >
+            {meta.railActionLabel}
+          </Link>
+        ) : null}
 
         <div className="space-y-2">
           {desktopSecondaryNav.map((item) => {

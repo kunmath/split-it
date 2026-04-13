@@ -23,7 +23,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-surface text-on-surface">
-      <DesktopRail />
+      <DesktopRail meta={meta} />
 
       <div className="lg:ml-72">
         <div className="glass-panel sticky top-0 z-30 border-b border-white/5 px-4 py-4 lg:hidden">
@@ -55,7 +55,7 @@ export function AppShell({ children }: AppShellProps) {
       </div>
 
       <MobileBottomNav />
-      {meta.showFab ? <FloatingActionButton href="/groups/demo-group/expenses/new" label={meta.fabLabel} /> : null}
+      {meta.showFab ? <FloatingActionButton href={meta.fabHref} label={meta.fabLabel} /> : null}
     </div>
   );
 }

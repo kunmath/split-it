@@ -7,9 +7,19 @@ export type AppRouteMeta = {
   searchPlaceholder: string;
   showFab: boolean;
   fabLabel: string;
+  fabHref: string;
+  railActionLabel?: string;
+  railActionHref?: string;
   topActionLabel?: string;
   updatedLabel?: string;
 };
+
+function getGroupExpenseHref(pathname: string) {
+  const segments = pathname.split("/").filter(Boolean);
+  const groupId = segments[1];
+
+  return groupId ? `/groups/${groupId}/expenses/new` : "/groups/demo-group/expenses/new";
+}
 
 export function getRouteMeta(pathname: string): AppRouteMeta {
   if (pathname.startsWith("/groups/") && pathname.endsWith("/settings")) {
@@ -20,6 +30,9 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search transactions...",
       showFab: true,
       fabLabel: "New Expense",
+      fabHref: getGroupExpenseHref(pathname),
+      railActionLabel: "New Expense",
+      railActionHref: getGroupExpenseHref(pathname),
       topActionLabel: "Settle Up",
       updatedLabel: "Group snapshot",
     };
@@ -33,6 +46,9 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search expenses, people...",
       showFab: false,
       fabLabel: "Add",
+      fabHref: getGroupExpenseHref(pathname),
+      railActionLabel: "New Expense",
+      railActionHref: getGroupExpenseHref(pathname),
       topActionLabel: "Preview",
       updatedLabel: "Draft mode",
     };
@@ -46,6 +62,9 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search expenses, people...",
       showFab: false,
       fabLabel: "Save",
+      fabHref: getGroupExpenseHref(pathname),
+      railActionLabel: "New Expense",
+      railActionHref: getGroupExpenseHref(pathname),
       topActionLabel: "Preview",
       updatedLabel: "Draft mode",
     };
@@ -59,6 +78,9 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search expenses, people...",
       showFab: true,
       fabLabel: "New Expense",
+      fabHref: getGroupExpenseHref(pathname),
+      railActionLabel: "New Expense",
+      railActionHref: getGroupExpenseHref(pathname),
       topActionLabel: "Settle Up",
       updatedLabel: "Live placeholder",
     };
@@ -72,6 +94,9 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search friends...",
       showFab: false,
       fabLabel: "Add",
+      fabHref: "/dashboard?create=1",
+      railActionLabel: "New Group",
+      railActionHref: "/dashboard?create=1",
       topActionLabel: "Invite",
       updatedLabel: "Placeholder space",
     };
@@ -85,6 +110,9 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search activity...",
       showFab: false,
       fabLabel: "Add",
+      fabHref: "/dashboard?create=1",
+      railActionLabel: "New Group",
+      railActionHref: "/dashboard?create=1",
       topActionLabel: "Filter",
       updatedLabel: "Quiet feed",
     };
@@ -98,6 +126,9 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search settings...",
       showFab: false,
       fabLabel: "Save",
+      fabHref: "/dashboard?create=1",
+      railActionLabel: "New Group",
+      railActionHref: "/dashboard?create=1",
       topActionLabel: "Manage",
       updatedLabel: "Profile shell",
     };
@@ -109,7 +140,10 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
     eyebrow: "Portfolio Summary",
     searchPlaceholder: "Search transactions...",
     showFab: true,
-    fabLabel: "New Expense",
+    fabLabel: "New Group",
+    fabHref: "/dashboard?create=1",
+    railActionLabel: "New Group",
+    railActionHref: "/dashboard?create=1",
     topActionLabel: "Settle Up",
     updatedLabel: "Updated 2 minutes ago",
   };

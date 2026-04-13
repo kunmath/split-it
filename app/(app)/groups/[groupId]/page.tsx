@@ -11,11 +11,18 @@ import { cn, formatCurrency } from "@/lib/utils";
 
 type GroupPageProps = {
   params: Promise<{ groupId: string }>;
+  searchParams: Promise<{
+    name?: string;
+    description?: string;
+  }>;
 };
 
-export default async function GroupPage({ params }: GroupPageProps) {
+export default async function GroupPage({ params, searchParams }: GroupPageProps) {
   const { groupId } = await params;
+  const resolvedSearchParams = await searchParams;
   const group = getGroupDetail(groupId);
+  const title = resolvedSearchParams.name?.trim() || group.title;
+  const description = resolvedSearchParams.description?.trim() || group.description;
 
   return (
     <PageContainer className="space-y-8">
@@ -28,10 +35,10 @@ export default async function GroupPage({ params }: GroupPageProps) {
             </div>
             <div className="space-y-3">
               <h1 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:text-6xl">
-                {group.title}
+                {title}
               </h1>
               <p className="max-w-2xl text-sm leading-8 text-on-surface-variant sm:text-base">
-                {group.memberCount} members exploring the Land of Fire and Ice. {group.description}
+                {group.memberCount} members exploring the Land of Fire and Ice. {description}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">

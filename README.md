@@ -1,6 +1,6 @@
 # split-it
 
-Phase 2 adds custom Clerk-backed auth surfaces, protected app routes, OAuth callback handling, and shell-level sign-out on top of the existing responsive shell and Phase 1 backend plumbing.
+Phase 3 adds a responsive groups dashboard with live Convex-backed group creation, active-group listing, and summary totals on top of the existing auth shell and backend plumbing.
 
 ## Stack
 
@@ -91,6 +91,12 @@ docker compose exec web npm run typecheck
 - `users.storeCurrentUser` mutation for idempotent authenticated user sync
 - Reusable backend helpers for current user lookup, group membership, ownership, expense edit permission, and cents-based money math
 
+## Phase 3 Dashboard Additions
+
+- `groups.create` mutation that stores the creator as the owner member
+- Dashboard queries for the current user's active groups and summary totals
+- Responsive `/dashboard` implementation with summary tiles, active group cards, invite tile, and create-group flow
+
 ## Current Routes
 
 - `/sign-in`
@@ -111,4 +117,4 @@ docker compose exec web npm run typecheck
 - The authenticated shell is responsive: mobile uses a bottom nav, desktop uses a left rail plus utility bar.
 - The auth pages are custom implementations wired to Clerk rather than Clerk's stock widgets, and they share one responsive layout across mobile and desktop.
 - Route protection and sign-out are active only when Clerk server keys are configured.
-- This phase does not add groups, invites, expenses, or other post-auth product flows yet.
+- Phase 3 adds dashboard groups home functionality, but invite acceptance and expense flows are still reserved for later phases.

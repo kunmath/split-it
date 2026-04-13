@@ -13,6 +13,10 @@ export function formatCurrency(value: number, currency = "USD") {
   }).format(value);
 }
 
+export function formatCurrencyFromCents(value: number, currency = "USD") {
+  return formatCurrency(value / 100, currency);
+}
+
 export function getInitials(name: string) {
   return name
     .split(" ")
