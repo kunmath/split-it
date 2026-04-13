@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-headline: var(--font-manrope);
+  --font-body: var(--font-inter);
+  --color-surface: var(--surface);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-bright: var(--surface-bright);
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-secondary: var(--secondary);
+  --color-outline-variant: var(--outline-variant);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-on-primary: var(--on-primary);
+  --color-error: var(--error);
+  --radius-shell: 2rem;
+  --radius-card: 1.75rem;
+  --radius-panel: 1.5rem;
+}
+
+:root {
+  color-scheme: dark;
+  --surface: #131313;
+  --surface-container-lowest: #0e0e0e;
+  --surface-container-low: #1c1b1b;
+  --surface-container: #201f1f;
+  --surface-container-high: #2a2a2a;
+  --surface-container-highest: #353534;
+  --surface-bright: #393939;
+  --primary: #4edea3;
+  --primary-container: #10b981;
+  --secondary: #ffb59e;
+  --outline-variant: #3c4a42;
+  --on-surface: #e5e2e1;
+  --on-surface-variant: #bbcabf;
+  --on-primary: #003824;
+  --error: #ffb4ab;
+}
+
+@layer base {
+  * {
+    border-color: rgb(255 255 255 / 0.06);
+  }
+
+  html {
+    background:
+      radial-gradient(circle at top left, rgb(78 222 163 / 0.08), transparent 28%),
+      radial-gradient(circle at bottom right, rgb(255 181 158 / 0.07), transparent 32%),
+      var(--surface);
+    color: var(--on-surface);
+  }
+
+  body {
+    min-height: 100dvh;
+    background: transparent;
+    color: var(--on-surface);
+    font-family: var(--font-body), sans-serif;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: rgb(78 222 163 / 0.24);
+    color: var(--on-surface);
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background: rgb(19 19 19 / 0.8);
+    backdrop-filter: blur(18px);
+  }
+
+  .ghost-outline {
+    border: 1px solid rgb(60 74 66 / 0.2);
+  }
+
+  .editorial-surface {
+    background:
+      radial-gradient(circle at top right, rgb(78 222 163 / 0.12), transparent 24%),
+      linear-gradient(180deg, rgb(42 42 42 / 1), rgb(28 27 27 / 1));
+  }
+
+  .balance-positive {
+    color: var(--primary);
+  }
+
+  .balance-negative {
+    color: var(--secondary);
+  }
+
+  .balance-neutral {
+    color: var(--on-surface);
+  }
+
+  .page-glow::before {
+    content: "";
+    position: absolute;
+    inset: auto auto 18% -10%;
+    height: 18rem;
+    width: 18rem;
+    border-radius: 9999px;
+    background: rgb(78 222 163 / 0.08);
+    filter: blur(80px);
+    pointer-events: none;
+  }
+
+  .page-glow::after {
+    content: "";
+    position: absolute;
+    inset: 10% -8% auto auto;
+    height: 16rem;
+    width: 16rem;
+    border-radius: 9999px;
+    background: rgb(255 181 158 / 0.06);
+    filter: blur(90px);
+    pointer-events: none;
+  }
+}

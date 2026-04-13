@@ -17,7 +17,7 @@ This plan assumes the project should run inside Docker so it does not interfere 
 ---
 
 ## Design source of truth
-Use the unpacked design files directly. The paths below intentionally start with `../stitch/` exactly as requested.
+Use the unpacked design files directly. The paths below intentionally start with `stitch/` exactly as requested.
 
 ### Core rule
 Every designed route must ship as **one responsive implementation** that works on both mobile and desktop. Do **not** create separate mobile pages and desktop pages.
@@ -25,13 +25,13 @@ Every designed route must ship as **one responsive implementation** that works o
 ### Route-to-design mapping
 | Route | Mobile references | Desktop references | Notes |
 |---|---|---|---|
-| `/sign-in`, `/sign-up` | `../stitch/sign_up_login/code.html`, `../stitch/sign_up_login/screen.png` | `../stitch/sign_up_login_desktop/code.html`, `../stitch/sign_up_login_desktop/screen.png` | One shared responsive auth template |
-| `/dashboard` | `../stitch/dashboard/code.html`, `../stitch/dashboard/screen.png` | `../stitch/dashboard_desktop/screen.png` | Desktop reference is screenshot-only |
-| `/groups/[groupId]` | `../stitch/group_expenses_list_layout_update/code.html`, `../stitch/group_expenses_list_layout_update/screen.png` | `../stitch/group_expenses_desktop/code.html`, `../stitch/group_expenses_desktop/screen.png` | One responsive group detail screen |
-| `/groups/[groupId]/expenses/new` | `../stitch/new_expense_updated_splitting/code.html`, `../stitch/new_expense_updated_splitting/screen.png` and `../stitch/new_expense_split_by_amount_updated_color/code.html`, `../stitch/new_expense_split_by_amount_updated_color/screen.png` | `../stitch/new_expense_desktop/code.html`, `../stitch/new_expense_desktop/screen.png` | Equal and exact split share one responsive composer |
+| `/sign-in`, `/sign-up` | `stitch/sign_up_login/code.html`, `stitch/sign_up_login/screen.png` | `stitch/sign_up_login_desktop/code.html`, `stitch/sign_up_login_desktop/screen.png` | One shared responsive auth template |
+| `/dashboard` | `stitch/dashboard/code.html`, `stitch/dashboard/screen.png` | `stitch/dashboard_desktop/screen.png` | Desktop reference is screenshot-only |
+| `/groups/[groupId]` | `stitch/group_expenses_list_layout_update/code.html`, `stitch/group_expenses_list_layout_update/screen.png` | `stitch/group_expenses_desktop/code.html`, `stitch/group_expenses_desktop/screen.png` | One responsive group detail screen |
+| `/groups/[groupId]/expenses/new` | `stitch/new_expense_updated_splitting/code.html`, `stitch/new_expense_updated_splitting/screen.png` and `stitch/new_expense_split_by_amount_updated_color/code.html`, `stitch/new_expense_split_by_amount_updated_color/screen.png` | `stitch/new_expense_desktop/code.html`, `stitch/new_expense_desktop/screen.png` | Equal and exact split share one responsive composer |
 | `/groups/[groupId]/expenses/[expenseId]/edit` | same references as the new expense route | same references as the new expense route | Reuse the composer in edit mode |
-| `/groups/[groupId]/settings` | `../stitch/group_settings_totals/code.html`, `../stitch/group_settings_totals/screen.png` | `../stitch/group_settings_totals_desktop/code.html`, `../stitch/group_settings_totals_desktop/screen.png` | One responsive totals/settings screen |
-| global design system | `../stitch/emerald_ledger/DESIGN.md` | `../stitch/emerald_ledger/DESIGN.md` | Tokens, spacing tone, surfaces, typography |
+| `/groups/[groupId]/settings` | `stitch/group_settings_totals/code.html`, `stitch/group_settings_totals/screen.png` | `stitch/group_settings_totals_desktop/code.html`, `stitch/group_settings_totals_desktop/screen.png` | One responsive totals/settings screen |
+| global design system | `stitch/emerald_ledger/DESIGN.md` | `stitch/emerald_ledger/DESIGN.md` | Tokens, spacing tone, surfaces, typography |
 
 ### Utility screens without explicit mocks
 These still need to exist, but should be lightweight and borrow from the nearest reference above:
@@ -57,7 +57,7 @@ These still need to exist, but should be lightweight and borrow from the nearest
 These rules should guide every UI phase.
 
 ### Visual system
-- Use `../stitch/emerald_ledger/DESIGN.md` as the baseline for tokens and visual tone.
+- Use `stitch/emerald_ledger/DESIGN.md` as the baseline for tokens and visual tone.
 - Preserve the dark editorial finance feel.
 - Prefer tonal layers over hairline borders.
 - Use large typography for money and summary values.
@@ -142,13 +142,13 @@ These keep the first version small and realistic.
 ## Route map
 | Route | Purpose | Design refs |
 |---|---|---|
-| `/sign-in` | sign in | `../stitch/sign_up_login/code.html`, `../stitch/sign_up_login/screen.png`, `../stitch/sign_up_login_desktop/code.html`, `../stitch/sign_up_login_desktop/screen.png` |
+| `/sign-in` | sign in | `stitch/sign_up_login/code.html`, `stitch/sign_up_login/screen.png`, `stitch/sign_up_login_desktop/code.html`, `stitch/sign_up_login_desktop/screen.png` |
 | `/sign-up` | sign up | same auth refs as `/sign-in` |
-| `/dashboard` | groups home | `../stitch/dashboard/code.html`, `../stitch/dashboard/screen.png`, `../stitch/dashboard_desktop/screen.png` |
-| `/groups/[groupId]` | group detail / recent expenses | `../stitch/group_expenses_list_layout_update/code.html`, `../stitch/group_expenses_list_layout_update/screen.png`, `../stitch/group_expenses_desktop/code.html`, `../stitch/group_expenses_desktop/screen.png` |
-| `/groups/[groupId]/expenses/new` | add expense | `../stitch/new_expense_updated_splitting/code.html`, `../stitch/new_expense_updated_splitting/screen.png`, `../stitch/new_expense_split_by_amount_updated_color/code.html`, `../stitch/new_expense_split_by_amount_updated_color/screen.png`, `../stitch/new_expense_desktop/code.html`, `../stitch/new_expense_desktop/screen.png` |
+| `/dashboard` | groups home | `stitch/dashboard/code.html`, `stitch/dashboard/screen.png`, `stitch/dashboard_desktop/screen.png` |
+| `/groups/[groupId]` | group detail / recent expenses | `stitch/group_expenses_list_layout_update/code.html`, `stitch/group_expenses_list_layout_update/screen.png`, `stitch/group_expenses_desktop/code.html`, `stitch/group_expenses_desktop/screen.png` |
+| `/groups/[groupId]/expenses/new` | add expense | `stitch/new_expense_updated_splitting/code.html`, `stitch/new_expense_updated_splitting/screen.png`, `stitch/new_expense_split_by_amount_updated_color/code.html`, `stitch/new_expense_split_by_amount_updated_color/screen.png`, `stitch/new_expense_desktop/code.html`, `stitch/new_expense_desktop/screen.png` |
 | `/groups/[groupId]/expenses/[expenseId]/edit` | edit expense | same refs as add expense |
-| `/groups/[groupId]/settings` | totals + settings | `../stitch/group_settings_totals/code.html`, `../stitch/group_settings_totals/screen.png`, `../stitch/group_settings_totals_desktop/code.html`, `../stitch/group_settings_totals_desktop/screen.png` |
+| `/groups/[groupId]/settings` | totals + settings | `stitch/group_settings_totals/code.html`, `stitch/group_settings_totals/screen.png`, `stitch/group_settings_totals_desktop/code.html`, `stitch/group_settings_totals_desktop/screen.png` |
 | `/invites/[token]` | invite acceptance | reuse auth shell + global design system |
 | `/friends`, `/activity`, `/account` | placeholder nav pages | reuse dashboard / group shell language |
 
@@ -336,14 +336,14 @@ Use these rules in every session.
 Create the project foundation and bake the supplied design language into the app before feature work starts.
 
 ### Design refs
-- `../stitch/emerald_ledger/DESIGN.md`
-- `../stitch/dashboard/code.html`
-- `../stitch/dashboard/screen.png`
-- `../stitch/dashboard_desktop/screen.png`
-- `../stitch/group_expenses_desktop/code.html`
-- `../stitch/group_expenses_desktop/screen.png`
-- `../stitch/group_settings_totals_desktop/code.html`
-- `../stitch/group_settings_totals_desktop/screen.png`
+- `stitch/emerald_ledger/DESIGN.md`
+- `stitch/dashboard/code.html`
+- `stitch/dashboard/screen.png`
+- `stitch/dashboard_desktop/screen.png`
+- `stitch/group_expenses_desktop/code.html`
+- `stitch/group_expenses_desktop/screen.png`
+- `stitch/group_settings_totals_desktop/code.html`
+- `stitch/group_settings_totals_desktop/screen.png`
 
 ### Scope
 - Set up Next.js App Router, Tailwind, Convex, and Clerk.
@@ -352,7 +352,7 @@ Create the project foundation and bake the supplied design language into the app
   - `docker-compose.yml`
   - `.dockerignore`
 - Ensure the app starts through Docker Compose without host-level Node tooling.
-- Read and encode the visual system from `../stitch/emerald_ledger/DESIGN.md`.
+- Read and encode the visual system from `stitch/emerald_ledger/DESIGN.md`.
 - Add global fonts: Manrope + Inter.
 - Add shared color tokens and semantic Tailwind utilities.
 - Build shell primitives for later phases:
@@ -399,11 +399,11 @@ Create the project foundation and bake the supplied design language into the app
 Implement Phase 0 from `plan.md` only.
 
 Design refs:
-- `../stitch/emerald_ledger/DESIGN.md`
-- `../stitch/dashboard/screen.png`
-- `../stitch/dashboard_desktop/screen.png`
-- `../stitch/group_expenses_desktop/screen.png`
-- `../stitch/group_settings_totals_desktop/screen.png`
+- `stitch/emerald_ledger/DESIGN.md`
+- `stitch/dashboard/screen.png`
+- `stitch/dashboard_desktop/screen.png`
+- `stitch/group_expenses_desktop/screen.png`
+- `stitch/group_settings_totals_desktop/screen.png`
 
 Goals:
 - Bootstrap the app with Next.js App Router, Tailwind, Convex, and Clerk.
@@ -479,10 +479,10 @@ At the end, summarize changed files, manual test steps, and assumptions.
 Implement the sign-in and sign-up experience so it visually matches the supplied auth screens on both mobile and desktop.
 
 ### Design refs
-- `../stitch/sign_up_login/code.html`
-- `../stitch/sign_up_login/screen.png`
-- `../stitch/sign_up_login_desktop/code.html`
-- `../stitch/sign_up_login_desktop/screen.png`
+- `stitch/sign_up_login/code.html`
+- `stitch/sign_up_login/screen.png`
+- `stitch/sign_up_login_desktop/code.html`
+- `stitch/sign_up_login_desktop/screen.png`
 
 ### Scope
 - Build `/sign-in` aligned to the auth refs.
@@ -513,10 +513,10 @@ Implement the sign-in and sign-up experience so it visually matches the supplied
 Implement Phase 2 from `plan.md` only.
 
 Design refs:
-- `../stitch/sign_up_login/code.html`
-- `../stitch/sign_up_login/screen.png`
-- `../stitch/sign_up_login_desktop/code.html`
-- `../stitch/sign_up_login_desktop/screen.png`
+- `stitch/sign_up_login/code.html`
+- `stitch/sign_up_login/screen.png`
+- `stitch/sign_up_login_desktop/code.html`
+- `stitch/sign_up_login_desktop/screen.png`
 
 Goals:
 - Build custom sign-in and sign-up pages aligned to the provided auth references.
@@ -541,9 +541,9 @@ At the end, summarize changed files, env vars, Docker commands, and manual test 
 Build the dashboard screen from the design and make groups usable.
 
 ### Design refs
-- `../stitch/dashboard/code.html`
-- `../stitch/dashboard/screen.png`
-- `../stitch/dashboard_desktop/screen.png`
+- `stitch/dashboard/code.html`
+- `stitch/dashboard/screen.png`
+- `stitch/dashboard_desktop/screen.png`
 
 ### Scope
 - Add mutation to create a group.
@@ -585,9 +585,9 @@ Build the dashboard screen from the design and make groups usable.
 Implement Phase 3 from `plan.md` only.
 
 Design refs:
-- `../stitch/dashboard/code.html`
-- `../stitch/dashboard/screen.png`
-- `../stitch/dashboard_desktop/screen.png`
+- `stitch/dashboard/code.html`
+- `stitch/dashboard/screen.png`
+- `stitch/dashboard_desktop/screen.png`
 
 Goals:
 - Add group create/list queries and mutations.
@@ -614,10 +614,10 @@ At the end, summarize changed files, Docker commands, and manual test steps.
 Make groups multi-user before expense work starts.
 
 ### Design refs
-- `../stitch/sign_up_login/screen.png`
-- `../stitch/sign_up_login_desktop/screen.png`
-- `../stitch/group_settings_totals/screen.png`
-- `../stitch/group_settings_totals_desktop/screen.png`
+- `stitch/sign_up_login/screen.png`
+- `stitch/sign_up_login_desktop/screen.png`
+- `stitch/group_settings_totals/screen.png`
+- `stitch/group_settings_totals_desktop/screen.png`
 
 ### Scope
 - Add mutation to create invite tokens with expiration.
@@ -651,10 +651,10 @@ Make groups multi-user before expense work starts.
 Implement Phase 4 from `plan.md` only.
 
 Design refs:
-- `../stitch/sign_up_login/screen.png`
-- `../stitch/sign_up_login_desktop/screen.png`
-- `../stitch/group_settings_totals/screen.png`
-- `../stitch/group_settings_totals_desktop/screen.png`
+- `stitch/sign_up_login/screen.png`
+- `stitch/sign_up_login_desktop/screen.png`
+- `stitch/group_settings_totals/screen.png`
+- `stitch/group_settings_totals_desktop/screen.png`
 
 Goals:
 - Add invite-link creation and invite acceptance.
@@ -680,10 +680,10 @@ At the end, summarize changed files, Docker commands, and manual test steps.
 Build the group detail screen structure so it matches the supplied mobile and desktop designs before the expense composer is added.
 
 ### Design refs
-- `../stitch/group_expenses_list_layout_update/code.html`
-- `../stitch/group_expenses_list_layout_update/screen.png`
-- `../stitch/group_expenses_desktop/code.html`
-- `../stitch/group_expenses_desktop/screen.png`
+- `stitch/group_expenses_list_layout_update/code.html`
+- `stitch/group_expenses_list_layout_update/screen.png`
+- `stitch/group_expenses_desktop/code.html`
+- `stitch/group_expenses_desktop/screen.png`
 
 ### Scope
 - Add query to fetch group detail with:
@@ -724,10 +724,10 @@ Build the group detail screen structure so it matches the supplied mobile and de
 Implement Phase 5 from `plan.md` only.
 
 Design refs:
-- `../stitch/group_expenses_list_layout_update/code.html`
-- `../stitch/group_expenses_list_layout_update/screen.png`
-- `../stitch/group_expenses_desktop/code.html`
-- `../stitch/group_expenses_desktop/screen.png`
+- `stitch/group_expenses_list_layout_update/code.html`
+- `stitch/group_expenses_list_layout_update/screen.png`
+- `stitch/group_expenses_desktop/code.html`
+- `stitch/group_expenses_desktop/screen.png`
 
 Goals:
 - Build the group detail page aligned to the provided mobile and desktop references.
@@ -753,10 +753,10 @@ At the end, summarize changed files, Docker commands, and manual test steps.
 Build the equal-split expense composer and wire it into the group detail screen.
 
 ### Design refs
-- `../stitch/new_expense_updated_splitting/code.html`
-- `../stitch/new_expense_updated_splitting/screen.png`
-- `../stitch/new_expense_desktop/code.html`
-- `../stitch/new_expense_desktop/screen.png`
+- `stitch/new_expense_updated_splitting/code.html`
+- `stitch/new_expense_updated_splitting/screen.png`
+- `stitch/new_expense_desktop/code.html`
+- `stitch/new_expense_desktop/screen.png`
 
 ### Scope
 - Add query to list expenses for a group.
@@ -797,10 +797,10 @@ Build the equal-split expense composer and wire it into the group detail screen.
 Implement Phase 6 from `plan.md` only.
 
 Design refs:
-- `../stitch/new_expense_updated_splitting/code.html`
-- `../stitch/new_expense_updated_splitting/screen.png`
-- `../stitch/new_expense_desktop/code.html`
-- `../stitch/new_expense_desktop/screen.png`
+- `stitch/new_expense_updated_splitting/code.html`
+- `stitch/new_expense_updated_splitting/screen.png`
+- `stitch/new_expense_desktop/code.html`
+- `stitch/new_expense_desktop/screen.png`
 
 Goals:
 - Add equal-split expense creation with Convex mutations.
@@ -827,12 +827,12 @@ At the end, summarize changed files, Docker commands, and manual test steps.
 Finish the main expense workflow by supporting exact amounts and full CRUD.
 
 ### Design refs
-- `../stitch/new_expense_split_by_amount_updated_color/code.html`
-- `../stitch/new_expense_split_by_amount_updated_color/screen.png`
-- `../stitch/new_expense_updated_splitting/code.html`
-- `../stitch/new_expense_updated_splitting/screen.png`
-- `../stitch/new_expense_desktop/code.html`
-- `../stitch/new_expense_desktop/screen.png`
+- `stitch/new_expense_split_by_amount_updated_color/code.html`
+- `stitch/new_expense_split_by_amount_updated_color/screen.png`
+- `stitch/new_expense_updated_splitting/code.html`
+- `stitch/new_expense_updated_splitting/screen.png`
+- `stitch/new_expense_desktop/code.html`
+- `stitch/new_expense_desktop/screen.png`
 
 ### Scope
 - Add exact split support to create and update expense flows.
@@ -868,12 +868,12 @@ Finish the main expense workflow by supporting exact amounts and full CRUD.
 Implement Phase 7 from `plan.md` only.
 
 Design refs:
-- `../stitch/new_expense_split_by_amount_updated_color/code.html`
-- `../stitch/new_expense_split_by_amount_updated_color/screen.png`
-- `../stitch/new_expense_updated_splitting/code.html`
-- `../stitch/new_expense_updated_splitting/screen.png`
-- `../stitch/new_expense_desktop/code.html`
-- `../stitch/new_expense_desktop/screen.png`
+- `stitch/new_expense_split_by_amount_updated_color/code.html`
+- `stitch/new_expense_split_by_amount_updated_color/screen.png`
+- `stitch/new_expense_updated_splitting/code.html`
+- `stitch/new_expense_updated_splitting/screen.png`
+- `stitch/new_expense_desktop/code.html`
+- `stitch/new_expense_desktop/screen.png`
 
 Goals:
 - Add exact split support and align the UI to the supplied exact-split mobile reference and desktop composer reference.
@@ -900,10 +900,10 @@ At the end, summarize changed files, Docker commands, and manual test steps.
 Build the group settings/totals screen so the app matches the supplied settings designs on both mobile and desktop.
 
 ### Design refs
-- `../stitch/group_settings_totals/code.html`
-- `../stitch/group_settings_totals/screen.png`
-- `../stitch/group_settings_totals_desktop/code.html`
-- `../stitch/group_settings_totals_desktop/screen.png`
+- `stitch/group_settings_totals/code.html`
+- `stitch/group_settings_totals/screen.png`
+- `stitch/group_settings_totals_desktop/code.html`
+- `stitch/group_settings_totals_desktop/screen.png`
 
 ### Scope
 - Add or expand derived queries for:
@@ -943,10 +943,10 @@ Build the group settings/totals screen so the app matches the supplied settings 
 Implement Phase 8 from `plan.md` only.
 
 Design refs:
-- `../stitch/group_settings_totals/code.html`
-- `../stitch/group_settings_totals/screen.png`
-- `../stitch/group_settings_totals_desktop/code.html`
-- `../stitch/group_settings_totals_desktop/screen.png`
+- `stitch/group_settings_totals/code.html`
+- `stitch/group_settings_totals/screen.png`
+- `stitch/group_settings_totals_desktop/code.html`
+- `stitch/group_settings_totals_desktop/screen.png`
 
 Goals:
 - Build the group totals/settings page aligned to the provided mobile and desktop references.
@@ -972,16 +972,16 @@ At the end, summarize changed files, Docker commands, and manual test steps.
 Finish the remaining utility flows and prepare the app for handoff.
 
 ### Design refs
-- `../stitch/emerald_ledger/DESIGN.md`
-- `../stitch/dashboard/screen.png`
-- `../stitch/dashboard_desktop/screen.png`
-- `../stitch/group_expenses_list_layout_update/screen.png`
-- `../stitch/group_expenses_desktop/screen.png`
-- `../stitch/new_expense_updated_splitting/screen.png`
-- `../stitch/new_expense_split_by_amount_updated_color/screen.png`
-- `../stitch/new_expense_desktop/screen.png`
-- `../stitch/group_settings_totals/screen.png`
-- `../stitch/group_settings_totals_desktop/screen.png`
+- `stitch/emerald_ledger/DESIGN.md`
+- `stitch/dashboard/screen.png`
+- `stitch/dashboard_desktop/screen.png`
+- `stitch/group_expenses_list_layout_update/screen.png`
+- `stitch/group_expenses_desktop/screen.png`
+- `stitch/new_expense_updated_splitting/screen.png`
+- `stitch/new_expense_split_by_amount_updated_color/screen.png`
+- `stitch/new_expense_desktop/screen.png`
+- `stitch/group_settings_totals/screen.png`
+- `stitch/group_settings_totals_desktop/screen.png`
 
 ### Scope
 - Wire the settings actions fully:
@@ -1021,16 +1021,16 @@ Finish the remaining utility flows and prepare the app for handoff.
 Implement Phase 9 from `plan.md` only.
 
 Design refs to consult:
-- `../stitch/emerald_ledger/DESIGN.md`
-- `../stitch/dashboard/screen.png`
-- `../stitch/dashboard_desktop/screen.png`
-- `../stitch/group_expenses_list_layout_update/screen.png`
-- `../stitch/group_expenses_desktop/screen.png`
-- `../stitch/new_expense_updated_splitting/screen.png`
-- `../stitch/new_expense_split_by_amount_updated_color/screen.png`
-- `../stitch/new_expense_desktop/screen.png`
-- `../stitch/group_settings_totals/screen.png`
-- `../stitch/group_settings_totals_desktop/screen.png`
+- `stitch/emerald_ledger/DESIGN.md`
+- `stitch/dashboard/screen.png`
+- `stitch/dashboard_desktop/screen.png`
+- `stitch/group_expenses_list_layout_update/screen.png`
+- `stitch/group_expenses_desktop/screen.png`
+- `stitch/new_expense_updated_splitting/screen.png`
+- `stitch/new_expense_split_by_amount_updated_color/screen.png`
+- `stitch/new_expense_desktop/screen.png`
+- `stitch/group_settings_totals/screen.png`
+- `stitch/group_settings_totals_desktop/screen.png`
 
 Goals:
 - Finish the settings actions: edit group name, add members, export CSV, and delete group.

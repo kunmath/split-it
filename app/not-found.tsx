@@ -1,0 +1,34 @@
+import Link from "next/link";
+
+import { PublicShell } from "@/components/shell/public-shell";
+import { buttonVariants } from "@/components/ui/button";
+
+export default function NotFound() {
+  return (
+    <PublicShell
+      eyebrow="Missing Route"
+      title="That ledger page does not exist"
+      subtitle="The Phase 0 shell is up, but this path is outside the planned placeholder routes."
+      footer={
+        <div className="text-center text-xs uppercase tracking-[0.2em] text-on-surface-variant">
+          404 · tonal fallback
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        <p className="text-sm leading-7 text-on-surface-variant">
+          Try the dashboard or one of the placeholder group routes while the data features are still
+          stubbed.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg" })}>
+            Go to Dashboard
+          </Link>
+          <Link href="/groups/demo-group" className={buttonVariants({ variant: "ghost", size: "lg" })}>
+            Open Demo Group
+          </Link>
+        </div>
+      </div>
+    </PublicShell>
+  );
+}
