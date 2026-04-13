@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { ShellSessionCard } from "@/components/shell/shell-session-controls";
 import { buttonVariants } from "@/components/ui/button";
 import { desktopPrimaryNav, desktopSecondaryNav, getSectionFromPathname } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
@@ -72,12 +73,7 @@ export function DesktopRail() {
           })}
         </div>
 
-        <div className="rounded-[1.5rem] bg-surface-container-low p-4">
-          <p className="font-headline text-sm font-semibold text-on-surface">Alex Rivera</p>
-          <p className="mt-1 text-[0.68rem] uppercase tracking-[0.22em] text-on-surface-variant">
-            Premium Member
-          </p>
-        </div>
+        <ShellSessionCard />
       </div>
     </aside>
   );

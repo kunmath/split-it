@@ -1,4 +1,4 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 
 function hasClerkKeys() {
@@ -7,7 +7,36 @@ function hasClerkKeys() {
   );
 }
 
-const clerkHandler = clerkMiddleware();
+const isProtectedRoute = createRouteMatcher([
+  "/dashboard(.*)",
+  "/groups(.*)",
+  "/friends(.*)",
+  "/activity(.*)",
+  "/account(.*)",
+]);
+const isAuthRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
+
+const clerkHandler = clerkMiddleware(
+  async (auth, request) => {
+    if (isProtectedRoute(request)) {
+      await auth.protect();
+    }
+
+    if (isAuthRoute(request)) {
+      const { userId } = await auth();
+
+      if (userId) {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
+    }
+
+    return NextResponse.next();
+  },
+  {
+    signInUrl: "/sign-in",
+    signUpUrl: "/sign-up",
+  },
+);
 
 export default function middleware(request: NextRequest, event: NextFetchEvent) {
   if (!hasClerkKeys()) {

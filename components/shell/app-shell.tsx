@@ -8,6 +8,7 @@ import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { DesktopRail } from "@/components/shell/desktop-rail";
 import { FloatingActionButton } from "@/components/shell/floating-action-button";
 import { MobileBottomNav } from "@/components/shell/mobile-bottom-nav";
+import { ShellMobileSessionControls } from "@/components/shell/shell-session-controls";
 import { TopUtilityBar } from "@/components/shell/top-utility-bar";
 import { getRouteMeta } from "@/lib/route-meta";
 
@@ -39,6 +40,7 @@ export function AppShell({ children }: AppShellProps) {
                 <span>{isClerkConfigured || isConvexConfigured ? "Partial setup" : "Mock mode"}</span>
               </div>
             ) : null}
+            <ShellMobileSessionControls />
           </div>
         </div>
 

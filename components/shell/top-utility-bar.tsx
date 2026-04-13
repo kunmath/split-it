@@ -1,5 +1,6 @@
 import { BellDot, Search, Sparkles } from "lucide-react";
 
+import { ShellSessionAvatar } from "@/components/shell/shell-session-controls";
 import { buttonVariants } from "@/components/ui/button";
 import type { AppRouteMeta } from "@/lib/route-meta";
 import { cn } from "@/lib/utils";
@@ -49,9 +50,7 @@ export function TopUtilityBar({
             {meta.topActionLabel}
           </button>
         ) : null}
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[linear-gradient(135deg,rgba(78,222,163,0.35),rgba(255,181,158,0.25))] font-headline text-sm font-bold text-on-surface ring-1 ring-white/8">
-          AR
-        </div>
+        <ShellSessionAvatar />
       </div>
     </div>
   );

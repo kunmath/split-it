@@ -1,6 +1,6 @@
 # split-it
 
-Phase 1 adds the MVP Convex schema, Clerk-to-Convex auth plumbing, user sync, reusable backend permission helpers, and cents-based money utilities on top of the existing Next.js shell.
+Phase 2 adds custom Clerk-backed auth surfaces, protected app routes, OAuth callback handling, and shell-level sign-out on top of the existing responsive shell and Phase 1 backend plumbing.
 
 ## Stack
 
@@ -26,11 +26,24 @@ docker compose up --build
 
 The app will be available at `http://localhost:3000`.
 
+## Auth Setup
+
+For live Phase 2 auth, set these Clerk env vars in `.env.local`:
+
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+
+If you are also using Convex auth bridging, set:
+
+- `CLERK_JWT_ISSUER_DOMAIN`
+- `NEXT_PUBLIC_CONVEX_URL`
+- `CONVEX_DEPLOYMENT` when required by your Convex setup
+
 ## Placeholder Mode
 
 The app is designed to boot even when Clerk or Convex are only partially configured.
 
-- If Clerk keys are missing, the app still renders and surfaces mock-mode hints in the shell.
+- If Clerk publishable/secret keys are missing, the custom auth pages render in disabled placeholder mode and authenticated routes remain public so the stack still starts cleanly.
 - If `CLERK_JWT_ISSUER_DOMAIN` is missing, Clerk UI can still mount but Convex auth stays in placeholder mode.
 - If Convex is not configured, the `convex-dev` service stays alive and prints the recommended bootstrap commands instead of failing the stack.
 
@@ -60,7 +73,7 @@ If you are using Clerk with Convex auth, replace the placeholder issuer with you
 CLERK_JWT_ISSUER_DOMAIN=https://your-clerk-issuer
 ```
 
-`middleware.ts` is now present for Clerk plumbing, but all routes remain public until the dedicated auth phase.
+`middleware.ts` now protects `/dashboard`, `/groups`, `/friends`, `/activity`, and `/account` when Clerk server keys are configured, and redirects signed-in users away from `/sign-in` and `/sign-up`.
 
 ## Useful Commands
 
@@ -82,6 +95,7 @@ docker compose exec web npm run typecheck
 
 - `/sign-in`
 - `/sign-up`
+- `/sso-callback`
 - `/dashboard`
 - `/groups/demo-group`
 - `/groups/demo-group/expenses/new`
@@ -95,6 +109,6 @@ docker compose exec web npm run typecheck
 ## Notes
 
 - The authenticated shell is responsive: mobile uses a bottom nav, desktop uses a left rail plus utility bar.
-- The design system follows the supplied emerald-ledger guidance: tonal layers, no hard dividers, large money typography, emerald/coral semantic balances.
-- Screens still use reusable primitives rather than pasted HTML from the design exports.
-- This phase does not add the final auth screens, dashboard data, invites, or expense mutations yet.
+- The auth pages are custom implementations wired to Clerk rather than Clerk's stock widgets, and they share one responsive layout across mobile and desktop.
+- Route protection and sign-out are active only when Clerk server keys are configured.
+- This phase does not add groups, invites, expenses, or other post-auth product flows yet.

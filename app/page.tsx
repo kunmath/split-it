@@ -1,5 +1,15 @@
+import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
-export default function HomePage() {
-  redirect("/dashboard");
+import { getEnvSnapshot } from "@/lib/env";
+
+export default async function HomePage() {
+  const env = getEnvSnapshot();
+
+  if (!env.isClerkConfigured) {
+    redirect("/dashboard");
+  }
+
+  const { userId } = await auth();
+  redirect(userId ? "/dashboard" : "/sign-in");
 }

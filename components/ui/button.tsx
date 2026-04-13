@@ -19,7 +19,7 @@ export function buttonVariants({
   className,
 }: ButtonVariantOptions = {}) {
   return cn(
-    "inline-flex items-center justify-center gap-2 rounded-full font-headline text-sm font-semibold transition duration-200 active:scale-[0.98]",
+    "inline-flex items-center justify-center gap-2 rounded-full font-headline text-sm font-semibold transition duration-200 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60",
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
     variant === "primary" &&
       "bg-[linear-gradient(135deg,var(--color-primary),var(--color-primary-container))] text-on-primary shadow-[0_18px_50px_rgba(78,222,163,0.18)]",
