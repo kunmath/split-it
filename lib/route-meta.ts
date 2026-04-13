@@ -73,7 +73,7 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
   if (pathname.startsWith("/groups/")) {
     return {
       section: "groups",
-      title: "Group Detail",
+      title: "Group Details",
       eyebrow: "Editorial Ledger",
       searchPlaceholder: "Search expenses, people...",
       showFab: true,
@@ -82,7 +82,7 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       railActionLabel: "New Expense",
       railActionHref: getGroupExpenseHref(pathname),
       topActionLabel: "Settle Up",
-      updatedLabel: "Live placeholder",
+      updatedLabel: "Current standing + recent expenses",
     };
   }
 

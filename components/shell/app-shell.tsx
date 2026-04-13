@@ -1,6 +1,7 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { ArrowLeft, Search, Settings2, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -20,6 +21,13 @@ export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const meta = getRouteMeta(pathname);
   const { mode, isClerkConfigured, isConvexConfigured } = usePlaceholderMode();
+  const isGroupDetailRoute =
+    pathname.startsWith("/groups/") &&
+    !pathname.endsWith("/settings") &&
+    !pathname.includes("/expenses/");
+  const pathnameSegments = pathname.split("/").filter(Boolean);
+  const groupId = pathnameSegments[1];
+  const groupSettingsHref = groupId ? `/groups/${groupId}/settings` : "/dashboard";
 
   return (
     <div className="min-h-screen bg-surface text-on-surface">
@@ -27,21 +35,54 @@ export function AppShell({ children }: AppShellProps) {
 
       <div className="lg:ml-72">
         <div className="glass-panel sticky top-0 z-30 border-b border-white/5 px-4 py-4 lg:hidden">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="font-headline text-xl font-extrabold tracking-tight text-primary">split-it</p>
-              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-on-surface-variant">
-                {meta.eyebrow}
-              </p>
-            </div>
-            {mode === "mock" ? (
-              <div className="inline-flex items-center gap-2 rounded-full bg-surface-container-low px-3 py-2 text-[0.62rem] uppercase tracking-[0.2em] text-on-surface-variant">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span>{isClerkConfigured || isConvexConfigured ? "Partial setup" : "Mock mode"}</span>
+          {isGroupDetailRoute ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/dashboard"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-white/5 hover:text-on-surface"
+                  aria-label="Back to dashboard"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Link>
+                <p className="font-headline text-lg font-semibold tracking-tight text-on-surface">
+                  Group Details
+                </p>
               </div>
-            ) : null}
-            <ShellMobileSessionControls />
-          </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  aria-label="Search expenses"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-white/5 hover:text-on-surface"
+                >
+                  <Search className="h-4.5 w-4.5" />
+                </button>
+                <Link
+                  href={groupSettingsHref}
+                  aria-label="Open group totals and settings"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-white/5 hover:text-on-surface"
+                >
+                  <Settings2 className="h-4.5 w-4.5" />
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-headline text-xl font-extrabold tracking-tight text-primary">split-it</p>
+                <p className="text-[0.68rem] uppercase tracking-[0.24em] text-on-surface-variant">
+                  {meta.eyebrow}
+                </p>
+              </div>
+              {mode === "mock" ? (
+                <div className="inline-flex items-center gap-2 rounded-full bg-surface-container-low px-3 py-2 text-[0.62rem] uppercase tracking-[0.2em] text-on-surface-variant">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  <span>{isClerkConfigured || isConvexConfigured ? "Partial setup" : "Mock mode"}</span>
+                </div>
+              ) : null}
+              <ShellMobileSessionControls />
+            </div>
+          )}
         </div>
 
         <TopUtilityBar

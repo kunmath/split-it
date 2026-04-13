@@ -1,21 +1,34 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
-import { ChevronRight, Copy, Link2, LoaderCircle, ShieldCheck, Users, X } from "lucide-react";
+import { useQuery } from "convex/react";
+import type { CSSProperties, ReactNode } from "react";
+import {
+  ArrowUpRight,
+  Download,
+  LoaderCircle,
+  ReceiptText,
+  SlidersHorizontal,
+  TrendingDown,
+  TrendingUp,
+  Users,
+  Wallet,
+} from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 
-import { AuthNotice } from "@/components/auth/auth-primitives";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { PageContainer } from "@/components/shell/page-container";
-import { AvatarBadge } from "@/components/ui/avatar-badge";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { FilledInput } from "@/components/ui/filled-input";
+import { buttonVariants } from "@/components/ui/button";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { getGroupDetail, memberBalances } from "@/lib/placeholder-data";
-import { cn } from "@/lib/utils";
+import { formatMoneyFromCents, formatSignedMoneyFromCents } from "@/lib/format";
+import { iconMap } from "@/lib/icon-map";
+import {
+  getGroupDetail,
+  groupExpenses,
+  type IconKey,
+} from "@/lib/placeholder-data";
+import { cn, getInitials } from "@/lib/utils";
 
 type GroupScreenProps = {
   groupId: string;
@@ -23,210 +36,322 @@ type GroupScreenProps = {
   initialName?: string;
 };
 
-type InviteLinkState = {
-  expiresAt: number;
-  token: string;
+type GroupSceneData = {
+  groupId: string;
+  groupName: string;
+  groupDescription?: string;
+  groupCurrency: string;
+  iconKey: IconKey;
+  coverImageUrl?: string;
+  createdAt: number;
+  memberCount: number;
+  expenseCount: number;
+  currentStanding: {
+    balanceCents: number;
+    paidCents: number;
+    owedCents: number;
+  };
+  members: Array<{
+    id: string;
+    name: string;
+    email: string;
+    imageUrl?: string;
+    role: "member" | "owner";
+    isCurrentUser: boolean;
+    joinedAt: number | null;
+    paidCents: number;
+    owedCents: number;
+    balanceCents: number;
+  }>;
+  recentExpenses: Array<{
+    id: string;
+    description: string;
+    amountCents: number;
+    expenseAt: number;
+    paidByName: string;
+    paidByCurrentUser: boolean;
+    currentUserNetCents: number;
+    splitType: "equal" | "exact";
+    participantCount: number;
+    iconKey: IconKey;
+  }>;
+  insights: {
+    totalSpendCents: number;
+    averageExpenseCents: number;
+    largestExpenseCents: number;
+    largestExpenseLabel: string | null;
+    topContributors: Array<{
+      id: string;
+      name: string;
+      paidCents: number;
+      percentOfSpend: number;
+    }>;
+  };
 };
 
-type ActionRowButtonProps = {
-  label: string;
-  note: string;
-  onClick?: () => void;
-  disabled?: boolean;
+const ICON_LABELS: Record<IconKey, string> = {
+  home: "Home Base",
+  plane: "Trip Ledger",
+  utensils: "Dining Run",
+  cart: "Shared Groceries",
+  mountain: "Adventure",
+  fuel: "Road Spend",
 };
 
-type GroupMember = {
-  email: string;
-  id: string;
-  imageUrl?: string;
-  isCurrentUser: boolean;
-  name: string;
-  role: "member" | "owner";
+const HERO_FALLBACKS: Record<IconKey, string> = {
+  home:
+    "bg-[radial-gradient(circle_at_top_left,rgba(78,222,163,0.2),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,181,158,0.14),transparent_36%),linear-gradient(135deg,rgba(38,38,38,1),rgba(16,16,16,1))]",
+  plane:
+    "bg-[radial-gradient(circle_at_top,rgba(78,222,163,0.18),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(125,211,252,0.12),transparent_30%),linear-gradient(135deg,rgba(34,34,34,1),rgba(14,14,14,1))]",
+  utensils:
+    "bg-[radial-gradient(circle_at_top_right,rgba(255,181,158,0.16),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(78,222,163,0.14),transparent_30%),linear-gradient(135deg,rgba(35,30,29,1),rgba(14,14,14,1))]",
+  cart:
+    "bg-[radial-gradient(circle_at_top_left,rgba(78,222,163,0.18),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(255,181,158,0.12),transparent_34%),linear-gradient(135deg,rgba(29,32,31,1),rgba(14,14,14,1))]",
+  mountain:
+    "bg-[radial-gradient(circle_at_top,rgba(78,222,163,0.2),transparent_26%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.16),transparent_32%),linear-gradient(135deg,rgba(31,36,37,1),rgba(12,12,12,1))]",
+  fuel:
+    "bg-[radial-gradient(circle_at_top_right,rgba(78,222,163,0.2),transparent_24%),radial-gradient(circle_at_bottom_left,rgba(255,181,158,0.12),transparent_34%),linear-gradient(135deg,rgba(30,33,30,1),rgba(12,12,12,1))]",
 };
 
-function formatInviteExpiry(expiresAt: number) {
+function formatMonthYear(timestamp: number) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(expiresAt);
+    year: "numeric",
+  }).format(timestamp);
 }
 
-function buildInviteUrl(token: string) {
-  if (typeof window === "undefined") {
-    return `/invites/${token}`;
+function formatDateParts(timestamp: number) {
+  return {
+    month: new Intl.DateTimeFormat("en-US", { month: "short" }).format(timestamp),
+    day: new Intl.DateTimeFormat("en-US", { day: "2-digit" }).format(timestamp),
+  };
+}
+
+function getStandingDescriptor(balanceCents: number) {
+  if (balanceCents > 0) {
+    return {
+      label: "You are owed",
+      tone: "positive" as const,
+      Icon: TrendingUp,
+    };
   }
 
-  return new URL(`/invites/${token}`, window.location.origin).toString();
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    return error.message;
+  if (balanceCents < 0) {
+    return {
+      label: "You owe",
+      tone: "negative" as const,
+      Icon: TrendingDown,
+    };
   }
 
-  return "Unable to update the invite link right now.";
+  return {
+    label: "All settled",
+    tone: "neutral" as const,
+    Icon: Wallet,
+  };
 }
 
-function ActionRowButton({ label, note, onClick, disabled = false }: ActionRowButtonProps) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center justify-between rounded-[1.5rem] px-4 py-4 text-left transition",
-        "hover:bg-surface-container-high disabled:pointer-events-none disabled:opacity-60",
-      )}
-    >
-      <span className="flex items-center gap-4">
-        <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/4 text-primary">
-          <Users className="h-4.5 w-4.5" />
-        </span>
-        <span>
-          <span className="block font-headline text-base font-semibold text-on-surface">{label}</span>
-          <span className="mt-1 block text-sm text-on-surface-variant">{note}</span>
-        </span>
-      </span>
-      <ChevronRight className="h-4.5 w-4.5 text-on-surface-variant" />
-    </button>
-  );
+function getExpenseNetDescriptor(balanceCents: number, currency: string) {
+  if (balanceCents > 0) {
+    return {
+      label: "You are owed",
+      tone: "positive" as const,
+      valueLabel: formatSignedMoneyFromCents(balanceCents, currency),
+    };
+  }
+
+  if (balanceCents < 0) {
+    return {
+      label: "You owe",
+      tone: "negative" as const,
+      valueLabel: formatSignedMoneyFromCents(balanceCents, currency),
+    };
+  }
+
+  return {
+    label: "Settled",
+    tone: "neutral" as const,
+    valueLabel: formatMoneyFromCents(0, currency),
+  };
+}
+
+function getHeroSupportText(description: string | undefined, memberCount: number, currency: string) {
+  const trimmedDescription = description?.trim();
+
+  if (trimmedDescription && trimmedDescription.length <= 84) {
+    return trimmedDescription;
+  }
+
+  return `${memberCount} ${memberCount === 1 ? "member" : "members"} sharing one ${currency} ledger.`;
+}
+
+function buildHeroCoverStyle(coverImageUrl: string | undefined): CSSProperties | undefined {
+  const trimmedCoverImageUrl = coverImageUrl?.trim();
+
+  if (!trimmedCoverImageUrl) {
+    return undefined;
+  }
+
+  return {
+    backgroundImage: `linear-gradient(180deg, rgba(12,12,12,0.12), rgba(12,12,12,0.78)), url("${trimmedCoverImageUrl}")`,
+    backgroundPosition: "center",
+    backgroundSize: "cover",
+  };
+}
+
+function buildMockTimestamp(label: string) {
+  return new Date(`${label}, 2024 12:00:00 UTC`).getTime();
+}
+
+function getMockGroupSceneData(
+  groupId: string,
+  initialName?: string,
+  initialDescription?: string,
+): GroupSceneData {
+  const group = getGroupDetail(groupId);
+  const mockMembers: GroupSceneData["members"] = [
+    {
+      id: "mock-member-jordan",
+      name: "Jordan Dale",
+      email: "jordan@example.com",
+      role: "owner",
+      isCurrentUser: true,
+      joinedAt: group.createdAt,
+      paidCents: 224_400,
+      owedCents: 140_200,
+      balanceCents: 84_200,
+    },
+    {
+      id: "mock-member-sarah",
+      name: "Sarah Jenkins",
+      email: "sarah@example.com",
+      role: "member",
+      isCurrentUser: false,
+      joinedAt: group.createdAt + 86_400_000,
+      paidCents: 132_400,
+      owedCents: 91_200,
+      balanceCents: 41_200,
+    },
+    {
+      id: "mock-member-elena",
+      name: "Elena Rodriguez",
+      email: "elena@example.com",
+      role: "member",
+      isCurrentUser: false,
+      joinedAt: group.createdAt + 2 * 86_400_000,
+      paidCents: 146_000,
+      owedCents: 91_000,
+      balanceCents: 55_000,
+    },
+    {
+      id: "mock-member-james",
+      name: "James Chen",
+      email: "james@example.com",
+      role: "member",
+      isCurrentUser: false,
+      joinedAt: group.createdAt + 3 * 86_400_000,
+      paidCents: 68_000,
+      owedCents: 80_000,
+      balanceCents: -12_000,
+    },
+    {
+      id: "mock-member-marcus",
+      name: "Marcus Vale",
+      email: "marcus@example.com",
+      role: "member",
+      isCurrentUser: false,
+      joinedAt: group.createdAt + 4 * 86_400_000,
+      paidCents: 24_000,
+      owedCents: 97_400,
+      balanceCents: -73_400,
+    },
+    {
+      id: "mock-member-priya",
+      name: "Priya Nair",
+      email: "priya@example.com",
+      role: "member",
+      isCurrentUser: false,
+      joinedAt: group.createdAt + 5 * 86_400_000,
+      paidCents: 0,
+      owedCents: 95_000,
+      balanceCents: -95_000,
+    },
+  ];
+
+  return {
+    groupId,
+    groupName: initialName?.trim() || group.title,
+    groupDescription: initialDescription?.trim() || group.description,
+    groupCurrency: group.currency,
+    iconKey: group.iconKey,
+    coverImageUrl: group.coverImageUrl,
+    createdAt: group.createdAt,
+    memberCount: mockMembers.length,
+    expenseCount: 8,
+    currentStanding: {
+      balanceCents: 84_200,
+      paidCents: 224_400,
+      owedCents: 140_200,
+    },
+    members: mockMembers,
+    recentExpenses: groupExpenses.map((expense) => ({
+      id: expense.id,
+      description: expense.title,
+      amountCents: Math.round(expense.total * 100),
+      expenseAt: buildMockTimestamp(expense.dateLabel),
+      paidByName: expense.paidBy,
+      paidByCurrentUser: expense.paidBy === "Jordan Dale",
+      currentUserNetCents: Math.round(expense.signedBalance * 100),
+      splitType: "equal" as const,
+      participantCount: mockMembers.length,
+      iconKey: expense.icon,
+    })),
+    insights: {
+      totalSpendCents: 594_800,
+      averageExpenseCents: 74_350,
+      largestExpenseCents: 288_000,
+      largestExpenseLabel: "Luxury Cabin Vik",
+      topContributors: mockMembers
+        .filter((member) => member.paidCents > 0)
+        .sort((left, right) => right.paidCents - left.paidCents)
+        .slice(0, 3)
+        .map((member) => ({
+          id: member.id,
+          name: member.name,
+          paidCents: member.paidCents,
+          percentOfSpend: Math.max(1, Math.round((member.paidCents / 594_800) * 100)),
+        })),
+    },
+  };
 }
 
 export function GroupScreen({ groupId, initialDescription, initialName }: GroupScreenProps) {
   const { mode } = usePlaceholderMode();
 
   if (mode !== "live") {
-    return <MockGroupScreen groupId={groupId} initialDescription={initialDescription} initialName={initialName} />;
-  }
-
-  return <LiveGroupScreen groupId={groupId} initialDescription={initialDescription} initialName={initialName} />;
-}
-
-function MockGroupScreen({ groupId, initialDescription, initialName }: GroupScreenProps) {
-  const group = getGroupDetail(groupId);
-  const title = initialName?.trim() || group.title;
-  const description = initialDescription?.trim() || group.description;
-  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
-  const [activeInvite, setActiveInvite] = useState<InviteLinkState | null>(null);
-  const [inviteError, setInviteError] = useState<string | null>(null);
-  const [copyMessage, setCopyMessage] = useState<string | null>(null);
-  const members = memberBalances.slice(0, 4).map((member, index) => ({
-    email: "",
-    id: `${member.name}-${index}`,
-    isCurrentUser: index === 0,
-    name: member.name,
-    role: index === 0 ? ("owner" as const) : ("member" as const),
-  }));
-
-  async function handleCreateMockInvite() {
-    setInviteError(null);
-    setCopyMessage(null);
-
-    const token =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID().replaceAll("-", "")
-        : `${Date.now()}mockinvite`;
-
-    setActiveInvite({
-      token,
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
-    });
-  }
-
-  async function handleCopyInvite(url: string) {
-    setInviteError(null);
-
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopyMessage("Preview invite link copied.");
-    } catch {
-      setInviteError("Unable to copy the preview link from this browser session.");
-    }
+    return (
+      <GroupScene
+        group={getMockGroupSceneData(groupId, initialName, initialDescription)}
+        isMock
+      />
+    );
   }
 
   return (
-    <>
-      <GroupScene
-        groupDescription={description}
-        groupName={title}
-        members={members}
-        memberCount={group.memberCount}
-        canInvite
-        activeInvite={activeInvite}
-        inviteError={inviteError}
-        copyMessage={copyMessage}
-        onAddMembers={() => {
-          setInviteError(null);
-          setCopyMessage(null);
-          setIsInviteDialogOpen(true);
-        }}
-        isMock
-      />
-
-      <AddMembersDialog
-        open={isInviteDialogOpen}
-        groupName={title}
-        members={members}
-        canInvite
-        activeInvite={activeInvite}
-        isCreatingInvite={false}
-        inviteError={inviteError}
-        copyMessage={copyMessage}
-        helperNotice="Mock mode: this dialog previews the add-members flow locally. Configure Clerk server keys and the Convex auth bridge to create real invite links."
-        onClose={() => {
-          setInviteError(null);
-          setCopyMessage(null);
-          setIsInviteDialogOpen(false);
-        }}
-        onCreateInvite={handleCreateMockInvite}
-        onCopyInvite={handleCopyInvite}
-      />
-    </>
+    <LiveGroupScreen
+      groupId={groupId}
+      initialDescription={initialDescription}
+      initialName={initialName}
+    />
   );
 }
 
-function LiveGroupScreen({ groupId, initialDescription, initialName }: GroupScreenProps) {
+function LiveGroupScreen({ groupId }: GroupScreenProps) {
   const currentUser = useQuery(api.users.current);
   const group = useQuery(
-    api.invites.getGroupComposerData,
+    api.groups.getDetail,
     currentUser ? { groupId: groupId as Id<"groups"> } : "skip",
   );
-  const createInvite = useMutation(api.invites.create);
-  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
-  const [inviteOverride, setInviteOverride] = useState<InviteLinkState | null>(null);
-  const [isCreatingInvite, setIsCreatingInvite] = useState(false);
-  const [inviteError, setInviteError] = useState<string | null>(null);
-  const [copyMessage, setCopyMessage] = useState<string | null>(null);
-
-  const activeInvite = inviteOverride ?? group?.activeInvite ?? null;
-
-  async function handleCreateInvite() {
-    setInviteError(null);
-    setCopyMessage(null);
-    setIsCreatingInvite(true);
-
-    try {
-      const result = await createInvite({ groupId: groupId as Id<"groups"> });
-      setInviteOverride(result);
-    } catch (error) {
-      setInviteError(getErrorMessage(error));
-    } finally {
-      setIsCreatingInvite(false);
-    }
-  }
-
-  async function handleCopyInvite(url: string) {
-    setInviteError(null);
-
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopyMessage("Invite link copied.");
-    } catch {
-      setInviteError("Unable to copy the invite link from this browser session.");
-    }
-  }
 
   if (currentUser === undefined || group === undefined) {
     return (
@@ -236,9 +361,9 @@ function LiveGroupScreen({ groupId, initialDescription, initialName }: GroupScre
             <LoaderCircle className="h-7 w-7 animate-spin" />
           </div>
           <div>
-            <p className="font-headline text-2xl font-bold text-on-surface">Loading group context</p>
+            <p className="font-headline text-2xl font-bold text-on-surface">Loading group detail</p>
             <p className="mt-2 text-sm text-on-surface-variant">
-              Pulling members and the current invite state into the workspace.
+              Pulling members, standing, and the latest expense activity into view.
             </p>
           </div>
         </div>
@@ -283,377 +408,560 @@ function LiveGroupScreen({ groupId, initialDescription, initialName }: GroupScre
     );
   }
 
-  return (
-    <>
-      <GroupScene
-        groupDescription={group.groupDescription || initialDescription}
-        groupName={group.groupName || initialName || "Untitled group"}
-        members={group.members}
-        memberCount={group.memberCount}
-        canInvite={group.canInvite}
-        activeInvite={activeInvite}
-        inviteError={inviteError}
-        copyMessage={copyMessage}
-        onAddMembers={() => {
-          setInviteError(null);
-          setCopyMessage(null);
-          setIsInviteDialogOpen(true);
-        }}
-      />
+  const groupSceneData: GroupSceneData = {
+    ...group,
+    groupId: String(group.groupId),
+    iconKey: group.iconKey as IconKey,
+    members: group.members.map((member) => ({
+      ...member,
+      id: String(member.id),
+    })),
+    recentExpenses: group.recentExpenses.map((expense) => ({
+      ...expense,
+      id: String(expense.id),
+      iconKey: expense.iconKey as IconKey,
+    })),
+    insights: {
+      ...group.insights,
+      topContributors: group.insights.topContributors.map((member) => ({
+        ...member,
+        id: String(member.id),
+      })),
+    },
+  };
 
-      <AddMembersDialog
-        open={isInviteDialogOpen}
-        groupName={group.groupName}
-        members={group.members}
-        canInvite={group.canInvite}
-        activeInvite={activeInvite}
-        isCreatingInvite={isCreatingInvite}
-        inviteError={inviteError}
-        copyMessage={copyMessage}
-        onClose={() => {
-          setInviteError(null);
-          setCopyMessage(null);
-          setIsInviteDialogOpen(false);
-        }}
-        onCreateInvite={handleCreateInvite}
-        onCopyInvite={handleCopyInvite}
-      />
-    </>
-  );
+  return <GroupScene group={groupSceneData} />;
 }
 
 type GroupSceneProps = {
-  groupDescription?: string;
-  groupName: string;
-  members: GroupMember[];
-  memberCount: number;
-  canInvite: boolean;
-  activeInvite?: InviteLinkState | null;
-  inviteError?: string | null;
-  copyMessage?: string | null;
-  onAddMembers?: () => void;
+  group: GroupSceneData;
   isMock?: boolean;
 };
 
-function GroupScene({
-  groupDescription,
-  groupName,
-  members,
-  memberCount,
-  canInvite,
-  activeInvite = null,
-  inviteError = null,
-  copyMessage = null,
-  onAddMembers,
-  isMock = false,
-}: GroupSceneProps) {
-  const rosterPreview = members.slice(0, 4);
-
+function GroupScene({ group, isMock = false }: GroupSceneProps) {
   return (
-    <PageContainer className="space-y-8">
-      <section className="grid gap-6 xl:grid-cols-[1.5fr_0.85fr]">
-        <SurfaceCard variant="hero" className="min-h-[18rem] rounded-[2.5rem] p-6 sm:p-8">
-          <div className="flex h-full flex-col justify-between gap-6">
-            <div className="flex flex-wrap gap-2 text-[0.68rem] uppercase tracking-[0.22em] text-on-surface-variant">
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-primary">Group Workspace</span>
-              <span className="rounded-full bg-white/6 px-3 py-1">
-                {memberCount} {memberCount === 1 ? "member" : "members"}
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              <h1 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:text-6xl">
-                {groupName}
-              </h1>
-              <p className="max-w-2xl text-sm leading-8 text-on-surface-variant sm:text-base">
-                {groupDescription?.trim()
-                  ? groupDescription
-                  : "Add members first, then start tracking shared expenses in the next phase."}
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              {rosterPreview.map((member) => (
-                <AvatarBadge
-                  key={member.id}
-                  name={member.name}
-                  note={member.role === "owner" ? "Owner" : member.isCurrentUser ? "You" : "Member"}
-                  tone={member.role === "owner" ? "positive" : "neutral"}
-                  size="sm"
-                />
-              ))}
-            </div>
+    <PageContainer className="page-glow relative space-y-6 lg:space-y-8">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.82fr)] xl:items-start">
+        <div className="space-y-5 lg:space-y-8">
+          <GroupHeroCard group={group} />
+          <div className="xl:hidden">
+            <CurrentStandingCard group={group} />
           </div>
-        </SurfaceCard>
-
-        <div className="space-y-5">
-          <SurfaceCard variant="high" className="rounded-[2.25rem] p-7">
-            <p className="text-xs uppercase tracking-[0.22em] text-primary">Current Standing</p>
-            <p className="mt-4 font-headline text-5xl font-extrabold tracking-tight text-primary">$0.00</p>
-            <p className="mt-2 text-sm leading-7 text-on-surface-variant">
-              Balances unlock once the first expense is recorded. Phase 4 stops at membership and secure joins.
-            </p>
-          </SurfaceCard>
-
-          <SurfaceCard variant="low" className="rounded-[2.25rem] p-4">
-            <p className="px-3 pb-4 text-xs uppercase tracking-[0.24em] text-on-surface-variant">Group Access</p>
-            <div className="space-y-2">
-              <ActionRowButton
-                label="Add Members"
-                note={
-                  canInvite
-                    ? "Create or refresh a secure invite link."
-                    : "Only the group owner can generate invite links right now."
-                }
-                onClick={onAddMembers}
-                disabled={!onAddMembers}
-              />
-            </div>
-
-            <div className="mt-5 rounded-[1.5rem] bg-surface-container-lowest/70 px-4 py-4">
-              <p className="text-[0.64rem] uppercase tracking-[0.22em] text-on-surface-variant">Invite status</p>
-              <p className="mt-2 font-headline text-xl font-bold text-on-surface">
-                {activeInvite ? "One link live" : canInvite ? "No pending link" : "Owner-managed"}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                {activeInvite
-                  ? `Current link expires ${formatInviteExpiry(activeInvite.expiresAt)}.`
-                  : canInvite
-                    ? "Generate a link when you’re ready to let the next member in."
-                    : "Ask the owner for the current join link if you need to bring someone in."}
-              </p>
-            </div>
-          </SurfaceCard>
+          <RecentExpensesCard group={group} />
+          <div className="xl:hidden">
+            <GroupInsightsCard group={group} isMock={isMock} />
+          </div>
         </div>
-      </section>
 
-      {inviteError ? <AuthNotice tone="error">{inviteError}</AuthNotice> : null}
-      {copyMessage ? <AuthNotice tone="success">{copyMessage}</AuthNotice> : null}
-
-      <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <SurfaceCard variant="high" className="rounded-[2.25rem] p-4 sm:p-6">
-          <div className="flex items-center justify-between gap-4 px-3 py-2">
-            <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">Members</p>
-            <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">
-              {memberCount} total
-            </p>
-          </div>
-          <div className="mt-2 space-y-3">
-            {members.map((member) => (
-              <div
-                key={member.id}
-                className="flex flex-col gap-4 rounded-[1.75rem] px-3 py-4 transition hover:bg-white/3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <AvatarBadge
-                  name={member.name}
-                  note={member.isCurrentUser ? "Current session" : member.email || "Active member"}
-                  chip={member.role === "owner" ? "Owner" : member.isCurrentUser ? "You" : "Member"}
-                  tone={member.role === "owner" ? "positive" : "neutral"}
-                />
-                <div className="text-left sm:text-right">
-                  <p className="text-[0.68rem] uppercase tracking-[0.22em] text-on-surface-variant">Access</p>
-                  <p className="mt-2 font-headline text-2xl font-extrabold tracking-tight text-on-surface">
-                    {member.role === "owner" ? "Owner" : "Active"}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard variant="low" className="flex flex-col justify-between rounded-[2.25rem] p-7">
-          <div className="space-y-4">
-            <p className="text-xs uppercase tracking-[0.22em] text-primary">Next Phase Boundary</p>
-            <h2 className="font-headline text-3xl font-bold tracking-tight text-on-surface">
-              Expense tracking starts next.
-            </h2>
-            <p className="max-w-2xl text-sm leading-8 text-on-surface-variant">
-              Phase 4 makes the group multi-user and keeps the join flow secure. Expense rows, balances, and editing stay intentionally out of scope until the next build step.
-            </p>
-          </div>
-
-          <div className="mt-8 grid gap-3 rounded-[1.5rem] border border-white/6 bg-white/[0.03] px-4 py-4 text-sm text-on-surface-variant sm:grid-cols-2">
-            <div className="inline-flex items-center gap-2">
-              <ShieldCheck className="h-4.5 w-4.5 text-primary" />
-              One invite link stays active at a time.
-            </div>
-            <div className="inline-flex items-center gap-2">
-              <Link2 className="h-4.5 w-4.5 text-primary" />
-              Accepted links immediately unlock group access.
-            </div>
-          </div>
-
-          {isMock ? (
-            <div className="mt-8">
-              <Link href="/dashboard" className={buttonVariants({ variant: "ghost", size: "lg" })}>
-                Return to dashboard
-              </Link>
-            </div>
-          ) : null}
-        </SurfaceCard>
+        <aside className="hidden xl:block space-y-6">
+          <CurrentStandingCard group={group} />
+          <GroupInsightsCard group={group} isMock={isMock} />
+        </aside>
       </section>
     </PageContainer>
   );
 }
 
-type AddMembersDialogProps = {
-  open: boolean;
-  groupName: string;
-  members: GroupMember[];
-  canInvite: boolean;
-  activeInvite: InviteLinkState | null;
-  isCreatingInvite: boolean;
-  inviteError: string | null;
-  copyMessage: string | null;
-  helperNotice?: string;
-  onClose: () => void;
-  onCreateInvite: () => Promise<void>;
-  onCopyInvite: (url: string) => Promise<void>;
-};
-
-function AddMembersDialog({
-  open,
-  groupName,
-  members,
-  canInvite,
-  activeInvite,
-  isCreatingInvite,
-  inviteError,
-  copyMessage,
-  helperNotice,
-  onClose,
-  onCreateInvite,
-  onCopyInvite,
-}: AddMembersDialogProps) {
-  const inviteUrl = activeInvite ? buildInviteUrl(activeInvite.token) : "";
-
-  if (!open) {
-    return null;
-  }
+function GroupHeroCard({ group }: { group: GroupSceneData }) {
+  const coverStyle = buildHeroCoverStyle(group.coverImageUrl);
+  const heroMembers = group.members.slice(0, 3);
+  const remainingMembers = Math.max(group.memberCount - heroMembers.length, 0);
+  const HeroIcon = iconMap[group.iconKey];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/72 px-4 py-6 backdrop-blur-sm">
-      <div className="flex min-h-full items-end justify-center sm:items-center">
-        <SurfaceCard
-          variant="glass"
-          className="w-full max-w-2xl rounded-[2.2rem] border border-white/6 p-5 shadow-[0_28px_120px_rgba(0,0,0,0.42)] sm:p-7"
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.24em] text-primary">Add Members</p>
-              <h2 className="font-headline text-3xl font-bold tracking-tight text-on-surface">
-                Invite people to {groupName}
-              </h2>
-              <p className="max-w-xl text-sm leading-7 text-on-surface-variant">
-                Keep membership deliberate. One pending link stays live at a time, and accepted links close automatically.
-              </p>
+    <SurfaceCard className="rounded-[2rem] p-0 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
+      <div className="relative min-h-[15rem] overflow-hidden rounded-[2rem]">
+        <div
+          className={cn(
+            "absolute inset-0",
+            coverStyle ? "bg-black/10" : HERO_FALLBACKS[group.iconKey],
+          )}
+          style={coverStyle}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,12,12,0.12),rgba(12,12,12,0.82))]" />
+        {!coverStyle ? (
+          <div className="absolute -right-8 top-8 text-white/8">
+            <HeroIcon className="h-40 w-40 sm:h-48 sm:w-48" strokeWidth={1.1} />
+          </div>
+        ) : null}
+
+        <div className="relative flex min-h-[15rem] flex-col justify-between p-5 sm:p-7">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              <span className="rounded-full bg-primary/18 px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-primary backdrop-blur-sm">
+                {ICON_LABELS[group.iconKey]}
+              </span>
+              <span className="rounded-full bg-black/28 px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm">
+                {formatMonthYear(group.createdAt)}
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-white/4 text-on-surface-variant transition hover:text-on-surface"
-              aria-label="Close add members dialog"
+            <Link
+              href={`/groups/${group.groupId}/settings`}
+              className="hidden min-h-11 items-center justify-center rounded-full border border-white/12 bg-black/18 px-4 text-sm font-medium text-white/80 backdrop-blur-sm transition hover:border-primary/35 hover:text-white sm:inline-flex"
             >
-              <X className="h-4.5 w-4.5" />
-            </button>
+              Totals
+            </Link>
           </div>
 
-          {helperNotice ? <div className="mt-5"><AuthNotice>{helperNotice}</AuthNotice></div> : null}
-          {inviteError ? <div className="mt-5"><AuthNotice tone="error">{inviteError}</AuthNotice></div> : null}
-          {copyMessage ? <div className="mt-5"><AuthNotice tone="success">{copyMessage}</AuthNotice></div> : null}
-
-          <div className="mt-6 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="space-y-5">
-              <div className="rounded-[1.6rem] border border-white/6 bg-white/[0.03] p-4">
-                <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">Invite controls</p>
-                <div className="mt-3 space-y-2">
-                  <ActionRowButton
-                    label={activeInvite ? "Create New Link" : "Create Invite Link"}
-                    note={
-                      canInvite
-                        ? activeInvite
-                          ? "Generating a new link deactivates the previous pending link."
-                          : "Creates a single-use link that expires in 7 days."
-                        : "Only the owner can create or refresh join links."
-                    }
-                    onClick={canInvite ? () => void onCreateInvite() : undefined}
-                    disabled={isCreatingInvite || !canInvite}
-                  />
-                </div>
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div className="max-w-2xl space-y-3">
+              <div className="space-y-1">
+                <h1 className="font-headline text-[2rem] font-extrabold leading-none tracking-tight text-white sm:text-5xl">
+                  {group.groupName}
+                </h1>
+                <p className="max-w-xl text-sm text-white/80 sm:text-base">
+                  {getHeroSupportText(group.groupDescription, group.memberCount, group.groupCurrency)}
+                </p>
               </div>
-
-              {activeInvite ? (
-                <div className="space-y-4 rounded-[1.6rem] border border-white/6 bg-white/[0.03] p-4">
-                  <FilledInput
-                    label="Active Invite Link"
-                    readOnly
-                    value={inviteUrl}
-                    hint={`Expires ${formatInviteExpiry(activeInvite.expiresAt)}`}
-                    suffix={
-                      <button
-                        type="button"
-                        onClick={() => void onCopyInvite(inviteUrl)}
-                        className="inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-on-surface-variant transition hover:text-on-surface"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                        Copy
-                      </button>
-                    }
-                  />
-                  <div className="flex flex-wrap gap-3">
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      onClick={() => void onCopyInvite(inviteUrl)}
-                      className="min-w-[11rem]"
-                    >
-                      Copy Link <Copy className="h-4.5 w-4.5" />
-                    </Button>
-                    <Link
-                      href={`/invites/${activeInvite.token}`}
-                      className={buttonVariants({ variant: "ghost", size: "lg" })}
-                    >
-                      Open Invite
-                    </Link>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-[1.6rem] border border-dashed border-white/8 bg-white/[0.02] px-4 py-5 text-sm leading-7 text-on-surface-variant">
-                  {canInvite
-                    ? "No pending invite link yet. Create one when you’re ready to bring in the next member."
-                    : "The current user can view members, but only the owner can generate the join link."}
-                </div>
-              )}
+              <div className="inline-flex items-center gap-2 text-sm font-medium text-white/85">
+                <Users className="h-4.5 w-4.5 text-primary" />
+                <span>
+                  {group.memberCount} {group.memberCount === 1 ? "member" : "members"}
+                </span>
+              </div>
             </div>
 
-            <div className="rounded-[1.6rem] border border-white/6 bg-white/[0.03] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">Active Members</p>
-                <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">{members.length}</p>
-              </div>
-              <div className="mt-4 space-y-3">
-                {members.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between gap-4 rounded-[1.25rem] bg-surface-container-lowest/70 px-3 py-3"
-                  >
-                    <AvatarBadge
-                      name={member.name}
-                      note={member.email || (member.isCurrentUser ? "Current session" : "Active member")}
-                      chip={member.role === "owner" ? "Owner" : member.isCurrentUser ? "You" : "Member"}
-                      tone={member.role === "owner" ? "positive" : "neutral"}
-                      size="sm"
-                    />
-                    <span className="text-[0.68rem] uppercase tracking-[0.22em] text-on-surface-variant">
-                      {member.role === "owner" ? "Owner" : "Active"}
-                    </span>
-                  </div>
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-3">
+                {heroMembers.map((member) => (
+                  <MemberOrb key={member.id} member={member} />
                 ))}
+                {remainingMembers > 0 ? (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#131313] bg-surface-container-high text-[0.65rem] font-semibold text-on-surface">
+                    +{remainingMembers}
+                  </div>
+                ) : null}
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function MemberOrb({ member }: { member: GroupSceneData["members"][number] }) {
+  const backgroundStyle =
+    member.imageUrl?.trim()
+      ? ({
+          backgroundImage: `url("${member.imageUrl}")`,
+          backgroundPosition: "center",
+          backgroundSize: "cover",
+        } satisfies CSSProperties)
+      : undefined;
+
+  return (
+    <div
+      className={cn(
+        "flex h-10 w-10 items-center justify-center rounded-full border-2 border-[#131313] text-[0.65rem] font-bold shadow-[0_10px_30px_rgba(0,0,0,0.24)]",
+        backgroundStyle
+          ? "bg-surface-container-high text-transparent"
+          : member.isCurrentUser
+            ? "bg-primary text-on-primary"
+            : "bg-surface-container-high text-on-surface",
+      )}
+      style={backgroundStyle}
+      aria-label={member.name}
+      title={member.name}
+    >
+      {backgroundStyle ? null : getInitials(member.name)}
+    </div>
+  );
+}
+
+function CurrentStandingCard({ group }: { group: GroupSceneData }) {
+  const standing = getStandingDescriptor(group.currentStanding.balanceCents);
+  const StandingIcon = standing.Icon;
+  const memberRows = getStandingMemberRows(group.members);
+  const remainingMembers = Math.max(
+    (group.members.filter((member) => !member.isCurrentUser).length || group.members.length) - memberRows.length,
+    0,
+  );
+
+  return (
+    <SurfaceCard className="rounded-[2rem] bg-[radial-gradient(circle_at_top_right,rgba(78,222,163,0.12),transparent_34%),linear-gradient(180deg,rgba(48,52,49,0.92),rgba(35,35,35,0.98))] p-6 sm:p-7">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-3">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-primary">Current Standing</p>
+          <div>
+            <p className="text-sm text-on-surface-variant">Overall balance</p>
+            <div className="mt-2 flex items-center gap-3">
+              <h2
+                className={cn(
+                  "font-headline text-4xl font-extrabold tracking-tight",
+                  standing.tone === "positive" && "text-primary",
+                  standing.tone === "negative" && "text-secondary",
+                  standing.tone === "neutral" && "text-on-surface",
+                )}
+              >
+                {standing.tone === "neutral"
+                  ? formatMoneyFromCents(0, group.groupCurrency)
+                  : formatMoneyFromCents(Math.abs(group.currentStanding.balanceCents), group.groupCurrency)}
+              </h2>
+              <StandingIcon
+                className={cn(
+                  "h-5 w-5",
+                  standing.tone === "positive" && "text-primary",
+                  standing.tone === "negative" && "text-secondary",
+                  standing.tone === "neutral" && "text-on-surface-variant",
+                )}
+              />
+            </div>
+            <p
+              className={cn(
+                "mt-1 text-sm font-medium",
+                standing.tone === "positive" && "text-primary/90",
+                standing.tone === "negative" && "text-secondary/90",
+                standing.tone === "neutral" && "text-on-surface-variant",
+              )}
+            >
+              {standing.label} in this group
+            </p>
+          </div>
+        </div>
+
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+          <Wallet className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+        <MetricTile label="Paid by you" value={formatMoneyFromCents(group.currentStanding.paidCents, group.groupCurrency)} />
+        <MetricTile label="Your share" value={formatMoneyFromCents(group.currentStanding.owedCents, group.groupCurrency)} />
+      </div>
+
+      <div className="mt-6 xl:mt-8 xl:border-t xl:border-white/8 xl:pt-6">
+        <div className="hidden space-y-4 xl:block">
+          {memberRows.length > 0 ? (
+            memberRows.map((member) => (
+              <StandingMemberRow key={member.id} member={member} currency={group.groupCurrency} />
+            ))
+          ) : (
+            <div className="rounded-[1.35rem] bg-black/16 px-4 py-4 text-sm text-on-surface-variant">
+              Group balances will start taking shape after the first expense lands.
+            </div>
+          )}
+
+          {remainingMembers > 0 ? (
+            <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">
+              +{remainingMembers} more member{remainingMembers === 1 ? "" : "s"} in totals view
+            </p>
+          ) : null}
+        </div>
+
+        <div className="mt-5 xl:mt-8">
+          <Link
+            href={`/groups/${group.groupId}/settings`}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "lg" }),
+              "w-full border-white/10 bg-black/12 text-on-surface hover:bg-white/6",
+            )}
+          >
+            View Totals
+            <ArrowUpRight className="h-4.5 w-4.5" />
+          </Link>
+        </div>
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function MetricTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.4rem] bg-black/16 px-4 py-4">
+      <p className="text-[0.66rem] uppercase tracking-[0.22em] text-on-surface-variant">{label}</p>
+      <p className="mt-2 font-headline text-xl font-bold tracking-tight text-on-surface">{value}</p>
+    </div>
+  );
+}
+
+function getStandingMemberRows(members: GroupSceneData["members"]) {
+  const withoutCurrentUser = members.filter((member) => !member.isCurrentUser);
+  const candidateMembers = withoutCurrentUser.length > 0 ? withoutCurrentUser : members;
+
+  return candidateMembers
+    .filter((member) => member.balanceCents !== 0 || member.role === "owner" || member.isCurrentUser)
+    .sort((left, right) => Math.abs(right.balanceCents) - Math.abs(left.balanceCents))
+    .slice(0, 4);
+}
+
+function StandingMemberRow({
+  member,
+  currency,
+}: {
+  member: GroupSceneData["members"][number];
+  currency: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <MemberOrb member={member} />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-on-surface">{member.name}</p>
+          <p className="text-xs text-on-surface-variant">
+            {member.role === "owner" ? "Owner" : member.isCurrentUser ? "You" : "Member"}
+          </p>
+        </div>
+      </div>
+      <span
+        className={cn(
+          "text-sm font-bold",
+          member.balanceCents > 0 && "text-primary",
+          member.balanceCents < 0 && "text-secondary",
+          member.balanceCents === 0 && "text-on-surface-variant",
+        )}
+      >
+        {member.balanceCents > 0 ? "+" : member.balanceCents < 0 ? "-" : ""}
+        {formatMoneyFromCents(Math.abs(member.balanceCents), currency)}
+      </span>
+    </div>
+  );
+}
+
+function RecentExpensesCard({ group }: { group: GroupSceneData }) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="font-headline text-[1.65rem] font-bold tracking-tight text-on-surface">
+            <span className="sm:hidden">Recent Transactions</span>
+            <span className="hidden sm:inline">Recent Expenses</span>
+          </h2>
+          <p className="text-sm text-on-surface-variant">
+            {group.expenseCount === 0
+              ? "No shared spend has been recorded yet."
+              : `${group.expenseCount} tracked expense${group.expenseCount === 1 ? "" : "s"} in this group.`}
+          </p>
+        </div>
+
+        {group.recentExpenses.length > 0 ? (
+          <>
+            <div className="hidden items-center gap-2 sm:flex">
+              <VisualActionButton label="Filter expenses">
+                <SlidersHorizontal className="h-4.5 w-4.5" />
+              </VisualActionButton>
+              <VisualActionButton label="Export expenses">
+                <Download className="h-4.5 w-4.5" />
+              </VisualActionButton>
+            </div>
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-primary sm:hidden">
+              View All
+            </span>
+          </>
+        ) : null}
+      </div>
+
+      {group.recentExpenses.length > 0 ? (
+        <div className="space-y-3">
+          {group.recentExpenses.map((expense) => (
+            <ExpenseRow
+              key={expense.id}
+              currency={group.groupCurrency}
+              expense={expense}
+            />
+          ))}
+        </div>
+      ) : (
+        <SurfaceCard variant="low" className="rounded-[1.9rem] p-6 sm:p-8">
+          <div className="mx-auto max-w-xl space-y-5 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
+              <ReceiptText className="h-6 w-6" />
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-headline text-2xl font-bold tracking-tight text-on-surface">
+                Nothing recorded yet
+              </h3>
+              <p className="text-sm leading-7 text-on-surface-variant">
+                The first expense will populate this ledger, start member balances, and anchor the standing card.
+              </p>
+            </div>
+            <div className="flex justify-center">
+              <Link
+                href={`/groups/${group.groupId}/expenses/new`}
+                className={buttonVariants({ variant: "primary", size: "lg" })}
+              >
+                Add First Expense
+              </Link>
             </div>
           </div>
         </SurfaceCard>
+      )}
+    </div>
+  );
+}
+
+function VisualActionButton({
+  children,
+  label,
+}: {
+  children: ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-container-low text-on-surface-variant transition hover:bg-surface-container-high hover:text-on-surface"
+    >
+      {children}
+    </button>
+  );
+}
+
+function ExpenseRow({
+  currency,
+  expense,
+}: {
+  currency: string;
+  expense: GroupSceneData["recentExpenses"][number];
+}) {
+  const { month, day } = formatDateParts(expense.expenseAt);
+  const Icon = iconMap[expense.iconKey];
+  const net = getExpenseNetDescriptor(expense.currentUserNetCents, currency);
+
+  return (
+    <div className="group rounded-[1.6rem] border border-transparent bg-surface-container-low px-4 py-4 transition hover:border-white/6 hover:bg-surface-container-high sm:px-5 sm:py-5">
+      <div className="grid gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto] md:items-center">
+        <div className="flex w-10 flex-col items-center justify-center">
+          <span className="text-[0.6rem] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+            {month}
+          </span>
+          <span className="font-headline text-lg font-extrabold leading-none text-on-surface">
+            {day}
+          </span>
+        </div>
+
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-container-highest text-on-surface-variant transition group-hover:scale-[1.03]">
+            <Icon className="h-5 w-5" strokeWidth={2.1} />
+          </div>
+          <div className="min-w-0">
+            <p className="truncate font-headline text-[0.98rem] font-bold tracking-tight text-on-surface">
+              {expense.description}
+            </p>
+            <p className="text-[0.68rem] uppercase tracking-[0.2em] text-on-surface-variant">
+              Paid by {expense.paidByName}
+              <span className="hidden md:inline"> · {expense.participantCount} participants</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="hidden text-right md:block">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
+            Total Expense
+          </p>
+          <p className="mt-1 font-headline text-xl font-bold tracking-tight text-on-surface">
+            {formatMoneyFromCents(expense.amountCents, currency)}
+          </p>
+        </div>
+
+        <div className="ml-auto text-right">
+          <p
+            className={cn(
+              "hidden text-[0.68rem] font-semibold uppercase tracking-[0.2em] md:block",
+              net.tone === "positive" && "text-primary",
+              net.tone === "negative" && "text-secondary",
+              net.tone === "neutral" && "text-on-surface-variant",
+            )}
+          >
+            {net.label}
+          </p>
+          <p
+            className={cn(
+              "font-headline text-base font-bold tracking-tight sm:text-xl",
+              net.tone === "positive" && "text-primary",
+              net.tone === "negative" && "text-secondary",
+              net.tone === "neutral" && "text-on-surface",
+            )}
+          >
+            {net.valueLabel}
+          </p>
+          <p className="text-xs text-on-surface-variant md:hidden">
+            {formatMoneyFromCents(expense.amountCents, currency)}
+          </p>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function GroupInsightsCard({
+  group,
+  isMock,
+}: {
+  group: GroupSceneData;
+  isMock: boolean;
+}) {
+  return (
+    <SurfaceCard variant="low" className="rounded-[2rem] p-6 sm:p-7">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h3 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Group Insights</h3>
+          <p className="mt-1 text-sm text-on-surface-variant">
+            Derived from what members have fronted so far.
+          </p>
+        </div>
+        {isMock ? (
+          <span className="rounded-full bg-white/6 px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
+            Mock
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+        <InsightStat label="Tracked total" value={formatMoneyFromCents(group.insights.totalSpendCents, group.groupCurrency)} />
+        <InsightStat label="Average expense" value={formatMoneyFromCents(group.insights.averageExpenseCents, group.groupCurrency)} />
+        <InsightStat
+          label="Largest expense"
+          value={
+            group.insights.largestExpenseCents > 0
+              ? formatMoneyFromCents(group.insights.largestExpenseCents, group.groupCurrency)
+              : "None yet"
+          }
+        />
+      </div>
+
+      {group.insights.topContributors.length > 0 ? (
+        <div className="mt-6 space-y-5">
+          {group.insights.topContributors.map((member) => (
+            <div key={member.id} className="space-y-2">
+              <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
+                <span>{member.name}</span>
+                <span>{member.percentOfSpend}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-surface-container-highest">
+                <div
+                  className="h-full rounded-full bg-[linear-gradient(90deg,var(--color-primary),rgba(78,222,163,0.55))]"
+                  style={{ width: `${member.percentOfSpend}%` }}
+                />
+              </div>
+              <p className="text-sm text-on-surface-variant">
+                Fronted {formatMoneyFromCents(member.paidCents, group.groupCurrency)}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-6 rounded-[1.5rem] border border-dashed border-white/8 bg-white/[0.02] px-4 py-5 text-sm leading-7 text-on-surface-variant">
+          No contribution breakdown yet. Once the first expense is added, this panel will show who fronted the most spend.
+        </div>
+      )}
+
+      {group.insights.largestExpenseLabel ? (
+        <p className="mt-6 text-sm text-on-surface-variant">
+          Largest line item so far:{" "}
+          <span className="font-medium text-on-surface">{group.insights.largestExpenseLabel}</span>
+        </p>
+      ) : null}
+    </SurfaceCard>
+  );
+}
+
+function InsightStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[1.35rem] bg-surface-container-high px-4 py-4">
+      <p className="text-[0.62rem] uppercase tracking-[0.22em] text-on-surface-variant">{label}</p>
+      <p className="mt-2 font-headline text-lg font-bold tracking-tight text-on-surface">{value}</p>
     </div>
   );
 }

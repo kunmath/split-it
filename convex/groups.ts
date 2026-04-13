@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 
-import type { Id, Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 
@@ -15,12 +15,21 @@ const groupIconKey = v.union(
 );
 
 type GroupIconKey = (typeof GROUP_ICON_KEYS)[number];
+type GroupBalanceSnapshot = {
+  paidCents: number;
+  owedCents: number;
+  balanceCents: number;
+};
 type GroupDashboardRecord = {
   group: Doc<"groups">;
   membership: Doc<"groupMembers">;
   memberCount: number;
   expenseCount: number;
   balanceCents: number;
+};
+type GroupExpenseRecord = {
+  expense: Doc<"expenses">;
+  shares: Doc<"expenseShares">[];
 };
 type GroupsCtx = QueryCtx | MutationCtx;
 
@@ -31,6 +40,10 @@ function isGroupIconKey(value: string | undefined): value is GroupIconKey {
 function getDefaultIconKey(seed: string) {
   const total = Array.from(seed).reduce((sum, character) => sum + character.charCodeAt(0), 0);
   return GROUP_ICON_KEYS[total % GROUP_ICON_KEYS.length] ?? "home";
+}
+
+function resolveGroupIconKey(group: Doc<"groups">) {
+  return isGroupIconKey(group.iconKey) ? group.iconKey : getDefaultIconKey(group.name);
 }
 
 function sanitizeGroupName(value: string) {
@@ -71,6 +84,151 @@ function sanitizeCurrency(value: string | undefined) {
   return normalized;
 }
 
+function createBalanceSnapshot(paidCents: number, owedCents: number): GroupBalanceSnapshot {
+  return {
+    paidCents,
+    owedCents,
+    balanceCents: paidCents - owedCents,
+  };
+}
+
+function getCurrentUserBalanceSnapshot(
+  expenses: Doc<"expenses">[],
+  shares: Doc<"expenseShares">[],
+  userId: Id<"users">,
+) {
+  const paidCents = expenses.reduce((sum, expense) => {
+    return expense.paidBy === userId ? sum + expense.amountCents : sum;
+  }, 0);
+  const owedCents = shares.reduce((sum, share) => sum + share.shareCents, 0);
+
+  return createBalanceSnapshot(paidCents, owedCents);
+}
+
+async function getGroupExpenseRecords(ctx: GroupsCtx, groupId: Id<"groups">): Promise<GroupExpenseRecord[]> {
+  const expenses = await ctx.db.query("expenses").withIndex("by_group", (q) => q.eq("groupId", groupId)).collect();
+  const sortedExpenses = expenses.sort((left, right) => right.expenseAt - left.expenseAt);
+  const shares = await Promise.all(
+    sortedExpenses.map((expense) => {
+      return ctx.db.query("expenseShares").withIndex("by_expense", (q) => q.eq("expenseId", expense._id)).collect();
+    }),
+  );
+
+  return sortedExpenses.map((expense, index) => ({
+    expense,
+    shares: shares[index] ?? [],
+  }));
+}
+
+function buildMemberBalanceSnapshots(
+  memberIds: Id<"users">[],
+  expenseRecords: GroupExpenseRecord[],
+) {
+  const balances = new Map<Id<"users">, GroupBalanceSnapshot>();
+
+  for (const memberId of memberIds) {
+    balances.set(memberId, createBalanceSnapshot(0, 0));
+  }
+
+  for (const record of expenseRecords) {
+    const payerBalance = balances.get(record.expense.paidBy);
+    if (payerBalance) {
+      payerBalance.paidCents += record.expense.amountCents;
+      payerBalance.balanceCents = payerBalance.paidCents - payerBalance.owedCents;
+    }
+
+    for (const share of record.shares) {
+      const memberBalance = balances.get(share.userId);
+      if (!memberBalance) {
+        continue;
+      }
+
+      memberBalance.owedCents += share.shareCents;
+      memberBalance.balanceCents = memberBalance.paidCents - memberBalance.owedCents;
+    }
+  }
+
+  return balances;
+}
+
+function getCurrentUserExpenseNetCents(record: GroupExpenseRecord, userId: Id<"users">) {
+  const currentUserShareCents =
+    record.shares.find((share) => share.userId === userId)?.shareCents ?? 0;
+
+  return (record.expense.paidBy === userId ? record.expense.amountCents : 0) - currentUserShareCents;
+}
+
+function getExpenseIconKey(description: string, fallbackIconKey: GroupIconKey): GroupIconKey {
+  const normalized = description.trim().toLowerCase();
+
+  if (
+    normalized.includes("restaurant") ||
+    normalized.includes("dinner") ||
+    normalized.includes("lunch") ||
+    normalized.includes("breakfast") ||
+    normalized.includes("brunch") ||
+    normalized.includes("cafe") ||
+    normalized.includes("meal") ||
+    normalized.includes("feast")
+  ) {
+    return "utensils";
+  }
+
+  if (
+    normalized.includes("fuel") ||
+    normalized.includes("gas") ||
+    normalized.includes("station") ||
+    normalized.includes("petrol") ||
+    normalized.includes("diesel")
+  ) {
+    return "fuel";
+  }
+
+  if (
+    normalized.includes("grocery") ||
+    normalized.includes("market") ||
+    normalized.includes("supermarket") ||
+    normalized.includes("bonus") ||
+    normalized.includes("supplies")
+  ) {
+    return "cart";
+  }
+
+  if (
+    normalized.includes("hotel") ||
+    normalized.includes("cabin") ||
+    normalized.includes("lodging") ||
+    normalized.includes("airbnb") ||
+    normalized.includes("stay")
+  ) {
+    return "home";
+  }
+
+  if (
+    normalized.includes("flight") ||
+    normalized.includes("airport") ||
+    normalized.includes("ticket") ||
+    normalized.includes("plane")
+  ) {
+    return "plane";
+  }
+
+  if (
+    normalized.includes("rental") ||
+    normalized.includes("tour") ||
+    normalized.includes("glacier") ||
+    normalized.includes("hike") ||
+    normalized.includes("trail") ||
+    normalized.includes("camp") ||
+    normalized.includes("van") ||
+    normalized.includes("car")
+  ) {
+    return "mountain";
+  }
+
+  return fallbackIconKey;
+}
+
 async function getActiveGroupRecords(
   ctx: GroupsCtx,
   userId: Id<"users">,
@@ -99,18 +257,14 @@ async function getActiveGroupRecords(
           .collect(),
       ]);
 
-      const memberCount = groupMembers.filter((member) => member.status === "active").length;
-      const paidByCurrentUserCents = groupExpenses.reduce((sum, expense) => {
-        return expense.paidBy === userId ? sum + expense.amountCents : sum;
-      }, 0);
-      const owedByCurrentUserCents = userShares.reduce((sum, share) => sum + share.shareCents, 0);
+      const balanceSnapshot = getCurrentUserBalanceSnapshot(groupExpenses, userShares, userId);
 
       return {
         group,
         membership,
-        memberCount,
+        memberCount: groupMembers.filter((member) => member.status === "active").length,
         expenseCount: groupExpenses.length,
-        balanceCents: paidByCurrentUserCents - owedByCurrentUserCents,
+        balanceCents: balanceSnapshot.balanceCents,
       };
     }),
   );
@@ -167,13 +321,148 @@ export const listActiveForCurrentUser = query({
       name: item.group.name,
       description: item.group.description,
       currency: item.group.currency,
-      iconKey: isGroupIconKey(item.group.iconKey) ? item.group.iconKey : getDefaultIconKey(item.group.name),
+      iconKey: resolveGroupIconKey(item.group),
       memberCount: item.memberCount,
       expenseCount: item.expenseCount,
       balanceCents: item.balanceCents,
       role: item.membership.role,
       createdAt: item.group.createdAt,
     }));
+  },
+});
+
+export const getDetail = query({
+  args: {
+    groupId: v.id("groups"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const group = await ctx.db.get(args.groupId);
+
+    if (group === null || group.archivedAt !== undefined) {
+      return null;
+    }
+
+    const membership = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_group_user", (q) => q.eq("groupId", args.groupId).eq("userId", user._id))
+      .unique();
+
+    if (membership === null || membership.status !== "active") {
+      return null;
+    }
+
+    const activeMemberships = (
+      await ctx.db.query("groupMembers").withIndex("by_group", (q) => q.eq("groupId", args.groupId)).collect()
+    ).filter((member) => member.status === "active");
+    const memberUsers = await Promise.all(activeMemberships.map((member) => ctx.db.get(member.userId)));
+    const expenseRecords = await getGroupExpenseRecords(ctx, args.groupId);
+    const memberBalanceSnapshots = buildMemberBalanceSnapshots(
+      activeMemberships.map((member) => member.userId),
+      expenseRecords,
+    );
+    const userLookup = new Map<Id<"users">, Doc<"users">>();
+
+    activeMemberships.forEach((member, index) => {
+      const memberUser = memberUsers[index];
+      if (memberUser !== null) {
+        userLookup.set(member.userId, memberUser);
+      }
+    });
+
+    const totalSpendCents = expenseRecords.reduce((sum, record) => sum + record.expense.amountCents, 0);
+    const largestExpenseRecord =
+      expenseRecords.reduce<GroupExpenseRecord | null>((largest, record) => {
+        if (largest === null || record.expense.amountCents > largest.expense.amountCents) {
+          return record;
+        }
+
+        return largest;
+      }, null) ?? null;
+    const currentUserStanding = memberBalanceSnapshots.get(user._id) ?? createBalanceSnapshot(0, 0);
+    const resolvedIconKey = resolveGroupIconKey(group);
+
+    const members = activeMemberships
+      .map((member) => {
+        const memberUser = userLookup.get(member.userId);
+        const snapshot = memberBalanceSnapshots.get(member.userId) ?? createBalanceSnapshot(0, 0);
+
+        return {
+          id: member.userId,
+          name: memberUser?.name ?? "Group member",
+          email: memberUser?.email ?? "",
+          imageUrl: memberUser?.imageUrl,
+          role: member.role,
+          isCurrentUser: member.userId === user._id,
+          joinedAt: member.joinedAt ?? null,
+          paidCents: snapshot.paidCents,
+          owedCents: snapshot.owedCents,
+          balanceCents: snapshot.balanceCents,
+        };
+      })
+      .sort((left, right) => {
+        if (left.isCurrentUser && !right.isCurrentUser) {
+          return -1;
+        }
+
+        if (!left.isCurrentUser && right.isCurrentUser) {
+          return 1;
+        }
+
+        if (left.role === "owner" && right.role !== "owner") {
+          return -1;
+        }
+
+        if (left.role !== "owner" && right.role === "owner") {
+          return 1;
+        }
+
+        return left.name.localeCompare(right.name);
+      });
+
+    return {
+      groupId: group._id,
+      groupName: group.name,
+      groupDescription: group.description,
+      groupCurrency: group.currency,
+      iconKey: resolvedIconKey,
+      coverImageUrl: group.coverImageUrl,
+      createdAt: group.createdAt,
+      memberCount: members.length,
+      expenseCount: expenseRecords.length,
+      currentStanding: currentUserStanding,
+      members,
+      recentExpenses: expenseRecords.slice(0, 5).map((record) => ({
+        id: record.expense._id,
+        description: record.expense.description,
+        amountCents: record.expense.amountCents,
+        expenseAt: record.expense.expenseAt,
+        paidByName: userLookup.get(record.expense.paidBy)?.name ?? "Group member",
+        paidByCurrentUser: record.expense.paidBy === user._id,
+        currentUserNetCents: getCurrentUserExpenseNetCents(record, user._id),
+        splitType: record.expense.splitType,
+        participantCount: record.shares.length,
+        iconKey: getExpenseIconKey(record.expense.description, resolvedIconKey),
+      })),
+      insights: {
+        totalSpendCents,
+        averageExpenseCents:
+          expenseRecords.length === 0 ? 0 : Math.round(totalSpendCents / expenseRecords.length),
+        largestExpenseCents: largestExpenseRecord?.expense.amountCents ?? 0,
+        largestExpenseLabel: largestExpenseRecord?.expense.description ?? null,
+        topContributors: members
+          .filter((member) => member.paidCents > 0)
+          .sort((left, right) => right.paidCents - left.paidCents)
+          .slice(0, 3)
+          .map((member) => ({
+            id: member.id,
+            name: member.name,
+            paidCents: member.paidCents,
+            percentOfSpend:
+              totalSpendCents === 0 ? 0 : Math.max(1, Math.round((member.paidCents / totalSpendCents) * 100)),
+          })),
+      },
+    };
   },
 });
 

@@ -1,6 +1,6 @@
 # split-it
 
-Phase 4 adds secure invite-link creation, public invite acceptance, redirect-aware auth handoff, and a lightweight add-members flow from group context on top of the existing dashboard and auth shell.
+Phase 5 adds the responsive group detail screen, a protected Convex group-detail query with standing and recent-expense data, and the mobile/desktop layout pass for `/groups/[groupId]` on top of the existing dashboard, auth shell, and invite flow.
 
 ## Stack
 
@@ -105,6 +105,13 @@ docker compose exec web npm run typecheck
 - Redirect-aware `/sign-in` and `/sign-up` flows so invite acceptance survives authentication
 - Lightweight group-context member management with live member rosters and invite-link controls
 
+## Phase 5 Group Detail Additions
+
+- `groups.getDetail` protected query that returns group metadata, active members, recent expenses, current-user standing, and lightweight derived insights
+- One responsive `/groups/[groupId]` implementation aligned to the supplied mobile and desktop references
+- Clean empty state for groups without expenses, with the primary add flow pointing at `/groups/[groupId]/expenses/new`
+- Optional cover-image handling with a styled fallback so the route still reads correctly without uploaded media
+
 ## Current Routes
 
 - `/sign-in`
@@ -125,4 +132,4 @@ docker compose exec web npm run typecheck
 - The authenticated shell is responsive: mobile uses a bottom nav, desktop uses a left rail plus utility bar.
 - The auth pages are custom implementations wired to Clerk rather than Clerk's stock widgets, and they share one responsive layout across mobile and desktop.
 - Route protection and sign-out are active only when Clerk server keys are configured.
-- Phase 4 adds the secure invite path and multi-user membership plumbing, but expense creation and real balance computation are still reserved for later phases.
+- Phase 5 ships the real group-detail layout and standing derivation, but expense creation still remains a later phase.
