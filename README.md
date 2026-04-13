@@ -1,6 +1,6 @@
 # split-it
 
-Phase 3 adds a responsive groups dashboard with live Convex-backed group creation, active-group listing, and summary totals on top of the existing auth shell and backend plumbing.
+Phase 4 adds secure invite-link creation, public invite acceptance, redirect-aware auth handoff, and a lightweight add-members flow from group context on top of the existing dashboard and auth shell.
 
 ## Stack
 
@@ -97,17 +97,25 @@ docker compose exec web npm run typecheck
 - Dashboard queries for the current user's active groups and summary totals
 - Responsive `/dashboard` implementation with summary tiles, active group cards, invite tile, and create-group flow
 
+## Phase 4 Invite Additions
+
+- `invites.create` owner-only mutation that rotates the current pending invite link
+- `invites.getByToken` public query for the secure `/invites/[token]` route
+- `invites.accept` mutation that converts a valid token into active group membership
+- Redirect-aware `/sign-in` and `/sign-up` flows so invite acceptance survives authentication
+- Lightweight group-context member management with live member rosters and invite-link controls
+
 ## Current Routes
 
 - `/sign-in`
 - `/sign-up`
 - `/sso-callback`
 - `/dashboard`
-- `/groups/demo-group`
+- `/groups/[groupId]`
 - `/groups/demo-group/expenses/new`
 - `/groups/demo-group/expenses/demo-expense/edit`
 - `/groups/demo-group/settings`
-- `/invites/demo-token`
+- `/invites/[token]`
 - `/friends`
 - `/activity`
 - `/account`
@@ -117,4 +125,4 @@ docker compose exec web npm run typecheck
 - The authenticated shell is responsive: mobile uses a bottom nav, desktop uses a left rail plus utility bar.
 - The auth pages are custom implementations wired to Clerk rather than Clerk's stock widgets, and they share one responsive layout across mobile and desktop.
 - Route protection and sign-out are active only when Clerk server keys are configured.
-- Phase 3 adds dashboard groups home functionality, but invite acceptance and expense flows are still reserved for later phases.
+- Phase 4 adds the secure invite path and multi-user membership plumbing, but expense creation and real balance computation are still reserved for later phases.

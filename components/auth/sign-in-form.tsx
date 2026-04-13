@@ -10,20 +10,26 @@ import { parseClerkError } from "@/components/auth/clerk-error";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { Button } from "@/components/ui/button";
 import { FilledInput } from "@/components/ui/filled-input";
+import { getSafeRedirectPath } from "@/lib/auth-redirect";
 
 type SignInValues = {
   email: string;
   password: string;
 };
 
-export function SignInForm() {
+type SignInFormProps = {
+  redirectPath?: string | null;
+};
+
+export function SignInForm({ redirectPath }: SignInFormProps) {
   const { isClerkConfigured } = usePlaceholderMode();
+  const safeRedirectPath = getSafeRedirectPath(redirectPath) ?? "/dashboard";
 
   if (!isClerkConfigured) {
     return <DisabledSignInForm />;
   }
 
-  return <LiveSignInForm />;
+  return <LiveSignInForm redirectPath={safeRedirectPath} />;
 }
 
 function DisabledSignInForm() {
@@ -46,7 +52,11 @@ function DisabledSignInForm() {
   );
 }
 
-function LiveSignInForm() {
+type LiveSignInFormProps = {
+  redirectPath: string;
+};
+
+function LiveSignInForm({ redirectPath }: LiveSignInFormProps) {
   const router = useRouter();
   const { isLoaded, setActive, signIn } = useSignIn();
   const [values, setValues] = useState<SignInValues>({ email: "", password: "" });
@@ -85,7 +95,7 @@ function LiveSignInForm() {
       }
 
       await setActive({ session: result.createdSessionId });
-      router.replace("/dashboard");
+      router.replace(redirectPath);
       router.refresh();
     } catch (error) {
       const parsed = parseClerkError(error);
@@ -108,7 +118,7 @@ function LiveSignInForm() {
     try {
       await signIn.authenticateWithRedirect({
         redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/dashboard",
+        redirectUrlComplete: redirectPath,
         strategy: "oauth_google",
       });
     } catch (error) {

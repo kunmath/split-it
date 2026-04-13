@@ -10,10 +10,12 @@
 
 import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
 import type * as groups from "../groups.js";
+import type * as invites from "../invites.js";
 import type * as users from "../users.js";
 
 declare const fullApi: ApiFromModules<{
   groups: typeof groups;
+  invites: typeof invites;
   users: typeof users;
 }>;
 

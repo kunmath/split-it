@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LockKeyhole, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 
-type AuthShellMode = "sign-in" | "sign-up" | "callback";
+type AuthShellMode = "sign-in" | "sign-up" | "callback" | "invite";
 
 type AuthShellProps = {
   children: ReactNode;
@@ -12,6 +12,7 @@ type AuthShellProps = {
 
 const sideCopyByMode: Record<AuthShellMode, string> = {
   "callback": "Securely handing your session back to the ledger workspace.",
+  "invite": "Invite access stays deliberate: one secure link, one new member, one clean path into the group.",
   "sign-in": "Personal debt and shared expenses treated with the visual gravity of a premium lifestyle brand.",
   "sign-up": "Open a shared-expense workspace with the same editorial restraint as the product itself.",
 };
