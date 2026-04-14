@@ -31,6 +31,18 @@ type GroupDashboardRecord = {
   expenseCount: number;
   balanceCents: number;
 };
+type GroupSettingsBalanceMember = {
+  id: Id<"users">;
+  name: string;
+  email: string;
+  imageUrl?: string;
+  role: "member" | "owner";
+  isCurrentUser: boolean;
+  joinedAt: number | null;
+  paidCents: number;
+  owedCents: number;
+  balanceCents: number;
+};
 type GroupsCtx = QueryCtx | MutationCtx;
 
 function isGroupIconKey(value: string | undefined): value is GroupIconKey {
@@ -127,6 +139,28 @@ async function getActiveGroupRecords(
   return groups
     .filter((group): group is GroupDashboardRecord => group !== null)
     .sort((left, right) => right.group.createdAt - left.group.createdAt);
+}
+
+function sortSettingsBalanceMembers(
+  left: GroupSettingsBalanceMember,
+  right: GroupSettingsBalanceMember,
+) {
+  const magnitudeDifference =
+    Math.abs(right.balanceCents) - Math.abs(left.balanceCents);
+
+  if (magnitudeDifference !== 0) {
+    return magnitudeDifference;
+  }
+
+  if (left.balanceCents > 0 && right.balanceCents < 0) {
+    return -1;
+  }
+
+  if (left.balanceCents < 0 && right.balanceCents > 0) {
+    return 1;
+  }
+
+  return left.name.localeCompare(right.name);
 }
 
 export const create = mutation({
@@ -317,6 +351,99 @@ export const getDetail = query({
               totalSpendCents === 0 ? 0 : Math.max(1, Math.round((member.paidCents / totalSpendCents) * 100)),
           })),
       },
+    };
+  },
+});
+
+export const getSettingsOverview = query({
+  args: {
+    groupId: v.id("groups"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const group = await ctx.db.get(args.groupId);
+
+    if (group === null || group.archivedAt !== undefined) {
+      return null;
+    }
+
+    const membership = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_group_user", (q) =>
+        q.eq("groupId", args.groupId).eq("userId", user._id),
+      )
+      .unique();
+
+    if (membership === null || membership.status !== "active") {
+      return null;
+    }
+
+    const activeMemberships = (
+      await ctx.db
+        .query("groupMembers")
+        .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+        .collect()
+    ).filter((member) => member.status === "active");
+    const memberUsers = await Promise.all(
+      activeMemberships.map((member) => ctx.db.get(member.userId)),
+    );
+    const expenseRecords = await getGroupExpenseRecords(ctx, args.groupId);
+    const memberBalanceSnapshots = buildMemberBalanceSnapshots(
+      activeMemberships.map((member) => member.userId),
+      expenseRecords,
+    );
+    const userLookup = new Map<Id<"users">, Doc<"users">>();
+
+    activeMemberships.forEach((member, index) => {
+      const memberUser = memberUsers[index];
+
+      if (memberUser !== null) {
+        userLookup.set(member.userId, memberUser);
+      }
+    });
+
+    const totalSpendCents = expenseRecords.reduce(
+      (sum, record) => sum + record.expense.amountCents,
+      0,
+    );
+    const currentUserStanding =
+      memberBalanceSnapshots.get(user._id) ?? createBalanceSnapshot(0, 0);
+    const memberBalances = activeMemberships
+      .map((member) => {
+        const memberUser = userLookup.get(member.userId);
+        const snapshot =
+          memberBalanceSnapshots.get(member.userId) ??
+          createBalanceSnapshot(0, 0);
+
+        return {
+          id: member.userId,
+          name: memberUser?.name ?? "Group member",
+          email: memberUser?.email ?? "",
+          imageUrl: memberUser?.imageUrl,
+          role: member.role,
+          isCurrentUser: member.userId === user._id,
+          joinedAt: member.joinedAt ?? null,
+          paidCents: snapshot.paidCents,
+          owedCents: snapshot.owedCents,
+          balanceCents: snapshot.balanceCents,
+        } satisfies GroupSettingsBalanceMember;
+      })
+      .filter((member) => !member.isCurrentUser)
+      .sort(sortSettingsBalanceMembers);
+
+    return {
+      groupId: group._id,
+      groupName: group.name,
+      groupDescription: group.description,
+      groupCurrency: group.currency,
+      memberCount: activeMemberships.length,
+      expenseCount: expenseRecords.length,
+      totalSpendCents,
+      currentUserBalanceCents: currentUserStanding.balanceCents,
+      currentUserPaidCents: currentUserStanding.paidCents,
+      currentUserOwedCents: currentUserStanding.owedCents,
+      viewerRole: membership.role,
+      memberBalances,
     };
   },
 });

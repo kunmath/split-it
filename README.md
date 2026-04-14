@@ -1,6 +1,6 @@
 # split-it
 
-Phase 7 adds the shared expense composer for create and edit, exact split support, safe expense update and delete mutations, and the responsive mobile/desktop composer pass on top of the existing dashboard, auth shell, invite flow, and group detail work.
+Phase 8 adds the responsive group totals/settings screen, a dedicated settings overview query for total spend and member balances, and the designed settings action rows on top of the existing dashboard, auth shell, invite flow, group detail, and expense composer work.
 
 ## Stack
 
@@ -120,6 +120,13 @@ docker compose exec web npm run typecheck
 - `expenses.getComposerData` powers both `/groups/[groupId]/expenses/new` and `/groups/[groupId]/expenses/[expenseId]/edit`
 - The responsive composer now shows total-assigned status, exact split validation, edit mode reuse, and a documented receipt placeholder
 
+## Phase 8 Group Totals / Settings Additions
+
+- `groups.getSettingsOverview` returns total group spend, the current user's net balance, and the member balance list for `/groups/[groupId]/settings`
+- `/groups/[groupId]/settings` now ships as one responsive implementation across mobile and desktop and follows the supplied totals/settings references
+- Settlement history is intentionally documented as a read-only stub in this phase
+- `Edit Group Name`, `Add Members`, `Export CSV`, and `Delete Group` are rendered in the designed layout, but remain staged for the next phase
+
 ## Current Routes
 
 - `/sign-in`
@@ -141,3 +148,4 @@ docker compose exec web npm run typecheck
 - The auth pages are custom implementations wired to Clerk rather than Clerk's stock widgets, and they share one responsive layout across mobile and desktop.
 - Route protection and sign-out are active only when Clerk server keys are configured.
 - Recent expense rows now link into the shared edit composer so the Phase 7 CRUD flow is reachable from the live group screen.
+- The group settings screen now reads live total-spend and balance data when Convex auth is configured, while the staged settings actions remain intentionally non-destructive for Phase 8.
