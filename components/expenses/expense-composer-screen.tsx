@@ -2,12 +2,14 @@
 
 import { useMutation, useQuery } from "convex/react";
 import {
+  AlertTriangle,
   CalendarDays,
   Check,
   CircleDollarSign,
   ImagePlus,
   LoaderCircle,
   NotebookPen,
+  Trash2,
   Users,
   Wallet,
   X,
@@ -28,7 +30,10 @@ import { cn, getInitials } from "@/lib/utils";
 
 type ExpenseComposerScreenProps = {
   groupId: string;
+  expenseId?: string;
 };
+
+type SplitType = "equal" | "exact";
 
 type ComposerMember = {
   id: string;
@@ -39,11 +44,42 @@ type ComposerMember = {
   isCurrentUser: boolean;
 };
 
+type ExistingExpenseDraft = {
+  id: string;
+  description: string;
+  amountCents: number;
+  paidBy: string;
+  splitType: SplitType;
+  expenseAt: number;
+  notes?: string;
+  shares: Array<{
+    userId: string;
+    shareCents: number;
+  }>;
+};
+
 type ComposerSceneData = {
   groupId: string;
   groupName: string;
   groupCurrency: string;
   members: ComposerMember[];
+  expense: ExistingExpenseDraft | null;
+};
+
+type ExactShareDraft = {
+  userId: string;
+  shareCents: number;
+};
+
+type ExpenseDraft = {
+  description: string;
+  amountCents: number;
+  paidBy: string;
+  splitType: SplitType;
+  participantIds: string[];
+  exactShares?: ExactShareDraft[];
+  expenseAt: number;
+  notes?: string;
 };
 
 type FormErrors = {
@@ -52,15 +88,14 @@ type FormErrors = {
   expenseAt?: string;
   participants?: string;
   payer?: string;
+  exactShares?: string;
 };
 
-type ExpenseDraft = {
-  description: string;
-  amountCents: number;
-  paidBy: string;
-  participantIds: string[];
-  expenseAt: number;
-  notes?: string;
+type SplitSummaryState = {
+  tone: "matched" | "warning" | "error";
+  badge: string;
+  detail: string;
+  canSubmit: boolean;
 };
 
 const MOCK_MEMBERS: ComposerMember[] = [
@@ -115,6 +150,19 @@ function getTodayDateInputValue() {
   const day = String(today.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function formatDateInputValue(timestamp: number) {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatCentsForInput(amountCents: number) {
+  return (amountCents / 100).toFixed(2);
 }
 
 function parseAmountInputToCents(value: string) {
@@ -186,7 +234,39 @@ function getCurrencyToken(currency: string) {
   );
 }
 
-function buildMockComposerData(groupId: string): ComposerSceneData {
+function getStatusClasses(tone: SplitSummaryState["tone"]) {
+  if (tone === "matched") {
+    return "bg-primary/12 text-primary";
+  }
+
+  if (tone === "warning") {
+    return "bg-amber-500/14 text-amber-200";
+  }
+
+  return "bg-secondary/12 text-secondary";
+}
+
+function buildInitialExactInputs(
+  members: ComposerMember[],
+  shares: ExistingExpenseDraft["shares"],
+) {
+  const inputs: Record<string, string> = {};
+
+  for (const member of members) {
+    inputs[member.id] = "";
+  }
+
+  for (const share of shares) {
+    inputs[share.userId] = formatCentsForInput(share.shareCents);
+  }
+
+  return inputs;
+}
+
+function buildMockComposerData(
+  groupId: string,
+  expenseId?: string,
+): ComposerSceneData {
   const group = getGroupDetail(groupId);
 
   return {
@@ -194,6 +274,22 @@ function buildMockComposerData(groupId: string): ComposerSceneData {
     groupName: group.title,
     groupCurrency: group.currency,
     members: MOCK_MEMBERS,
+    expense: expenseId
+      ? {
+          id: expenseId,
+          description: "Dinner at Prime",
+          amountCents: 12_000,
+          paidBy: "mock-member-jordan",
+          splitType: "exact",
+          expenseAt: new Date("2024-10-27T12:00:00.000Z").getTime(),
+          notes: "Mock edit mode uses the same composer and delete affordance as live mode.",
+          shares: [
+            { userId: "mock-member-jordan", shareCents: 4_500 },
+            { userId: "mock-member-sarah", shareCents: 3_500 },
+            { userId: "mock-member-elena", shareCents: 4_000 },
+          ],
+        }
+      : null,
   };
 }
 
@@ -210,6 +306,19 @@ function buildSceneData(
       role: "owner" | "member";
       isCurrentUser: boolean;
     }>;
+    expense: {
+      id: Id<"expenses">;
+      description: string;
+      amountCents: number;
+      paidBy: Id<"users">;
+      splitType: SplitType;
+      expenseAt: number;
+      notes?: string;
+      shares: Array<{
+        userId: Id<"users">;
+        shareCents: number;
+      }>;
+    } | null;
   },
 ): ComposerSceneData {
   return {
@@ -224,20 +333,41 @@ function buildSceneData(
       role: member.role,
       isCurrentUser: member.isCurrentUser,
     })),
+    expense:
+      data.expense === null
+        ? null
+        : {
+            id: String(data.expense.id),
+            description: data.expense.description,
+            amountCents: data.expense.amountCents,
+            paidBy: String(data.expense.paidBy),
+            splitType: data.expense.splitType,
+            expenseAt: data.expense.expenseAt,
+            notes: data.expense.notes,
+            shares: data.expense.shares.map((share) => ({
+              userId: String(share.userId),
+              shareCents: share.shareCents,
+            })),
+          },
   };
 }
 
 function LoadingComposerState() {
   return (
     <PageContainer className="flex min-h-[70vh] items-center justify-center px-4 py-16 sm:px-6 lg:px-12">
-      <SurfaceCard variant="high" className="mx-auto max-w-2xl space-y-4 rounded-[2.4rem] text-center">
+      <SurfaceCard
+        variant="high"
+        className="mx-auto max-w-2xl space-y-4 rounded-[2.4rem] text-center"
+      >
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
           <LoaderCircle className="h-7 w-7 animate-spin" />
         </div>
         <div>
-          <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">Loading composer</p>
+          <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">
+            Loading composer
+          </p>
           <p className="mt-2 text-sm leading-7 text-on-surface-variant">
-            Pulling active members, payer options, and the group ledger into the expense draft.
+            Pulling active members, payer options, and any existing split rows into the draft.
           </p>
         </div>
       </SurfaceCard>
@@ -248,12 +378,17 @@ function LoadingComposerState() {
 function SyncingComposerState() {
   return (
     <PageContainer className="flex min-h-[70vh] items-center justify-center px-4 py-16 sm:px-6 lg:px-12">
-      <SurfaceCard variant="high" className="mx-auto max-w-2xl space-y-4 rounded-[2.4rem] text-center">
+      <SurfaceCard
+        variant="high"
+        className="mx-auto max-w-2xl space-y-4 rounded-[2.4rem] text-center"
+      >
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
           <LoaderCircle className="h-7 w-7 animate-spin" />
         </div>
         <div>
-          <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">Syncing your workspace</p>
+          <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">
+            Syncing your workspace
+          </p>
           <p className="mt-2 text-sm leading-7 text-on-surface-variant">
             Your session is authenticated, but the Split-it user record is still finishing setup.
           </p>
@@ -263,21 +398,37 @@ function SyncingComposerState() {
   );
 }
 
-function UnavailableComposerState({ groupId }: { groupId: string }) {
+function UnavailableComposerState({
+  groupId,
+  isEditMode,
+}: {
+  groupId: string;
+  isEditMode: boolean;
+}) {
   return (
     <PageContainer className="flex min-h-[70vh] items-center justify-center px-4 py-16 sm:px-6 lg:px-12">
-      <SurfaceCard variant="high" className="mx-auto max-w-2xl space-y-5 rounded-[2.4rem] text-center">
+      <SurfaceCard
+        variant="high"
+        className="mx-auto max-w-2xl space-y-5 rounded-[2.4rem] text-center"
+      >
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-secondary/10 text-secondary">
           <Users className="h-7 w-7" />
         </div>
         <div>
-          <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">Group unavailable</p>
+          <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">
+            {isEditMode ? "Expense unavailable" : "Group unavailable"}
+          </p>
           <p className="mt-2 text-sm leading-7 text-on-surface-variant">
-            You do not have access to this group, or it is no longer active.
+            {isEditMode
+              ? "You do not have permission to edit this expense, or it no longer exists."
+              : "You do not have access to this group, or it is no longer active."}
           </p>
         </div>
         <div className="flex justify-center">
-          <Link href={`/groups/${groupId}`} className={buttonVariants({ variant: "primary", size: "lg" })}>
+          <Link
+            href={`/groups/${groupId}`}
+            className={buttonVariants({ variant: "primary", size: "lg" })}
+          >
             Back to group
           </Link>
         </div>
@@ -286,24 +437,43 @@ function UnavailableComposerState({ groupId }: { groupId: string }) {
   );
 }
 
-export function ExpenseComposerScreen({ groupId }: ExpenseComposerScreenProps) {
+export function ExpenseComposerScreen({
+  groupId,
+  expenseId,
+}: ExpenseComposerScreenProps) {
   const { mode } = usePlaceholderMode();
 
   if (mode !== "live") {
-    return <ExpenseComposerScene data={buildMockComposerData(groupId)} isMock />;
+    return (
+      <ExpenseComposerScene
+        key={expenseId ?? "new"}
+        data={buildMockComposerData(groupId, expenseId)}
+        isMock
+      />
+    );
   }
 
-  return <LiveExpenseComposerScreen groupId={groupId} />;
+  return <LiveExpenseComposerScreen groupId={groupId} expenseId={expenseId} />;
 }
 
-function LiveExpenseComposerScreen({ groupId }: ExpenseComposerScreenProps) {
+function LiveExpenseComposerScreen({
+  groupId,
+  expenseId,
+}: ExpenseComposerScreenProps) {
   const router = useRouter();
   const currentUser = useQuery(api.users.current);
   const composer = useQuery(
     api.expenses.getComposerData,
-    currentUser ? { groupId: groupId as Id<"groups"> } : "skip",
+    currentUser
+      ? {
+          groupId: groupId as Id<"groups">,
+          expenseId: expenseId ? (expenseId as Id<"expenses">) : undefined,
+        }
+      : "skip",
   );
-  const createEqualSplit = useMutation(api.expenses.createEqualSplit);
+  const createExpense = useMutation(api.expenses.createExpense);
+  const updateExpense = useMutation(api.expenses.updateExpense);
+  const deleteExpense = useMutation(api.expenses.deleteExpense);
 
   if (currentUser === undefined || composer === undefined) {
     return <LoadingComposerState />;
@@ -314,27 +484,65 @@ function LiveExpenseComposerScreen({ groupId }: ExpenseComposerScreenProps) {
   }
 
   if (composer === null) {
-    return <UnavailableComposerState groupId={groupId} />;
+    return (
+      <UnavailableComposerState groupId={groupId} isEditMode={Boolean(expenseId)} />
+    );
   }
 
   return (
     <ExpenseComposerScene
+      key={expenseId ?? "new"}
       data={buildSceneData(composer)}
       onSaveExpense={async (draft) => {
-        await createEqualSplit({
-          groupId: groupId as Id<"groups">,
-          description: draft.description,
-          amountCents: draft.amountCents,
-          paidBy: draft.paidBy as Id<"users">,
-          participantIds: draft.participantIds as Id<"users">[],
-          expenseAt: draft.expenseAt,
-          notes: draft.notes,
-        });
+        if (expenseId) {
+          await updateExpense({
+            expenseId: expenseId as Id<"expenses">,
+            description: draft.description,
+            amountCents: draft.amountCents,
+            paidBy: draft.paidBy as Id<"users">,
+            splitType: draft.splitType,
+            participantIds: draft.participantIds as Id<"users">[],
+            exactShares: draft.exactShares?.map((share) => ({
+              userId: share.userId as Id<"users">,
+              shareCents: share.shareCents,
+            })),
+            expenseAt: draft.expenseAt,
+            notes: draft.notes,
+          });
+        } else {
+          await createExpense({
+            groupId: groupId as Id<"groups">,
+            description: draft.description,
+            amountCents: draft.amountCents,
+            paidBy: draft.paidBy as Id<"users">,
+            splitType: draft.splitType,
+            participantIds: draft.participantIds as Id<"users">[],
+            exactShares: draft.exactShares?.map((share) => ({
+              userId: share.userId as Id<"users">,
+              shareCents: share.shareCents,
+            })),
+            expenseAt: draft.expenseAt,
+            notes: draft.notes,
+          });
+        }
 
         startTransition(() => {
           router.push(`/groups/${groupId}`);
         });
       }}
+      onDeleteExpense={
+        expenseId
+          ? async () => {
+              await deleteExpense({
+                expenseId: expenseId as Id<"expenses">,
+              });
+
+              startTransition(() => {
+                router.push(`/groups/${groupId}`);
+              });
+            }
+          : undefined
+      }
     />
   );
 }
@@ -343,40 +551,253 @@ function ExpenseComposerScene({
   data,
   isMock = false,
   onSaveExpense,
+  onDeleteExpense,
 }: {
   data: ComposerSceneData;
   isMock?: boolean;
   onSaveExpense?: (draft: ExpenseDraft) => Promise<void>;
+  onDeleteExpense?: () => Promise<void>;
 }) {
+  const existingExpense = data.expense;
+  const isEditMode = existingExpense !== null;
   const defaultPayerId =
+    existingExpense?.paidBy ??
     data.members.find((member) => member.isCurrentUser)?.id ??
     data.members[0]?.id ??
     "";
-  const [amountInput, setAmountInput] = useState("");
-  const [description, setDescription] = useState("");
-  const [notes, setNotes] = useState("");
-  const [expenseDate, setExpenseDate] = useState(getTodayDateInputValue());
+  const initialSelectedParticipantIds =
+    existingExpense?.shares.map((share) => share.userId) ?? data.members.map((member) => member.id);
+
+  const [amountInput, setAmountInput] = useState(
+    existingExpense ? formatCentsForInput(existingExpense.amountCents) : "",
+  );
+  const [description, setDescription] = useState(existingExpense?.description ?? "");
+  const [notes, setNotes] = useState(existingExpense?.notes ?? "");
+  const [expenseDate, setExpenseDate] = useState(
+    existingExpense
+      ? formatDateInputValue(existingExpense.expenseAt)
+      : getTodayDateInputValue(),
+  );
   const [paidById, setPaidById] = useState(defaultPayerId);
+  const [splitType, setSplitType] = useState<SplitType>(
+    existingExpense?.splitType ?? "equal",
+  );
   const [selectedParticipantIds, setSelectedParticipantIds] = useState(
-    data.members.map((member) => member.id),
+    initialSelectedParticipantIds,
+  );
+  const [exactShareInputs, setExactShareInputs] = useState<Record<string, string>>(
+    buildInitialExactInputs(data.members, existingExpense?.shares ?? []),
   );
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const amountCents = parseAmountInputToCents(amountInput);
+  const hasInvalidAmount = amountCents === null;
+  const orderedSelectedParticipantIds = data.members
+    .filter((member) => selectedParticipantIds.includes(member.id))
+    .map((member) => member.id);
+  const selectedMembers = data.members.filter((member) =>
+    orderedSelectedParticipantIds.includes(member.id),
+  );
   const sharePreview = buildEqualSharePreview(
     amountCents && amountCents > 0 ? amountCents : 0,
-    selectedParticipantIds,
+    orderedSelectedParticipantIds,
   );
   const payer = data.members.find((member) => member.id === paidById) ?? null;
-  const selectedMembers = data.members.filter((member) => selectedParticipantIds.includes(member.id));
-  const firstSelectedId = selectedParticipantIds[0];
+  const firstSelectedId = orderedSelectedParticipantIds[0];
   const perPersonCents =
-    firstSelectedId && sharePreview.has(firstSelectedId) ? sharePreview.get(firstSelectedId) ?? 0 : 0;
-  const hasInvalidAmount = amountCents === null;
-  const canPersist = Boolean(onSaveExpense) && !isSaving && data.members.length > 0;
+    firstSelectedId && sharePreview.has(firstSelectedId)
+      ? sharePreview.get(firstSelectedId) ?? 0
+      : 0;
+  const exactRows = data.members.map((member) => {
+    const input = exactShareInputs[member.id] ?? "";
+    const parsedCents = parseAmountInputToCents(input);
+    const isSelected = orderedSelectedParticipantIds.includes(member.id);
+    const isInvalid = isSelected && input.trim().length > 0 && parsedCents === null;
+    const needsAmount = isSelected && (parsedCents === null || parsedCents <= 0);
+    const shareCents = parsedCents !== null && parsedCents > 0 ? parsedCents : 0;
+
+    return {
+      member,
+      input,
+      parsedCents,
+      isSelected,
+      isInvalid,
+      needsAmount,
+      shareCents,
+    };
+  });
+  const exactAssignedCents = exactRows.reduce((sum, row) => {
+    return row.isSelected ? sum + row.shareCents : sum;
+  }, 0);
+  const exactDifferenceCents =
+    hasInvalidAmount || amountCents === null ? null : exactAssignedCents - amountCents;
+  const exactShareRows = exactRows
+    .filter((row) => row.isSelected && row.shareCents > 0)
+    .map((row) => ({
+      userId: row.member.id,
+      shareCents: row.shareCents,
+    }));
   const moneyLabel =
-    amountCents === null ? "Invalid amount" : formatMoneyFromCents(amountCents, data.groupCurrency);
+    amountCents === null
+      ? "Invalid amount"
+      : formatMoneyFromCents(amountCents, data.groupCurrency);
+
+  let splitSummary: SplitSummaryState;
+
+  if (splitType === "equal") {
+    if (hasInvalidAmount) {
+      splitSummary = {
+        tone: "error",
+        badge: "Invalid total",
+        detail: "Enter a valid expense amount before the split can be calculated.",
+        canSubmit: false,
+      };
+    } else if (orderedSelectedParticipantIds.length === 0) {
+      splitSummary = {
+        tone: "error",
+        badge: "No participants",
+        detail: "Select at least one group member to split this expense.",
+        canSubmit: false,
+      };
+    } else {
+      splitSummary = {
+        tone: "matched",
+        badge: "Matched",
+        detail: "Equal split auto-rounds in cents so assigned shares always match the total.",
+        canSubmit: true,
+      };
+    }
+  } else if (hasInvalidAmount) {
+    splitSummary = {
+      tone: "error",
+      badge: "Invalid total",
+      detail: "Enter a valid total before exact amounts can be matched.",
+      canSubmit: false,
+    };
+  } else if (orderedSelectedParticipantIds.length === 0) {
+    splitSummary = {
+      tone: "error",
+      badge: "No participants",
+      detail: "Select at least one group member and assign an amount.",
+      canSubmit: false,
+    };
+  } else if (exactRows.some((row) => row.isInvalid)) {
+    splitSummary = {
+      tone: "error",
+      badge: "Invalid amounts",
+      detail: "Use dollar amounts with at most two decimals for each selected person.",
+      canSubmit: false,
+    };
+  } else if (exactRows.some((row) => row.needsAmount)) {
+    splitSummary = {
+      tone: "warning",
+      badge: "Missing amounts",
+      detail: "Every selected member needs a positive exact amount.",
+      canSubmit: false,
+    };
+  } else if (exactDifferenceCents === 0) {
+    splitSummary = {
+      tone: "matched",
+      badge: "Matched",
+      detail: "Exact shares add up perfectly to the total expense.",
+      canSubmit: true,
+    };
+  } else if ((exactDifferenceCents ?? 0) < 0) {
+    splitSummary = {
+      tone: "warning",
+      badge: "Under assigned",
+      detail: `${formatMoneyFromCents(
+        Math.abs(exactDifferenceCents ?? 0),
+        data.groupCurrency,
+      )} still needs to be assigned.`,
+      canSubmit: false,
+    };
+  } else {
+    splitSummary = {
+      tone: "error",
+      badge: "Over assigned",
+      detail: `${formatMoneyFromCents(
+        exactDifferenceCents ?? 0,
+        data.groupCurrency,
+      )} must be removed from the exact split.`,
+      canSubmit: false,
+    };
+  }
+
+  const canPersist =
+    Boolean(onSaveExpense) &&
+    !isSaving &&
+    !isDeleting &&
+    data.members.length > 0 &&
+    (splitType === "equal" || splitSummary.canSubmit);
+
+  function clearSplitErrors() {
+    setFieldErrors((current) => ({
+      ...current,
+      participants: undefined,
+      exactShares: undefined,
+    }));
+  }
+
+  function seedExactAmounts(nextSelectedIds: string[]) {
+    const evenPreview = buildEqualSharePreview(
+      amountCents && amountCents > 0 ? amountCents : 0,
+      nextSelectedIds,
+    );
+    const nextInputs: Record<string, string> = {};
+
+    for (const member of data.members) {
+      const seededCents = evenPreview.get(member.id) ?? 0;
+      nextInputs[member.id] = seededCents > 0 ? formatCentsForInput(seededCents) : "";
+    }
+
+    setExactShareInputs(nextInputs);
+  }
+
+  function toggleParticipant(memberId: string) {
+    setSelectedParticipantIds((current) => {
+      const isSelected = current.includes(memberId);
+      const nextSelectedIds = isSelected
+        ? current.filter((participantId) => participantId !== memberId)
+        : [...current, memberId];
+
+      if (splitType === "exact" && isSelected) {
+        setExactShareInputs((currentInputs) => ({
+          ...currentInputs,
+          [memberId]: "",
+        }));
+      }
+
+      if (splitType === "exact" && !isSelected) {
+        const currentInput = exactShareInputs[memberId] ?? "";
+
+        if (!currentInput.trim()) {
+          const seededPreview = buildEqualSharePreview(
+            amountCents && amountCents > 0 ? amountCents : 0,
+            data.members
+              .filter((member) => nextSelectedIds.includes(member.id))
+              .map((member) => member.id),
+          );
+
+          setExactShareInputs((currentInputs) => ({
+            ...currentInputs,
+            [memberId]:
+              (seededPreview.get(memberId) ?? 0) > 0
+                ? formatCentsForInput(seededPreview.get(memberId) ?? 0)
+                : "",
+          }));
+        }
+      }
+
+      return nextSelectedIds;
+    });
+    clearSplitErrors();
+    setFormError(null);
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -389,7 +810,11 @@ function ExpenseComposerScene({
     const trimmedDescription = description.trim();
     const timestamp = toExpenseTimestamp(expenseDate);
     const normalizedParticipantIds = Array.from(
-      new Set(selectedParticipantIds.filter((participantId) => data.members.some((member) => member.id === participantId))),
+      new Set(
+        orderedSelectedParticipantIds.filter((participantId) =>
+          data.members.some((member) => member.id === participantId),
+        ),
+      ),
     );
 
     if (!amountInput.trim()) {
@@ -416,6 +841,28 @@ function ExpenseComposerScene({
       nextErrors.participants = "Select at least one participant.";
     }
 
+    if (splitType === "exact") {
+      if (exactRows.some((row) => row.isInvalid)) {
+        nextErrors.exactShares = "Fix invalid exact amounts before saving.";
+      } else if (exactRows.some((row) => row.needsAmount)) {
+        nextErrors.exactShares =
+          "Every selected member needs a positive exact amount.";
+      } else if (exactDifferenceCents !== 0) {
+        nextErrors.exactShares =
+          exactDifferenceCents !== null && exactDifferenceCents < 0
+            ? `Assign ${formatMoneyFromCents(
+                Math.abs(exactDifferenceCents),
+                data.groupCurrency,
+              )} more to match the total.`
+            : `Remove ${formatMoneyFromCents(
+                exactDifferenceCents ?? 0,
+                data.groupCurrency,
+              )} to match the total.`;
+      } else if (exactShareRows.length === 0) {
+        nextErrors.exactShares = "Add at least one exact split amount.";
+      }
+    }
+
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
       setFormError(null);
@@ -431,17 +878,45 @@ function ExpenseComposerScene({
         description: trimmedDescription,
         amountCents: amountCents ?? 0,
         paidBy: paidById,
-        participantIds: normalizedParticipantIds,
+        splitType,
+        participantIds:
+          splitType === "equal"
+            ? normalizedParticipantIds
+            : exactShareRows.map((share) => share.userId),
+        exactShares: splitType === "exact" ? exactShareRows : undefined,
         expenseAt: timestamp ?? 0,
         notes: notes.trim() || undefined,
       });
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Unable to save this expense.");
+      setFormError(
+        error instanceof Error ? error.message : "Unable to save this expense.",
+      );
       setIsSaving(false);
       return;
     }
 
     setIsSaving(false);
+  }
+
+  async function handleDelete() {
+    if (!onDeleteExpense) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setFormError(null);
+
+    try {
+      await onDeleteExpense();
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Unable to delete this expense.",
+      );
+      setIsDeleting(false);
+      return;
+    }
+
+    setIsDeleting(false);
   }
 
   return (
@@ -461,13 +936,13 @@ function ExpenseComposerScene({
                 {data.groupName}
               </p>
               <h1 className="truncate font-headline text-xl font-bold tracking-tight text-on-surface sm:text-2xl">
-                New Expense
+                {isEditMode ? "Edit Expense" : "New Expense"}
               </h1>
             </div>
           </div>
 
           <Button type="submit" size="md" className="shrink-0 px-5 sm:px-6" disabled={!canPersist}>
-            {isSaving ? "Saving..." : "Save"}
+            {isSaving ? (isEditMode ? "Updating..." : "Saving...") : isEditMode ? "Update" : "Save"}
           </Button>
         </PageContainer>
       </header>
@@ -475,14 +950,30 @@ function ExpenseComposerScene({
       <PageContainer className="px-4 pt-6 sm:px-6 lg:px-12 lg:pt-10">
         {isMock ? (
           <div className="mb-6 rounded-[1.5rem] border border-primary/15 bg-primary/8 px-4 py-3 text-sm text-on-surface-variant">
-            Preview mode only. The responsive composer is live, but saving requires a live Clerk + Convex setup.
+            Preview mode only. The responsive composer is live, but save and delete actions require a live Clerk + Convex setup.
           </div>
         ) : null}
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.12fr)_minmax(340px,0.88fr)] xl:items-start">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] xl:items-start">
           <section className="space-y-6 lg:space-y-8">
-            <section className="space-y-3 pt-2">
-              <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">Expense Amount</p>
+            <section className="space-y-4 pt-2">
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">
+                    Expense Amount
+                  </p>
+                  <p className="mt-2 max-w-xl text-sm leading-7 text-on-surface-variant">
+                    {isEditMode
+                      ? "Refine the existing expense without leaving the shared composer."
+                      : "Add the spend details first, then decide whether the split stays equal or becomes exact."}
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-surface-container-low px-3 py-2 text-[0.7rem] uppercase tracking-[0.2em] text-on-surface-variant">
+                  <Wallet className="h-3.5 w-3.5 text-primary" />
+                  <span>{payer ? `${payer.name} fronts this expense` : "Select a payer"}</span>
+                </div>
+              </div>
+
               <div className="flex items-end gap-3">
                 <span className="pb-3 font-headline text-4xl font-extrabold text-primary sm:text-5xl">
                   {getCurrencyToken(data.groupCurrency)}
@@ -491,7 +982,11 @@ function ExpenseComposerScene({
                   value={amountInput}
                   onChange={(event) => {
                     setAmountInput(event.target.value);
-                    setFieldErrors((current) => ({ ...current, amount: undefined }));
+                    setFieldErrors((current) => ({
+                      ...current,
+                      amount: undefined,
+                      exactShares: undefined,
+                    }));
                     setFormError(null);
                   }}
                   placeholder="0.00"
@@ -518,7 +1013,10 @@ function ExpenseComposerScene({
                     value={description}
                     onChange={(event) => {
                       setDescription(event.target.value);
-                      setFieldErrors((current) => ({ ...current, description: undefined }));
+                      setFieldErrors((current) => ({
+                        ...current,
+                        description: undefined,
+                      }));
                       setFormError(null);
                     }}
                     placeholder="Sushi dinner, cabin deposit, groceries..."
@@ -526,21 +1024,27 @@ function ExpenseComposerScene({
                     aria-invalid={fieldErrors.description ? "true" : undefined}
                   />
                   <p className={cn("text-sm text-on-surface-variant", fieldErrors.description && "text-secondary")}>
-                    {fieldErrors.description ?? "Keep the description short so it reads cleanly in the ledger."}
+                    {fieldErrors.description ??
+                      "Keep the description short so it reads cleanly in the ledger."}
                   </p>
                 </div>
               </SurfaceCard>
 
               <SurfaceCard variant="low" className="rounded-[1.8rem] p-5 sm:p-6">
                 <div className="space-y-3">
-                  <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">Date</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">
+                    Date
+                  </p>
                   <label className="flex min-h-13 items-center gap-3 rounded-[1.25rem] bg-surface-container-lowest px-4 ring-1 ring-white/5 transition focus-within:ring-primary/30">
                     <CalendarDays className="h-4.5 w-4.5 text-primary" />
                     <input
                       value={expenseDate}
                       onChange={(event) => {
                         setExpenseDate(event.target.value);
-                        setFieldErrors((current) => ({ ...current, expenseAt: undefined }));
+                        setFieldErrors((current) => ({
+                          ...current,
+                          expenseAt: undefined,
+                        }));
                         setFormError(null);
                       }}
                       type="date"
@@ -558,7 +1062,9 @@ function ExpenseComposerScene({
             <SurfaceCard variant="high" className="rounded-[2rem] p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">Paid By</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">
+                    Paid By
+                  </p>
                   <h2 className="mt-2 font-headline text-2xl font-bold tracking-tight text-on-surface">
                     Choose the payer
                   </h2>
@@ -640,9 +1146,11 @@ function ExpenseComposerScene({
                   </p>
                   <div className="flex h-full min-h-44 items-center justify-center rounded-[1.5rem] border border-dashed border-white/12 bg-surface-container-lowest px-4 text-center">
                     <div className="space-y-2">
-                      <p className="font-headline text-lg font-semibold text-on-surface">Receipt upload placeholder</p>
+                      <p className="font-headline text-lg font-semibold text-on-surface">
+                        Receipt upload placeholder
+                      </p>
                       <p className="text-sm leading-6 text-on-surface-variant">
-                        The desktop receipt panel is present for layout parity. Real uploads land in a later phase.
+                        The desktop receipt panel stays in place for layout parity. Real uploads land in a later phase.
                       </p>
                     </div>
                   </div>
@@ -655,18 +1163,55 @@ function ExpenseComposerScene({
             <SurfaceCard variant="high" className="rounded-[2rem] p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">Split With</p>
+                  <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">
+                    Split With
+                  </p>
                   <h2 className="mt-2 font-headline text-2xl font-bold tracking-tight text-on-surface">
-                    Equal split
+                    {splitType === "equal" ? "Split equally" : "Split by amount"}
                   </h2>
                 </div>
-                <div className="inline-flex rounded-full bg-surface-container-low p-1">
-                  <span className="rounded-full bg-surface-container-high px-4 py-2 text-xs font-headline font-semibold uppercase tracking-[0.18em] text-primary">
-                    Equal
-                  </span>
-                  <span className="rounded-full px-4 py-2 text-xs font-headline font-semibold uppercase tracking-[0.18em] text-on-surface-variant/55">
-                    Exact later
-                  </span>
+                <div className="inline-flex rounded-[1rem] bg-surface-container-low p-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSplitType("equal");
+                      setFieldErrors((current) => ({ ...current, exactShares: undefined }));
+                      setFormError(null);
+                    }}
+                    className={cn(
+                      "rounded-[0.85rem] px-4 py-2 text-xs font-headline font-semibold uppercase tracking-[0.18em] transition",
+                      splitType === "equal"
+                        ? "bg-surface-container-high text-primary shadow-sm"
+                        : "text-on-surface-variant hover:text-on-surface",
+                    )}
+                  >
+                    Split Equally
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSplitType("exact");
+
+                      if (existingExpense?.splitType !== "exact" && exactShareRows.length === 0) {
+                        seedExactAmounts(orderedSelectedParticipantIds);
+                      }
+
+                      setFieldErrors((current) => ({
+                        ...current,
+                        participants: undefined,
+                        exactShares: undefined,
+                      }));
+                      setFormError(null);
+                    }}
+                    className={cn(
+                      "rounded-[0.85rem] px-4 py-2 text-xs font-headline font-semibold uppercase tracking-[0.18em] transition",
+                      splitType === "exact"
+                        ? "bg-surface-container-high text-on-surface shadow-sm"
+                        : "text-on-surface-variant hover:text-on-surface",
+                    )}
+                  >
+                    By Amount
+                  </button>
                 </div>
               </div>
 
@@ -674,121 +1219,244 @@ function ExpenseComposerScene({
                 <button
                   type="button"
                   onClick={() => {
-                    setSelectedParticipantIds(data.members.map((member) => member.id));
-                    setFieldErrors((current) => ({ ...current, participants: undefined }));
+                    const allMemberIds = data.members.map((member) => member.id);
+                    setSelectedParticipantIds(allMemberIds);
+
+                    if (splitType === "exact") {
+                      const evenPreview = buildEqualSharePreview(
+                        amountCents && amountCents > 0 ? amountCents : 0,
+                        allMemberIds,
+                      );
+
+                      setExactShareInputs((current) => {
+                        const nextInputs = { ...current };
+
+                        for (const member of data.members) {
+                          if ((nextInputs[member.id] ?? "").trim()) {
+                            continue;
+                          }
+
+                          nextInputs[member.id] =
+                            (evenPreview.get(member.id) ?? 0) > 0
+                              ? formatCentsForInput(evenPreview.get(member.id) ?? 0)
+                              : "";
+                        }
+
+                        return nextInputs;
+                      });
+                    }
+
+                    clearSplitErrors();
                     setFormError(null);
                   }}
                   className="rounded-full bg-surface-container-low px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-on-surface transition hover:text-primary"
                 >
                   Select all
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedParticipantIds([]);
-                    setFieldErrors((current) => ({ ...current, participants: undefined }));
-                    setFormError(null);
-                  }}
-                  className="rounded-full bg-surface-container-low px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-on-surface-variant transition hover:text-on-surface"
-                >
-                  Clear
-                </button>
+
+                {splitType === "equal" ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedParticipantIds([]);
+                      clearSplitErrors();
+                      setFormError(null);
+                    }}
+                    className="rounded-full bg-surface-container-low px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-on-surface-variant transition hover:text-on-surface"
+                  >
+                    Clear
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allMemberIds = data.members.map((member) => member.id);
+                      setSelectedParticipantIds(allMemberIds);
+                      seedExactAmounts(allMemberIds);
+                      clearSplitErrors();
+                      setFormError(null);
+                    }}
+                    className="rounded-full bg-surface-container-low px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-secondary transition hover:text-secondary"
+                  >
+                    Reset amounts
+                  </button>
+                )}
+
                 <span className="text-xs uppercase tracking-[0.18em] text-on-surface-variant">
-                  {selectedParticipantIds.length} selected
+                  {orderedSelectedParticipantIds.length} selected
                 </span>
               </div>
 
               <div className="mt-5 space-y-3">
-                {data.members.map((member) => {
-                  const isIncluded = selectedParticipantIds.includes(member.id);
-                  const memberShareCents = sharePreview.get(member.id) ?? 0;
+                {splitType === "equal"
+                  ? data.members.map((member) => {
+                      const isIncluded = orderedSelectedParticipantIds.includes(member.id);
+                      const memberShareCents = sharePreview.get(member.id) ?? 0;
 
-                  return (
-                    <button
-                      key={member.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedParticipantIds((current) => {
-                          if (current.includes(member.id)) {
-                            return current.filter((participantId) => participantId !== member.id);
-                          }
-
-                          return [...current, member.id];
-                        });
-                        setFieldErrors((current) => ({ ...current, participants: undefined }));
-                        setFormError(null);
-                      }}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-4 rounded-[1.5rem] px-4 py-4 text-left transition",
-                        isIncluded ? "bg-surface-container-low" : "bg-surface-container-lowest/80",
-                      )}
-                    >
-                      <div className="flex min-w-0 items-center gap-4">
+                      return (
                         <div
+                          key={member.id}
                           className={cn(
-                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl font-headline text-sm font-bold",
+                            "flex items-center justify-between gap-4 rounded-[1.5rem] px-4 py-4 transition",
                             isIncluded
-                              ? "bg-[linear-gradient(135deg,rgba(78,222,163,0.42),rgba(16,185,129,0.95))] text-on-primary"
-                              : "bg-surface-container-high text-on-surface-variant",
+                              ? "bg-surface-container-low"
+                              : "bg-surface-container-lowest/80",
                           )}
                         >
-                          {getInitials(member.name)}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate font-headline text-base font-semibold text-on-surface">
-                            {member.isCurrentUser ? "You" : member.name}
-                          </p>
-                          <p className="truncate text-[0.7rem] uppercase tracking-[0.18em] text-on-surface-variant">
-                            {isIncluded ? "Included in split" : "Excluded from split"}
-                          </p>
-                        </div>
-                      </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              toggleParticipant(member.id);
+                            }}
+                            className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                          >
+                            <div
+                              className={cn(
+                                "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl font-headline text-sm font-bold",
+                                isIncluded
+                                  ? "bg-[linear-gradient(135deg,rgba(78,222,163,0.42),rgba(16,185,129,0.95))] text-on-primary"
+                                  : "bg-surface-container-high text-on-surface-variant",
+                              )}
+                            >
+                              {getInitials(member.name)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate font-headline text-base font-semibold text-on-surface">
+                                {member.isCurrentUser ? "You" : member.name}
+                              </p>
+                              <p className="truncate text-[0.7rem] uppercase tracking-[0.18em] text-on-surface-variant">
+                                {isIncluded ? "Included in split" : "Excluded from split"}
+                              </p>
+                            </div>
+                          </button>
 
-                      <div className="flex shrink-0 items-center gap-3">
-                        <span
+                          <div className="flex shrink-0 items-center gap-3">
+                            <span
+                              className={cn(
+                                "hidden text-sm font-headline font-bold sm:inline",
+                                isIncluded ? "text-primary" : "text-on-surface-variant",
+                              )}
+                            >
+                              {isIncluded
+                                ? formatMoneyFromCents(memberShareCents, data.groupCurrency)
+                                : "Excluded"}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                toggleParticipant(member.id);
+                              }}
+                              className={cn(
+                                "flex h-6 w-6 items-center justify-center rounded-md ring-1 ring-white/10 transition",
+                                isIncluded
+                                  ? "bg-primary text-on-primary"
+                                  : "bg-surface-container-high text-transparent",
+                              )}
+                              aria-label={
+                                isIncluded
+                                  ? `Remove ${member.name} from equal split`
+                                  : `Add ${member.name} to equal split`
+                              }
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  : exactRows.map((row) => (
+                      <div
+                        key={row.member.id}
+                        className={cn(
+                          "flex items-center justify-between gap-4 rounded-[1.5rem] px-4 py-4 transition",
+                          row.isSelected
+                            ? "bg-surface-container-low"
+                            : "bg-surface-container-lowest/80",
+                        )}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toggleParticipant(row.member.id);
+                          }}
+                          className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                        >
+                          <div
+                            className={cn(
+                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl font-headline text-sm font-bold",
+                              row.isSelected
+                                ? "bg-[linear-gradient(135deg,rgba(78,222,163,0.42),rgba(16,185,129,0.95))] text-on-primary"
+                                : "bg-surface-container-high text-on-surface-variant",
+                            )}
+                          >
+                            {getInitials(row.member.name)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-headline text-base font-semibold text-on-surface">
+                              {row.member.isCurrentUser ? "You" : row.member.name}
+                            </p>
+                            <p className="truncate text-[0.7rem] uppercase tracking-[0.18em] text-on-surface-variant">
+                              {row.isSelected ? "Selected" : "Tap to include"}
+                            </p>
+                          </div>
+                        </button>
+
+                        <label
                           className={cn(
-                            "hidden text-sm font-headline font-bold sm:inline",
-                            isIncluded ? "text-primary" : "text-on-surface-variant",
+                            "flex shrink-0 items-center gap-2 rounded-[1rem] border px-4 py-2 transition focus-within:border-primary/40",
+                            row.isSelected
+                              ? "bg-surface-container-high"
+                              : "bg-surface-container-high/55 opacity-70",
+                            row.isInvalid || (row.isSelected && row.needsAmount)
+                              ? "border-secondary/40"
+                              : "border-white/8",
                           )}
                         >
-                          {isIncluded
-                            ? formatMoneyFromCents(memberShareCents, data.groupCurrency)
-                            : "Excluded"}
-                        </span>
-                        <span
-                          className={cn(
-                            "flex h-6 w-6 items-center justify-center rounded-md ring-1 ring-white/10 transition",
-                            isIncluded ? "bg-primary text-on-primary" : "bg-surface-container-high text-transparent",
-                          )}
-                        >
-                          <Check className="h-4 w-4" />
-                        </span>
+                          <span className="text-sm font-medium text-on-surface-variant">
+                            {getCurrencyToken(data.groupCurrency)}
+                          </span>
+                          <input
+                            value={row.input}
+                            onFocus={() => {
+                              if (!row.isSelected) {
+                                setSelectedParticipantIds((current) => [...current, row.member.id]);
+                              }
+                            }}
+                            onChange={(event) => {
+                              const nextValue = event.target.value;
+                              setExactShareInputs((current) => ({
+                                ...current,
+                                [row.member.id]: nextValue,
+                              }));
+
+                              if (!row.isSelected) {
+                                setSelectedParticipantIds((current) => [...current, row.member.id]);
+                              }
+
+                              clearSplitErrors();
+                              setFormError(null);
+                            }}
+                            placeholder="0.00"
+                            inputMode="decimal"
+                            disabled={!row.isSelected}
+                            className="w-20 border-none bg-transparent p-0 text-right font-headline text-lg font-bold text-on-surface placeholder:text-on-surface-variant/38 focus:outline-none disabled:cursor-not-allowed"
+                            aria-invalid={
+                              row.isInvalid || (row.isSelected && row.needsAmount)
+                                ? "true"
+                                : undefined
+                            }
+                          />
+                        </label>
                       </div>
-                    </button>
-                  );
-                })}
+                    ))}
               </div>
 
               {fieldErrors.participants ? (
                 <p className="mt-3 text-sm text-secondary">{fieldErrors.participants}</p>
               ) : null}
-            </SurfaceCard>
-
-            <SurfaceCard variant="low" className="rounded-[1.8rem] p-5 sm:p-6">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
-                  <CircleDollarSign className="h-4.5 w-4.5" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">Split Options</p>
-                  <p className="mt-2 font-headline text-lg font-semibold text-on-surface">
-                    Equal split is live in Phase 6
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                    Exact amounts and other advanced controls stay intentionally collapsed until Phase 7.
-                  </p>
-                </div>
-              </div>
+              {fieldErrors.exactShares ? (
+                <p className="mt-3 text-sm text-secondary">{fieldErrors.exactShares}</p>
+              ) : null}
             </SurfaceCard>
 
             <SurfaceCard
@@ -796,35 +1464,104 @@ function ExpenseComposerScene({
               className="fixed bottom-4 left-4 right-4 z-20 rounded-[2rem] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:left-6 sm:right-6 lg:static lg:p-6 lg:shadow-[0_24px_80px_rgba(0,0,0,0.36)] xl:sticky xl:top-28"
             >
               <p className="text-xs uppercase tracking-[0.24em] text-primary">Split Summary</p>
+
               <div className="mt-4 flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-[0.7rem] uppercase tracking-[0.2em] text-on-surface-variant">Total</p>
-                  <p className="mt-1 font-headline text-3xl font-extrabold text-on-surface">{moneyLabel}</p>
+                  <p className="text-[0.7rem] uppercase tracking-[0.2em] text-on-surface-variant">
+                    Total expense
+                  </p>
+                  <p className="mt-1 font-headline text-3xl font-extrabold text-on-surface">
+                    {moneyLabel}
+                  </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[0.7rem] uppercase tracking-[0.2em] text-on-surface-variant">Per Person</p>
-                  <p className="mt-1 font-headline text-2xl font-extrabold text-secondary">
-                    {selectedParticipantIds.length === 0 || hasInvalidAmount
-                      ? "--"
-                      : formatMoneyFromCents(perPersonCents, data.groupCurrency)}
+                  <p className="text-[0.7rem] uppercase tracking-[0.2em] text-on-surface-variant">
+                    {splitType === "exact" ? "Total assigned" : "Per person"}
                   </p>
+                  <p
+                    className={cn(
+                      "mt-1 font-headline text-2xl font-extrabold",
+                      splitType === "exact"
+                        ? splitSummary.tone === "matched"
+                          ? "text-primary"
+                          : splitSummary.tone === "warning"
+                            ? "text-amber-200"
+                            : "text-secondary"
+                        : "text-secondary",
+                    )}
+                  >
+                    {splitType === "exact"
+                      ? formatMoneyFromCents(exactAssignedCents, data.groupCurrency)
+                      : orderedSelectedParticipantIds.length === 0 || hasInvalidAmount
+                        ? "--"
+                        : formatMoneyFromCents(perPersonCents, data.groupCurrency)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 rounded-[1.5rem] border border-white/8 bg-[rgba(12,12,12,0.18)] p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[0.65rem] uppercase tracking-[0.18em] text-on-surface-variant">
+                      Split state
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+                      {splitSummary.detail}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "rounded-full px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em]",
+                      getStatusClasses(splitSummary.tone),
+                    )}
+                  >
+                    {splitSummary.badge}
+                  </span>
                 </div>
               </div>
 
               <div className="mt-5 grid gap-3 border-t border-white/8 pt-5 text-sm text-on-surface-variant">
                 <div className="flex items-center justify-between gap-4">
                   <span>Payer</span>
-                  <span className="font-medium text-on-surface">{payer?.name ?? "Select a payer"}</span>
+                  <span className="font-medium text-on-surface">
+                    {payer?.name ?? "Select a payer"}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span>Participants</span>
                   <span className="font-medium text-on-surface">
-                    {selectedParticipantIds.length} {selectedParticipantIds.length === 1 ? "person" : "people"}
+                    {orderedSelectedParticipantIds.length}{" "}
+                    {orderedSelectedParticipantIds.length === 1 ? "person" : "people"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span>Split type</span>
-                  <span className="font-medium uppercase tracking-[0.16em] text-primary">Equal</span>
+                  <span className="font-medium uppercase tracking-[0.16em] text-primary">
+                    {splitType}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <span>
+                    {splitType === "exact" ? "Difference" : "Assigned total"}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-medium",
+                      splitType === "exact" && splitSummary.tone === "matched"
+                        ? "text-primary"
+                        : splitType === "exact" && splitSummary.tone === "warning"
+                          ? "text-amber-200"
+                          : splitType === "exact"
+                            ? "text-secondary"
+                            : "text-on-surface",
+                    )}
+                  >
+                    {splitType === "exact"
+                      ? hasInvalidAmount || exactDifferenceCents === null
+                        ? "--"
+                        : formatMoneyFromCents(exactDifferenceCents, data.groupCurrency)
+                      : moneyLabel}
+                  </span>
                 </div>
               </div>
 
@@ -850,21 +1587,98 @@ function ExpenseComposerScene({
                   ) : null}
                 </div>
                 <span className="text-xs uppercase tracking-[0.18em] text-on-surface-variant">
-                  {selectedMembers.length === 0 ? "Nobody selected" : "Auto-rounded in cents"}
+                  {splitType === "equal"
+                    ? "Auto-rounded in cents"
+                    : splitSummary.tone === "matched"
+                      ? "Ready to save"
+                      : "Needs attention"}
                 </span>
               </div>
 
               {formError ? <p className="mt-4 text-sm text-secondary">{formError}</p> : null}
 
-              <Button
-                type="submit"
-                size="lg"
-                fullWidth
-                className="mt-5"
-                disabled={!canPersist}
-              >
-                {isSaving ? "Saving expense..." : "Save expense"}
+              <Button type="submit" size="lg" fullWidth className="mt-5" disabled={!canPersist}>
+                {isSaving
+                  ? isEditMode
+                    ? "Updating expense..."
+                    : "Saving expense..."
+                  : isEditMode
+                    ? "Update expense"
+                    : "Save expense"}
               </Button>
+
+              {isEditMode ? (
+                showDeleteConfirmation ? (
+                  <div className="mt-4 rounded-[1.5rem] border border-secondary/25 bg-secondary/8 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-secondary/12 text-secondary">
+                        <AlertTriangle className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <p className="font-headline text-base font-semibold text-on-surface">
+                          Delete this expense?
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-on-surface-variant">
+                          This permanently removes the expense and its share rows from the group ledger.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setShowDeleteConfirmation(false);
+                        }}
+                      >
+                        Keep expense
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          void handleDelete();
+                        }}
+                        disabled={isDeleting || isMock || !onDeleteExpense}
+                        className="border-secondary/25 text-secondary hover:bg-secondary/10 hover:text-secondary"
+                      >
+                        {isDeleting ? "Deleting..." : "Delete expense"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteConfirmation(true);
+                    }}
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-secondary transition hover:text-secondary"
+                    disabled={isSaving}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete expense
+                  </button>
+                )
+              ) : null}
+            </SurfaceCard>
+
+            <SurfaceCard variant="low" className="rounded-[1.8rem] p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
+                  <CircleDollarSign className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">
+                    Composer Notes
+                  </p>
+                  <p className="mt-2 font-headline text-lg font-semibold text-on-surface">
+                    One responsive composer handles create and edit
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+                    Equal split behavior stays intact. Exact split uses the same layout with a matched or error state and a total-assigned summary.
+                  </p>
+                </div>
+              </div>
             </SurfaceCard>
           </aside>
         </div>

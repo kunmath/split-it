@@ -11,7 +11,7 @@ import {
   getExpenseIconKey,
   getGroupExpenseRecords,
   type GroupExpenseRecord,
-} from "./lib/expense-helpers";
+} from "./lib/expenseHelpers";
 
 const GROUP_ICON_KEYS = ["home", "plane", "utensils", "cart", "mountain", "fuel"] as const;
 const groupIconKey = v.union(

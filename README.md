@@ -1,6 +1,6 @@
 # split-it
 
-Phase 5 adds the responsive group detail screen, a protected Convex group-detail query with standing and recent-expense data, and the mobile/desktop layout pass for `/groups/[groupId]` on top of the existing dashboard, auth shell, and invite flow.
+Phase 7 adds the shared expense composer for create and edit, exact split support, safe expense update and delete mutations, and the responsive mobile/desktop composer pass on top of the existing dashboard, auth shell, invite flow, and group detail work.
 
 ## Stack
 
@@ -112,6 +112,14 @@ docker compose exec web npm run typecheck
 - Clean empty state for groups without expenses, with the primary add flow pointing at `/groups/[groupId]/expenses/new`
 - Optional cover-image handling with a styled fallback so the route still reads correctly without uploaded media
 
+## Phase 7 Expense Workflow Additions
+
+- `expenses.createExpense` supports both equal and exact split creation
+- `expenses.updateExpense` safely replaces split rows while enforcing creator-or-owner permissions
+- `expenses.deleteExpense` removes an expense together with its share rows
+- `expenses.getComposerData` powers both `/groups/[groupId]/expenses/new` and `/groups/[groupId]/expenses/[expenseId]/edit`
+- The responsive composer now shows total-assigned status, exact split validation, edit mode reuse, and a documented receipt placeholder
+
 ## Current Routes
 
 - `/sign-in`
@@ -132,4 +140,4 @@ docker compose exec web npm run typecheck
 - The authenticated shell is responsive: mobile uses a bottom nav, desktop uses a left rail plus utility bar.
 - The auth pages are custom implementations wired to Clerk rather than Clerk's stock widgets, and they share one responsive layout across mobile and desktop.
 - Route protection and sign-out are active only when Clerk server keys are configured.
-- Phase 5 ships the real group-detail layout and standing derivation, but expense creation still remains a later phase.
+- Recent expense rows now link into the shared edit composer so the Phase 7 CRUD flow is reachable from the live group screen.

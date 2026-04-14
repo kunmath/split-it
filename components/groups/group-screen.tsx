@@ -756,6 +756,7 @@ function RecentExpensesCard({ group }: { group: GroupSceneData }) {
           {group.recentExpenses.map((expense) => (
             <ExpenseRow
               key={expense.id}
+              groupId={group.groupId}
               currency={group.groupCurrency}
               expense={expense}
             />
@@ -809,9 +810,11 @@ function VisualActionButton({
 }
 
 function ExpenseRow({
+  groupId,
   currency,
   expense,
 }: {
+  groupId: string;
   currency: string;
   expense: GroupSceneData["recentExpenses"][number];
 }) {
@@ -820,7 +823,10 @@ function ExpenseRow({
   const net = getExpenseNetDescriptor(expense.currentUserNetCents, currency);
 
   return (
-    <div className="group rounded-[1.6rem] border border-transparent bg-surface-container-low px-4 py-4 transition hover:border-white/6 hover:bg-surface-container-high sm:px-5 sm:py-5">
+    <Link
+      href={`/groups/${groupId}/expenses/${expense.id}/edit`}
+      className="group block rounded-[1.6rem] border border-transparent bg-surface-container-low px-4 py-4 transition hover:border-white/6 hover:bg-surface-container-high sm:px-5 sm:py-5"
+    >
       <div className="grid gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto] md:items-center">
         <div className="flex w-10 flex-col items-center justify-center">
           <span className="text-[0.6rem] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
@@ -881,7 +887,7 @@ function ExpenseRow({
           </p>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
