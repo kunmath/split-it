@@ -5,7 +5,6 @@ import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowUpRight,
   Download,
-  LoaderCircle,
   ReceiptText,
   SlidersHorizontal,
   TrendingDown,
@@ -18,6 +17,7 @@ import Link from "next/link";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { PageContainer } from "@/components/shell/page-container";
 import { buttonVariants } from "@/components/ui/button";
+import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -356,17 +356,11 @@ function LiveGroupScreen({ groupId }: GroupScreenProps) {
   if (currentUser === undefined || group === undefined) {
     return (
       <PageContainer className="flex min-h-[60vh] items-center justify-center">
-        <div className="space-y-4 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
-            <LoaderCircle className="h-7 w-7 animate-spin" />
-          </div>
-          <div>
-            <p className="font-headline text-2xl font-bold text-on-surface">Loading group detail</p>
-            <p className="mt-2 text-sm text-on-surface-variant">
-              Pulling members, standing, and the latest expense activity into view.
-            </p>
-          </div>
-        </div>
+        <ScreenState
+          state="loading"
+          title="Loading group detail"
+          description="Pulling members, standing, and the latest expense activity into view."
+        />
       </PageContainer>
     );
   }
@@ -374,15 +368,11 @@ function LiveGroupScreen({ groupId }: GroupScreenProps) {
   if (currentUser === null) {
     return (
       <PageContainer className="space-y-6">
-        <SurfaceCard variant="high" className="mx-auto max-w-2xl space-y-4 rounded-[2.2rem] text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <LoaderCircle className="h-7 w-7 animate-spin" />
-          </div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight text-on-surface">Syncing your workspace</h1>
-          <p className="text-sm leading-7 text-on-surface-variant">
-            Your account is authenticated, but the ledger record is still finishing setup. Refresh in a moment if this state persists.
-          </p>
-        </SurfaceCard>
+        <ScreenState
+          state="loading"
+          title="Syncing your workspace"
+          description="Your account is authenticated, but the ledger record is still finishing setup. Refresh in a moment if this state persists."
+        />
       </PageContainer>
     );
   }
@@ -390,20 +380,17 @@ function LiveGroupScreen({ groupId }: GroupScreenProps) {
   if (group === null) {
     return (
       <PageContainer className="space-y-6">
-        <SurfaceCard variant="high" className="mx-auto max-w-2xl space-y-4 rounded-[2.2rem] text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-secondary/10 text-secondary">
-            <Users className="h-7 w-7" />
-          </div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight text-on-surface">Group unavailable</h1>
-          <p className="text-sm leading-7 text-on-surface-variant">
-            You do not have access to this group, or it is no longer active.
-          </p>
-          <div className="flex justify-center">
+        <ScreenState
+          state="unavailable"
+          title="Group unavailable"
+          description="You do not have access to this group, or it is no longer active."
+          icon={<Users className="h-7 w-7 text-secondary" />}
+          actions={
             <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg" })}>
               Back to dashboard
             </Link>
-          </div>
-        </SurfaceCard>
+          }
+        />
       </PageContainer>
     );
   }

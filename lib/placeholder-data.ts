@@ -162,9 +162,9 @@ export const memberBalances: MemberBalance[] = [
 
 export const settingsActions: SettingsAction[] = [
   { label: "Edit Group Name", note: "Retitle the ledger without changing membership.", tone: "default" },
-  { label: "Add Members", note: "Placeholder entry point for future invite flows.", tone: "default" },
-  { label: "Export CSV", note: "Reserved for a later reporting phase.", tone: "default" },
-  { label: "Delete Group", note: "Destructive flow remains out of scope in Phase 0.", tone: "danger" },
+  { label: "Add Members", note: "Invite management appears in live mode.", tone: "default" },
+  { label: "Export CSV", note: "Expense-level CSV export appears in live mode.", tone: "default" },
+  { label: "Delete Group", note: "Live mode archives the group with typed confirmation.", tone: "danger" },
 ];
 
 export function getGroupDetail(groupId: string) {
@@ -202,7 +202,7 @@ export function getExpenseComposer(groupId: string, mode: "new" | "edit") {
     amount: "$412.50",
     description: mode === "new" ? "Black sand dinner" : "Seafood feast in Vik",
     notes:
-      "Phase 0 keeps the composer visual. Inputs are reusable, but they do not persist anything yet.",
+      "Mock mode keeps the composer visual. Inputs are reusable, but they do not persist anything yet.",
   };
 }
 
@@ -211,6 +211,6 @@ export function getInviteContent(token: string) {
     token,
     title: "Join the split",
     subtitle:
-      "This invite page is intentionally lightweight in Phase 0. It proves the public shell, typography, and CTA treatment before the real acceptance flow ships.",
+      "This invite page stays intentionally lightweight in mock mode while the live acceptance flow depends on configured auth and Convex runtime values.",
   };
 }

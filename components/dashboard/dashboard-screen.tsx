@@ -18,6 +18,7 @@ import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { PageContainer } from "@/components/shell/page-container";
 import { Button } from "@/components/ui/button";
 import { FilledInput } from "@/components/ui/filled-input";
+import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
 import { iconMap } from "@/lib/icon-map";
@@ -193,36 +194,52 @@ function LiveDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps
   );
   const createGroup = useMutation(api.groups.create);
 
-  const isSyncingWorkspace =
-    currentUser === undefined ||
-    currentUser === null ||
-    summary === undefined ||
-    groups === undefined;
+  if (currentUser === undefined || summary === undefined || groups === undefined) {
+    return (
+      <PageContainer className="space-y-6">
+        <ScreenState
+          state="loading"
+          title="Loading dashboard"
+          description="Pulling your active groups, portfolio totals, and create-group tools into place."
+        />
+      </PageContainer>
+    );
+  }
+
+  if (currentUser === null) {
+    return (
+      <PageContainer className="space-y-6">
+        <ScreenState
+          state="loading"
+          title="Syncing your workspace"
+          description="Your account is authenticated, but the Split-It ledger record is still finishing setup."
+        />
+      </PageContainer>
+    );
+  }
 
   const summaryItems: DashboardSummaryItem[] =
-    summary === undefined
-      ? []
-      : [
-          {
-            label: "Overall you are owed",
-            valueLabel: formatCurrencyFromCents(summary.overallYouAreOwedCents),
-            tone: "positive",
-            detail: buildLiveSummaryDetail(
-              summary.activeGroupCount,
-              "positive",
-              summary.overallYouAreOwedCents,
-            ),
-          },
-          {
-            label: "Total you owe",
-            valueLabel: formatCurrencyFromCents(summary.totalYouOweCents),
-            tone: "negative",
-            detail: buildLiveSummaryDetail(summary.activeGroupCount, "negative", summary.totalYouOweCents),
-          },
-        ];
+    [
+      {
+        label: "Overall you are owed",
+        valueLabel: formatCurrencyFromCents(summary.overallYouAreOwedCents),
+        tone: "positive",
+        detail: buildLiveSummaryDetail(
+          summary.activeGroupCount,
+          "positive",
+          summary.overallYouAreOwedCents,
+        ),
+      },
+      {
+        label: "Total you owe",
+        valueLabel: formatCurrencyFromCents(summary.totalYouOweCents),
+        tone: "negative",
+        detail: buildLiveSummaryDetail(summary.activeGroupCount, "negative", summary.totalYouOweCents),
+      },
+    ];
 
   const groupItems: DashboardGroupItem[] =
-    groups?.map((group) => ({
+    groups.map((group) => ({
       id: group._id,
       name: group.name,
       memberLabel: `${group.memberCount} ${group.memberCount === 1 ? "member" : "members"}`,
@@ -237,7 +254,7 @@ function LiveDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps
       accentCount: Math.max(group.memberCount - 2, 0),
       isOwner: group.role === "owner",
       href: buildGroupHref(group._id, group.name, group.description),
-    })) ?? [];
+    }));
 
   async function handleCreateGroup(draft: CreateGroupDraft) {
     return createGroup({
@@ -253,8 +270,6 @@ function LiveDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps
       initialCreateOpen={initialCreateOpen}
       summary={summaryItems}
       groups={groupItems}
-      isLoading={isSyncingWorkspace}
-      loadingLabel={currentUser === null ? "Finishing your workspace sync..." : "Loading your groups..."}
       onCreateGroup={handleCreateGroup}
     />
   );

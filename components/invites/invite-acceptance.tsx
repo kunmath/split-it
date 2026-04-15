@@ -5,7 +5,6 @@ import { useMutation, useQuery } from "convex/react";
 import {
   ArrowRight,
   Copy,
-  LoaderCircle,
   LockKeyhole,
   ShieldCheck,
   Users,
@@ -16,6 +15,7 @@ import { useMemo, useState } from "react";
 import { AuthHeader, AuthNotice } from "@/components/auth/auth-primitives";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
 import { buildAuthRedirectHref } from "@/lib/auth-redirect";
@@ -142,37 +142,31 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
 
   if (invite === undefined || !isLoaded) {
     return (
-      <div className="space-y-6 text-center">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/15">
-          <LoaderCircle className="h-7 w-7 animate-spin" />
-        </div>
-        <AuthHeader
-          title="Validating invite"
-          subtitle="Checking the secure link and preparing the join flow."
-        />
-      </div>
+      <ScreenState
+        state="loading"
+        title="Validating invite"
+        description="Checking the secure link and preparing the join flow."
+      />
     );
   }
 
   if (invite === null) {
     return (
-      <div className="space-y-6">
-        <AuthHeader
-          title="Invite unavailable"
-          subtitle="This invite link could not be matched to an active group."
-        />
-        <AuthNotice tone="error">
-          The link may be invalid, rotated, or tied to a group that is no longer available.
-        </AuthNotice>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg", className: "w-full" })}>
-            Back to dashboard <ArrowRight className="h-4.5 w-4.5" />
-          </Link>
-          <Link href="/sign-in" className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full" })}>
-            Sign In
-          </Link>
-        </div>
-      </div>
+      <ScreenState
+        state="unavailable"
+        title="Invite unavailable"
+        description="This invite link could not be matched to an active group. It may be invalid, rotated, or tied to a group that is no longer available."
+        actions={
+          <>
+            <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg", className: "w-full sm:w-auto" })}>
+              Back to dashboard <ArrowRight className="h-4.5 w-4.5" />
+            </Link>
+            <Link href="/sign-in" className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full sm:w-auto" })}>
+              Sign In
+            </Link>
+          </>
+        }
+      />
     );
   }
 
@@ -295,13 +289,12 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
         </div>
       ) : currentUser === undefined || currentUser === null ? (
         <div className="space-y-4">
-          <AuthNotice>
-            We’re finishing your workspace record. This usually takes a moment right after authentication.
-          </AuthNotice>
-          <div className="flex items-center justify-center gap-3 rounded-[1.2rem] border border-white/6 bg-white/[0.03] px-4 py-4 text-sm text-on-surface-variant">
-            <LoaderCircle className="h-4.5 w-4.5 animate-spin text-primary" />
-            Syncing your account to the ledger...
-          </div>
+          <ScreenState
+            state="loading"
+            title="Syncing your workspace"
+            description="We’re finishing your workspace record. This usually takes a moment right after authentication."
+            className="max-w-none rounded-[1.8rem]"
+          />
         </div>
       ) : memberJoined ? (
         <div className="grid gap-3 sm:grid-cols-2">

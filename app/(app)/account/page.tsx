@@ -9,13 +9,12 @@ export default function AccountPage() {
   return (
     <PageContainer className="space-y-8">
       <div className="space-y-3">
-        <p className="text-xs uppercase tracking-[0.24em] text-primary">Account Placeholder</p>
+        <p className="text-xs uppercase tracking-[0.24em] text-primary">Account</p>
         <h1 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
-          Profile and settings shell
+          Profile surface, intentionally light
         </h1>
         <p className="max-w-2xl text-sm leading-8 text-on-surface-variant sm:text-base">
-          Sign-out and Clerk account management are intentionally deferred. This page keeps the account nav
-          destination coherent in Phase 0.
+          The MVP keeps account management minimal. This route remains available for identity context, environment status, and future self-serve settings.
         </p>
       </div>
 
@@ -25,11 +24,11 @@ export default function AccountPage() {
           <div className="grid gap-3">
             <div className="rounded-[1.5rem] bg-surface-container-low p-4">
               <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">Auth status</p>
-              <p className="mt-2 font-headline text-2xl font-bold text-on-surface">Pending Phase 2</p>
+              <p className="mt-2 font-headline text-2xl font-bold text-on-surface">Session aware</p>
             </div>
             <div className="rounded-[1.5rem] bg-surface-container-low p-4">
               <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">Convex status</p>
-              <p className="mt-2 font-headline text-2xl font-bold text-on-surface">Placeholder mode aware</p>
+              <p className="mt-2 font-headline text-2xl font-bold text-on-surface">Runtime ready</p>
             </div>
           </div>
         </SurfaceCard>
@@ -39,15 +38,14 @@ export default function AccountPage() {
             <Shield className="h-5 w-5" />
           </div>
           <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">
-            Clerk and Convex can be layered in without redesigning the account area.
+            This surface holds the account destination without pretending the MVP already has a full settings suite.
           </p>
           <p className="max-w-2xl text-sm leading-8 text-on-surface-variant">
-            The shell already carries the right spacing, typography, and tonal hierarchy. Later auth work only
-            needs to replace the placeholders with live account actions.
+            Identity-aware actions can expand here later without changing the shell. For now it stays intentionally narrow and keeps the navigation complete.
           </p>
           <Button variant="secondary" size="lg">
             <BadgeCheck className="h-4.5 w-4.5" />
-            Review Placeholder State
+            Review Account Surface
           </Button>
         </SurfaceCard>
       </div>

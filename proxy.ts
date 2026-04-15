@@ -38,7 +38,7 @@ const clerkHandler = clerkMiddleware(
   },
 );
 
-export default function middleware(request: NextRequest, event: NextFetchEvent) {
+export default function proxy(request: NextRequest, event: NextFetchEvent) {
   if (!hasClerkKeys()) {
     return NextResponse.next();
   }

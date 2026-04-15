@@ -41,8 +41,7 @@ export function PublicShell({
                   Shared expenses with editorial gravity.
                 </h1>
                 <p className="max-w-lg text-lg leading-8 text-on-surface-variant">
-                  The shell is real, the data is intentionally staged, and the visual system is now
-                  ready for the next phases.
+                  Split-It keeps the product shell polished while auth, invites, and shared-expense workflows stay coherent across every route.
                 </p>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">

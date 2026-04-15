@@ -12,6 +12,8 @@ import {
   getGroupExpenseRecords,
   type GroupExpenseRecord,
 } from "./lib/expenseHelpers";
+import { expirePendingGroupInvites } from "./lib/inviteHelpers";
+import { requireGroupOwner } from "./lib/permissions";
 
 const GROUP_ICON_KEYS = ["home", "plane", "utensils", "cart", "mountain", "fuel"] as const;
 const groupIconKey = v.union(
@@ -94,6 +96,12 @@ function sanitizeCurrency(value: string | undefined) {
   }
 
   return normalized;
+}
+
+function assertGroupIsActive(group: Doc<"groups">) {
+  if (group.archivedAt !== undefined) {
+    throw new ConvexError("Group is archived");
+  }
 }
 
 async function getActiveGroupRecords(
@@ -196,6 +204,57 @@ export const create = mutation({
     });
 
     return groupId;
+  },
+});
+
+export const rename = mutation({
+  args: {
+    groupId: v.id("groups"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { group } = await requireGroupOwner(ctx, args.groupId);
+
+    assertGroupIsActive(group);
+
+    const name = sanitizeGroupName(args.name);
+
+    if (group.name !== name) {
+      await ctx.db.patch(group._id, { name });
+    }
+
+    return {
+      groupId: group._id,
+      name,
+    };
+  },
+});
+
+export const archive = mutation({
+  args: {
+    groupId: v.id("groups"),
+  },
+  handler: async (ctx, args) => {
+    const { group } = await requireGroupOwner(ctx, args.groupId);
+
+    if (group.archivedAt !== undefined) {
+      return {
+        groupId: group._id,
+        groupName: group.name,
+        archivedAt: group.archivedAt,
+      };
+    }
+
+    const archivedAt = Date.now();
+
+    await ctx.db.patch(group._id, { archivedAt });
+    await expirePendingGroupInvites(ctx, group._id);
+
+    return {
+      groupId: group._id,
+      groupName: group.name,
+      archivedAt,
+    };
   },
 });
 

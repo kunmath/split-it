@@ -7,7 +7,6 @@ import {
   Check,
   CircleDollarSign,
   ImagePlus,
-  LoaderCircle,
   NotebookPen,
   Trash2,
   Users,
@@ -21,6 +20,7 @@ import { startTransition, useState } from "react";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { PageContainer } from "@/components/shell/page-container";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -355,22 +355,11 @@ function buildSceneData(
 function LoadingComposerState() {
   return (
     <PageContainer className="flex min-h-[70vh] items-center justify-center px-4 py-16 sm:px-6 lg:px-12">
-      <SurfaceCard
-        variant="high"
-        className="mx-auto max-w-2xl space-y-4 rounded-[2.4rem] text-center"
-      >
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <LoaderCircle className="h-7 w-7 animate-spin" />
-        </div>
-        <div>
-          <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">
-            Loading composer
-          </p>
-          <p className="mt-2 text-sm leading-7 text-on-surface-variant">
-            Pulling active members, payer options, and any existing split rows into the draft.
-          </p>
-        </div>
-      </SurfaceCard>
+      <ScreenState
+        state="loading"
+        title="Loading composer"
+        description="Pulling active members, payer options, and any existing split rows into the draft."
+      />
     </PageContainer>
   );
 }
@@ -378,22 +367,11 @@ function LoadingComposerState() {
 function SyncingComposerState() {
   return (
     <PageContainer className="flex min-h-[70vh] items-center justify-center px-4 py-16 sm:px-6 lg:px-12">
-      <SurfaceCard
-        variant="high"
-        className="mx-auto max-w-2xl space-y-4 rounded-[2.4rem] text-center"
-      >
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <LoaderCircle className="h-7 w-7 animate-spin" />
-        </div>
-        <div>
-          <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">
-            Syncing your workspace
-          </p>
-          <p className="mt-2 text-sm leading-7 text-on-surface-variant">
-            Your session is authenticated, but the Split-it user record is still finishing setup.
-          </p>
-        </div>
-      </SurfaceCard>
+      <ScreenState
+        state="loading"
+        title="Syncing your workspace"
+        description="Your session is authenticated, but the Split-It user record is still finishing setup."
+      />
     </PageContainer>
   );
 }
@@ -407,32 +385,24 @@ function UnavailableComposerState({
 }) {
   return (
     <PageContainer className="flex min-h-[70vh] items-center justify-center px-4 py-16 sm:px-6 lg:px-12">
-      <SurfaceCard
-        variant="high"
-        className="mx-auto max-w-2xl space-y-5 rounded-[2.4rem] text-center"
-      >
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-secondary/10 text-secondary">
-          <Users className="h-7 w-7" />
-        </div>
-        <div>
-          <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">
-            {isEditMode ? "Expense unavailable" : "Group unavailable"}
-          </p>
-          <p className="mt-2 text-sm leading-7 text-on-surface-variant">
-            {isEditMode
-              ? "You do not have permission to edit this expense, or it no longer exists."
-              : "You do not have access to this group, or it is no longer active."}
-          </p>
-        </div>
-        <div className="flex justify-center">
+      <ScreenState
+        state="unavailable"
+        title={isEditMode ? "Expense unavailable" : "Group unavailable"}
+        description={
+          isEditMode
+            ? "You do not have permission to edit this expense, or it no longer exists."
+            : "You do not have access to this group, or it is no longer active."
+        }
+        icon={<Users className="h-7 w-7 text-secondary" />}
+        actions={
           <Link
             href={`/groups/${groupId}`}
             className={buttonVariants({ variant: "primary", size: "lg" })}
           >
             Back to group
           </Link>
-        </div>
-      </SurfaceCard>
+        }
+      />
     </PageContainer>
   );
 }

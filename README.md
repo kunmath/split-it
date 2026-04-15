@@ -1,151 +1,131 @@
 # split-it
 
-Phase 8 adds the responsive group totals/settings screen, a dedicated settings overview query for total spend and member balances, and the designed settings action rows on top of the existing dashboard, auth shell, invite flow, group detail, and expense composer work.
+Split-It is a responsive shared-expense MVP built with Next.js, Convex, and Clerk. Phase 9 completes the settings utilities, optional Resend-backed invite emails, expense-level CSV export, demo seeding, polished screen states, and the Next 16 `proxy.ts` auth hook rename.
+
+## App Overview
+
+- Shared group dashboard with create-group flow
+- Secure single-use invite links with acceptance flow
+- Group detail screen with balances, recent expenses, and insights
+- Expense composer for create, edit, and delete
+- Group settings with rename, invite management, CSV export, and soft archive
+- Lightweight Friends, Activity, and Account placeholder routes to complete the MVP shell
 
 ## Stack
 
 - Next.js 16 App Router + TypeScript
-- Tailwind CSS v4 theme variables
-- Clerk package wired in placeholder-friendly mode
-- Convex schema and typed backend helpers
-- Docker Compose for local development
+- Convex backend functions and reactive queries
+- Clerk authentication
+- Tailwind CSS v4
+- Docker Compose-first local workflow
+- Optional Resend email delivery for invite emails
 
-## Prerequisites
+## Environment Variables
 
-- Docker
-- Docker Compose
+| Variable | Required | Runtime | Purpose |
+| --- | --- | --- | --- |
+| `NEXT_PUBLIC_APP_URL` | Yes | Next.js + Convex | Base URL for invite links, CSV naming context, and invite emails |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Optional | Next.js | Clerk client key |
+| `CLERK_SECRET_KEY` | Optional | Next.js | Clerk server key |
+| `CLERK_JWT_ISSUER_DOMAIN` | Optional for live auth bridge | Next.js + Convex | Clerk issuer used by Convex auth config |
+| `NEXT_PUBLIC_CONVEX_URL` | Optional for live Convex | Next.js | Convex client URL |
+| `CONVEX_DEPLOYMENT` | Optional | Convex CLI | Deployment selection when needed |
+| `RESEND_API_KEY` | Optional | Convex | Invite email delivery via Resend |
+| `INVITE_EMAIL_FROM` | Optional | Convex | Verified sender used for invite emails |
 
-No host-installed Node, npm, pnpm, or Convex CLI is required for normal local use.
+Notes:
 
-## Setup
+- `NEXT_PUBLIC_APP_URL` should point at the user-facing Next.js app URL in every environment.
+- `RESEND_API_KEY`, `INVITE_EMAIL_FROM`, and `NEXT_PUBLIC_APP_URL` must exist in the Convex runtime environment for invite email delivery to work. Setting them only on the Next.js host is not sufficient.
+- Clerk development keys are fine for local work but must be replaced with real production keys when deploying.
+
+## Local Development
+
+1. Copy the env template:
 
 ```bash
 cp .env.example .env.local
-docker compose up --build
 ```
 
-The app will be available at `http://localhost:3000`.
-
-## Auth Setup
-
-For live Phase 2 auth, set these Clerk env vars in `.env.local`:
-
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-- `CLERK_SECRET_KEY`
-
-If you are also using Convex auth bridging, set:
-
-- `CLERK_JWT_ISSUER_DOMAIN`
-- `NEXT_PUBLIC_CONVEX_URL`
-- `CONVEX_DEPLOYMENT` when required by your Convex setup
-
-## Placeholder Mode
-
-The app is designed to boot even when Clerk or Convex are only partially configured.
-
-- If Clerk publishable/secret keys are missing, the custom auth pages render in disabled placeholder mode and authenticated routes remain public so the stack still starts cleanly.
-- If `CLERK_JWT_ISSUER_DOMAIN` is missing, Clerk UI can still mount but Convex auth stays in placeholder mode.
-- If Convex is not configured, the `convex-dev` service stays alive and prints the recommended bootstrap commands instead of failing the stack.
-
-## Convex Bootstrap
-
-Recommended local-first setup:
+2. Start the stack:
 
 ```bash
-docker compose run --rm convex-dev npm run convex:init:local
+docker compose up --build -d
 ```
 
-Cloud-backed configuration alternative:
+3. Bootstrap Convex if this workspace has not been configured yet:
 
 ```bash
-docker compose run --rm convex-dev npm run convex:configure
+docker compose exec convex-dev npm run convex:init:local
 ```
 
-After either path completes, restart the stack:
+Cloud-backed alternative:
 
 ```bash
-docker compose up --build
+docker compose exec convex-dev npm run convex:configure
 ```
 
-If you are using Clerk with Convex auth, replace the placeholder issuer with your real Clerk issuer:
+4. Open the app at `http://localhost:3000`.
+
+Primary day-to-day workflow:
 
 ```bash
-CLERK_JWT_ISSUER_DOMAIN=https://your-clerk-issuer
-```
-
-`middleware.ts` now protects `/dashboard`, `/groups`, `/friends`, `/activity`, and `/account` when Clerk server keys are configured, and redirects signed-in users away from `/sign-in` and `/sign-up`.
-
-## Useful Commands
-
-```bash
-docker compose down
 docker compose logs -f web
 docker compose logs -f convex-dev
 docker compose exec web npm run lint
 docker compose exec web npm run typecheck
+docker compose exec web npm run build
 ```
 
-## Phase 1 Backend Additions
+Shutdown:
 
-- Full Convex schema for `users`, `groups`, `groupMembers`, `groupInvites`, `expenses`, and `expenseShares`
-- `users.storeCurrentUser` mutation for idempotent authenticated user sync
-- Reusable backend helpers for current user lookup, group membership, ownership, expense edit permission, and cents-based money math
+```bash
+docker compose down --remove-orphans
+```
 
-## Phase 3 Dashboard Additions
+## Invite Emails
 
-- `groups.create` mutation that stores the creator as the owner member
-- Dashboard queries for the current user's active groups and summary totals
-- Responsive `/dashboard` implementation with summary tiles, active group cards, invite tile, and create-group flow
+Invite emails remain optional. When `RESEND_API_KEY` and `INVITE_EMAIL_FROM` are unset, the settings screen still supports copy-link fallback and clearly marks email delivery as unavailable.
 
-## Phase 4 Invite Additions
+The MVP invite model stays intentionally narrow:
 
-- `invites.create` owner-only mutation that rotates the current pending invite link
-- `invites.getByToken` public query for the secure `/invites/[token]` route
-- `invites.accept` mutation that converts a valid token into active group membership
-- Redirect-aware `/sign-in` and `/sign-up` flows so invite acceptance survives authentication
-- Lightweight group-context member management with live member rosters and invite-link controls
+- One current pending single-use token per group
+- Copy-link and single-recipient email reuse the current pending token when possible
+- Generating or sending a fresh invite later rotates the previous pending token
 
-## Phase 5 Group Detail Additions
+## Demo Seeding
 
-- `groups.getDetail` protected query that returns group metadata, active members, recent expenses, current-user standing, and lightweight derived insights
-- One responsive `/groups/[groupId]` implementation aligned to the supplied mobile and desktop references
-- Clean empty state for groups without expenses, with the primary add flow pointing at `/groups/[groupId]/expenses/new`
-- Optional cover-image handling with a styled fallback so the route still reads correctly without uploaded media
+Seed a demo group for a synced owner email:
 
-## Phase 7 Expense Workflow Additions
+```bash
+docker compose exec convex-dev sh /workspace/scripts/seed-demo.sh <synced-owner-email>
+```
 
-- `expenses.createExpense` supports both equal and exact split creation
-- `expenses.updateExpense` safely replaces split rows while enforcing creator-or-owner permissions
-- `expenses.deleteExpense` removes an expense together with its share rows
-- `expenses.getComposerData` powers both `/groups/[groupId]/expenses/new` and `/groups/[groupId]/expenses/[expenseId]/edit`
-- The responsive composer now shows total-assigned status, exact split validation, edit mode reuse, and a documented receipt placeholder
+The helper will:
 
-## Phase 8 Group Totals / Settings Additions
+- Find the synced owner by email
+- Archive any prior helper-created demo groups for that owner
+- Create one demo group with synthetic members and seeded expenses
+- Return a `groupId`, `groupName`, and seeded `expenseId` for QA
 
-- `groups.getSettingsOverview` returns total group spend, the current user's net balance, and the member balance list for `/groups/[groupId]/settings`
-- `/groups/[groupId]/settings` now ships as one responsive implementation across mobile and desktop and follows the supplied totals/settings references
-- Settlement history is intentionally documented as a read-only stub in this phase
-- `Edit Group Name`, `Add Members`, `Export CSV`, and `Delete Group` are rendered in the designed layout, but remain staged for the next phase
+## QA Commands
 
-## Current Routes
+```bash
+docker compose exec web npm run lint
+docker compose exec web npm run typecheck
+docker compose exec web npm run build
+docker compose exec convex-dev sh /workspace/scripts/seed-demo.sh <synced-owner-email>
+```
 
-- `/sign-in`
-- `/sign-up`
-- `/sso-callback`
-- `/dashboard`
-- `/groups/[groupId]`
-- `/groups/demo-group/expenses/new`
-- `/groups/demo-group/expenses/demo-expense/edit`
-- `/groups/demo-group/settings`
-- `/invites/[token]`
-- `/friends`
-- `/activity`
-- `/account`
+Manual QA and responsive regression notes live in [docs/qa.md](docs/qa.md).
 
-## Notes
+## Deployment Summary
 
-- The authenticated shell is responsive: mobile uses a bottom nav, desktop uses a left rail plus utility bar.
-- The auth pages are custom implementations wired to Clerk rather than Clerk's stock widgets, and they share one responsive layout across mobile and desktop.
-- Route protection and sign-out are active only when Clerk server keys are configured.
-- Recent expense rows now link into the shared edit composer so the Phase 7 CRUD flow is reachable from the live group screen.
-- The group settings screen now reads live total-spend and balance data when Convex auth is configured, while the staged settings actions remain intentionally non-destructive for Phase 8.
+- Deploy the Next.js app to a Next-compatible host.
+- Deploy Convex separately.
+- Configure Clerk for authentication.
+- Configure Resend only if invite emails are desired.
+- Keep local Docker Compose as the development workflow only. This phase does not add a production Dockerfile.
+- Next 16 deprecates `middleware.ts` for this use case, so the auth entrypoint now lives in [proxy.ts](/home/kunal/my_space/split-it/proxy.ts).
+
+Detailed hosting and environment notes live in [docs/deployment.md](docs/deployment.md).

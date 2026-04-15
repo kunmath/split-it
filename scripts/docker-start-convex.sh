@@ -14,9 +14,9 @@ fi
 
 echo "Convex is not configured yet for this workspace."
 echo "Recommended local-first bootstrap:"
-echo "  docker compose run --rm convex-dev npm run convex:init:local"
+echo "  docker compose exec convex-dev npm run convex:init:local"
 echo "Cloud-backed alternative:"
-echo "  docker compose run --rm convex-dev npm run convex:configure"
+echo "  docker compose exec convex-dev npm run convex:configure"
 echo "Keeping the service alive so docker compose up remains healthy in placeholder mode."
 
 exec tail -f /dev/null

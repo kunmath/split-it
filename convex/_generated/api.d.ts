@@ -9,13 +9,17 @@
  */
 
 import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
+import type * as demo from "../demo.js";
 import type * as expenses from "../expenses.js";
+import type * as exportsModule from "../exports.js";
 import type * as groups from "../groups.js";
 import type * as invites from "../invites.js";
 import type * as users from "../users.js";
 
 declare const fullApi: ApiFromModules<{
+  demo: typeof demo;
   expenses: typeof expenses;
+  exports: typeof exportsModule;
   groups: typeof groups;
   invites: typeof invites;
   users: typeof users;

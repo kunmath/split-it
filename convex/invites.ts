@@ -1,71 +1,112 @@
 import { ConvexError, v } from "convex/values";
 
-import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
+import {
+  internalAction,
+  mutation,
+  query,
+} from "./_generated/server";
 import { getCurrentUser, requireUser } from "./lib/auth";
+import { buildInviteUrl, isInviteEmailEnabled, requireInviteEmailConfig } from "./lib/inviteEmail";
+import {
+  deriveInviteStatus,
+  ensurePendingInviteForGroup,
+  getInviteByToken,
+  getPendingInviteForGroup,
+  normalizeInviteEmail,
+  rotatePendingInviteForGroup,
+} from "./lib/inviteHelpers";
 import { requireGroupOwner } from "./lib/permissions";
 
-const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-const TOKEN_BYTES = 18;
-
-type InviteCtx = QueryCtx | MutationCtx;
-type InviteStatus = Doc<"groupInvites">["status"];
-
-function deriveInviteStatus(invite: Doc<"groupInvites">, now: number): InviteStatus {
-  if (invite.status === "accepted") {
-    return "accepted";
-  }
-
-  if (invite.status === "expired" || invite.expiresAt <= now) {
-    return "expired";
-  }
-
-  return "pending";
-}
-
-async function getInviteByToken(ctx: InviteCtx, token: string) {
-  return ctx.db
-    .query("groupInvites")
-    .withIndex("by_token", (q) => q.eq("token", token))
-    .unique();
-}
-
-async function createUniqueInviteToken(ctx: MutationCtx) {
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const bytes = crypto.getRandomValues(new Uint8Array(TOKEN_BYTES));
-    const token = Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-    const existingInvite = await getInviteByToken(ctx, token);
-
-    if (existingInvite === null) {
-      return token;
-    }
-  }
-
-  throw new ConvexError("Unable to create a unique invite link");
-}
-
-async function expirePendingGroupInvites(ctx: MutationCtx, groupId: Id<"groups">, now: number) {
-  const invites = await ctx.db
-    .query("groupInvites")
-    .withIndex("by_group", (q) => q.eq("groupId", groupId))
-    .collect();
-
-  for (const invite of invites) {
-    if (deriveInviteStatus(invite, now) === "pending") {
-      await ctx.db.patch(invite._id, { status: "expired" });
-    }
+function assertGroupIsActive(group: Doc<"groups">) {
+  if (group.archivedAt !== undefined) {
+    throw new ConvexError("Group is archived");
   }
 }
 
-async function getPendingInviteForGroup(ctx: InviteCtx, groupId: Id<"groups">, now: number) {
-  const invites = await ctx.db
-    .query("groupInvites")
-    .withIndex("by_group", (q) => q.eq("groupId", groupId))
-    .collect();
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
 
-  return invites
-    .filter((invite) => deriveInviteStatus(invite, now) === "pending")
-    .sort((left, right) => right._creationTime - left._creationTime)[0] ?? null;
+function formatInviteExpiry(expiresAt: number) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  }).format(expiresAt);
+}
+
+function buildInviteEmailHtml(args: {
+  expiresAt: number;
+  groupDescription?: string;
+  groupName: string;
+  inviteUrl: string;
+  inviterName: string;
+}) {
+  const safeGroupName = escapeHtml(args.groupName);
+  const safeInviterName = escapeHtml(args.inviterName);
+  const safeDescription = args.groupDescription
+    ? escapeHtml(args.groupDescription)
+    : null;
+  const safeInviteUrl = escapeHtml(args.inviteUrl);
+
+  return `
+    <div style="background:#131313;padding:32px 20px;font-family:Arial,sans-serif;color:#e5e2e1;">
+      <div style="max-width:560px;margin:0 auto;border-radius:28px;padding:32px;background:linear-gradient(180deg,#1c1b1b,#131313);border:1px solid rgba(255,255,255,0.06);">
+        <p style="margin:0 0 12px;color:#4edea3;font-size:12px;letter-spacing:0.24em;text-transform:uppercase;">Split-It Invite</p>
+        <h1 style="margin:0 0 12px;font-size:32px;line-height:1.1;">Join ${safeGroupName}</h1>
+        <p style="margin:0 0 20px;color:#bbcabf;font-size:15px;line-height:1.7;">
+          ${safeInviterName} sent you a secure single-use invite link for this shared expense group.
+        </p>
+        ${
+          safeDescription
+            ? `<p style="margin:0 0 20px;color:#bbcabf;font-size:14px;line-height:1.7;">${safeDescription}</p>`
+            : ""
+        }
+        <div style="margin:0 0 24px;padding:18px 20px;border-radius:22px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+          <p style="margin:0 0 8px;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#4edea3;">Invite Rules</p>
+          <p style="margin:0;color:#bbcabf;font-size:14px;line-height:1.7;">
+            This link works once and expires on ${escapeHtml(formatInviteExpiry(args.expiresAt))}. If the owner generates or sends a fresh invite later, the previous pending link rotates out.
+          </p>
+        </div>
+        <a href="${safeInviteUrl}" style="display:inline-block;padding:14px 22px;border-radius:999px;background:#4edea3;color:#003824;font-weight:700;text-decoration:none;">
+          Accept Invite
+        </a>
+        <p style="margin:18px 0 0;color:#bbcabf;font-size:13px;line-height:1.7;word-break:break-word;">
+          If the button does not open, use this link:<br />
+          <a href="${safeInviteUrl}" style="color:#4edea3;text-decoration:none;">${safeInviteUrl}</a>
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+function buildInviteEmailText(args: {
+  expiresAt: number;
+  groupDescription?: string;
+  groupName: string;
+  inviteUrl: string;
+  inviterName: string;
+}) {
+  return [
+    `${args.inviterName} invited you to join ${args.groupName} on Split-It.`,
+    args.groupDescription?.trim() ? args.groupDescription.trim() : null,
+    `This single-use invite expires on ${formatInviteExpiry(args.expiresAt)}.`,
+    "If a fresh invite is generated later, the previous pending link rotates out.",
+    "",
+    args.inviteUrl,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join("\n");
 }
 
 export const getGroupComposerData = query({
@@ -106,6 +147,7 @@ export const getGroupComposerData = query({
       groupCurrency: group.currency,
       currentUserRole: membership.role,
       canInvite: membership.role === "owner",
+      inviteEmailEnabled: isInviteEmailEnabled(),
       memberCount: activeMemberships.length,
       members: activeMemberships
         .map((member, index) => {
@@ -216,22 +258,108 @@ export const create = mutation({
     const { user, group } = await requireGroupOwner(ctx, args.groupId);
     const now = Date.now();
 
-    await expirePendingGroupInvites(ctx, group._id, now);
+    assertGroupIsActive(group);
 
-    const token = await createUniqueInviteToken(ctx);
-    const expiresAt = now + INVITE_TTL_MS;
-
-    await ctx.db.insert("groupInvites", {
+    const invite = await rotatePendingInviteForGroup(ctx, {
       groupId: group._id,
       invitedBy: user._id,
-      token,
-      status: "pending",
-      expiresAt,
+      now,
     });
 
     return {
-      token,
-      expiresAt,
+      token: invite.token,
+      expiresAt: invite.expiresAt,
+    };
+  },
+});
+
+export const sendEmailInvite = mutation({
+  args: {
+    groupId: v.id("groups"),
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { user, group } = await requireGroupOwner(ctx, args.groupId);
+
+    assertGroupIsActive(group);
+    requireInviteEmailConfig();
+
+    const email = normalizeInviteEmail(args.email);
+    const now = Date.now();
+    const invite = await ensurePendingInviteForGroup(ctx, {
+      email,
+      groupId: group._id,
+      invitedBy: user._id,
+      now,
+    });
+
+    await ctx.scheduler.runAfter(0, internal.invites.deliverInviteEmail, {
+      email,
+      expiresAt: invite.expiresAt,
+      groupDescription: group.description,
+      groupName: group.name,
+      inviterName: user.name,
+      token: invite.token,
+    });
+
+    return {
+      token: invite.token,
+      expiresAt: invite.expiresAt,
+      email,
+    };
+  },
+});
+
+export const deliverInviteEmail = internalAction({
+  args: {
+    email: v.string(),
+    expiresAt: v.number(),
+    groupDescription: v.optional(v.string()),
+    groupName: v.string(),
+    inviterName: v.string(),
+    token: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const { apiKey, from, appUrl } = requireInviteEmailConfig();
+    const inviteUrl = buildInviteUrl(args.token, appUrl);
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [args.email],
+        subject: `${args.inviterName} invited you to join ${args.groupName}`,
+        html: buildInviteEmailHtml({
+          expiresAt: args.expiresAt,
+          groupDescription: args.groupDescription,
+          groupName: args.groupName,
+          inviteUrl,
+          inviterName: args.inviterName,
+        }),
+        text: buildInviteEmailText({
+          expiresAt: args.expiresAt,
+          groupDescription: args.groupDescription,
+          groupName: args.groupName,
+          inviteUrl,
+          inviterName: args.inviterName,
+        }),
+      }),
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+
+      throw new Error(
+        `Resend rejected the invite email (${response.status}): ${details.slice(0, 240)}`,
+      );
+    }
+
+    return {
+      email: args.email,
+      token: args.token,
     };
   },
 });

@@ -20,7 +20,7 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: "split-it",
-  description: "Editorial split-expense shell bootstrapped for Phase 0.",
+  description: "Responsive shared-expense MVP with groups, invites, balances, and settings.",
 };
 
 export default function RootLayout({
