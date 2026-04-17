@@ -5,6 +5,7 @@ import { LoaderCircle } from "lucide-react";
 
 import { AuthHeader } from "@/components/auth/auth-primitives";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
+import { DEFAULT_AUTH_REDIRECT_PATH, SIGN_IN_PATH, SIGN_UP_PATH } from "@/lib/auth-redirect";
 
 export function OAuthCallback() {
   const { isClerkConfigured } = usePlaceholderMode();
@@ -30,11 +31,12 @@ export function OAuthCallback() {
       </div>
       <AuthHeader title="Finalizing access" subtitle="Completing the secure handoff and returning you to the ledger." />
       <AuthenticateWithRedirectCallback
-        signInFallbackRedirectUrl="/dashboard"
-        signInUrl="/sign-in"
-        signUpFallbackRedirectUrl="/dashboard"
-        signUpUrl="/sign-up"
+        signInFallbackRedirectUrl={DEFAULT_AUTH_REDIRECT_PATH}
+        signInUrl={SIGN_IN_PATH}
+        signUpFallbackRedirectUrl={DEFAULT_AUTH_REDIRECT_PATH}
+        signUpUrl={SIGN_UP_PATH}
       />
+      <div className="flex min-h-16 items-center justify-center" data-cl-size="flexible" id="clerk-captcha" />
     </div>
   );
 }

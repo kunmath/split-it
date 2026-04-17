@@ -1,3 +1,7 @@
+export const DEFAULT_AUTH_REDIRECT_PATH = "/dashboard";
+export const SIGN_IN_PATH = "/sign-in";
+export const SIGN_UP_PATH = "/sign-up";
+
 export function getSafeRedirectPath(value: string | null | undefined) {
   if (!value) {
     return null;
@@ -15,7 +19,10 @@ export function getSafeRedirectPath(value: string | null | undefined) {
   }
 }
 
-export function buildAuthRedirectHref(pathname: "/sign-in" | "/sign-up", redirectPath?: string | null) {
+export function buildAuthRedirectHref(
+  pathname: typeof SIGN_IN_PATH | typeof SIGN_UP_PATH,
+  redirectPath?: string | null,
+) {
   const safeRedirectPath = getSafeRedirectPath(redirectPath);
 
   if (!safeRedirectPath) {

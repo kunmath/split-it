@@ -5,7 +5,9 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
+import { clerkGlobalAppearance } from "@/components/auth/clerk-appearance";
 import { CurrentUserSync } from "@/components/providers/current-user-sync";
+import { DEFAULT_AUTH_REDIRECT_PATH, SIGN_IN_PATH, SIGN_UP_PATH } from "@/lib/auth-redirect";
 import type { PlaceholderMode } from "@/lib/env";
 
 type PlaceholderContextValue = {
@@ -65,7 +67,16 @@ export function AppProviders({
       : tree;
 
     tree = (
-      <ClerkProvider publishableKey={clerkPublishableKey}>{clerkTree}</ClerkProvider>
+      <ClerkProvider
+        appearance={clerkGlobalAppearance}
+        publishableKey={clerkPublishableKey}
+        signInFallbackRedirectUrl={DEFAULT_AUTH_REDIRECT_PATH}
+        signInUrl={SIGN_IN_PATH}
+        signUpFallbackRedirectUrl={DEFAULT_AUTH_REDIRECT_PATH}
+        signUpUrl={SIGN_UP_PATH}
+      >
+        {clerkTree}
+      </ClerkProvider>
     );
   }
 

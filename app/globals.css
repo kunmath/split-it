@@ -1,3 +1,4 @@
+@layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
 
 @theme inline {
@@ -66,6 +67,52 @@
   ::selection {
     background: rgb(78 222 163 / 0.24);
     color: var(--on-surface);
+  }
+}
+
+@layer clerk {
+  .cl-cardBox,
+  .cl-card,
+  .cl-footer {
+    background: transparent;
+  }
+
+  .cl-card {
+    border: 0;
+    box-shadow: none;
+  }
+
+  .cl-formFieldInput::placeholder {
+    color: rgb(187 202 191 / 0.42);
+  }
+
+  .cl-alert.cl-alert-danger {
+    border-color: rgb(255 180 171 / 0.2);
+    background: rgb(255 180 171 / 0.08);
+    color: var(--error);
+  }
+
+  .cl-alert.cl-alert-success {
+    border-color: rgb(78 222 163 / 0.2);
+    background: rgb(78 222 163 / 0.1);
+    color: var(--on-surface);
+  }
+
+  .cl-footerActionLink,
+  .cl-formResendCodeLink,
+  .cl-formFieldAction {
+    color: var(--primary);
+  }
+
+  .cl-footerActionLink:hover,
+  .cl-formResendCodeLink:hover,
+  .cl-formFieldAction:hover {
+    color: rgb(78 222 163 / 0.8);
+  }
+
+  .cl-captcha,
+  #clerk-captcha {
+    border-radius: 1.15rem;
   }
 }
 

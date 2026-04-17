@@ -1,6 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 
+import { SIGN_IN_PATH, SIGN_UP_PATH } from "@/lib/auth-redirect";
+
 function hasClerkKeys() {
   return Boolean(
     process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() && process.env.CLERK_SECRET_KEY?.trim(),
@@ -14,7 +16,7 @@ const isProtectedRoute = createRouteMatcher([
   "/activity(.*)",
   "/account(.*)",
 ]);
-const isAuthRoute = createRouteMatcher(["/sign-in(.*)", "/sign-up(.*)"]);
+const isAuthRoute = createRouteMatcher([`${SIGN_IN_PATH}(.*)`, `${SIGN_UP_PATH}(.*)`]);
 
 const clerkHandler = clerkMiddleware(
   async (auth, request) => {
@@ -33,8 +35,8 @@ const clerkHandler = clerkMiddleware(
     return NextResponse.next();
   },
   {
-    signInUrl: "/sign-in",
-    signUpUrl: "/sign-up",
+    signInUrl: SIGN_IN_PATH,
+    signUpUrl: SIGN_UP_PATH,
   },
 );
 

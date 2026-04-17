@@ -1,21 +1,21 @@
 "use client";
 
-import { useSignIn } from "@clerk/nextjs/legacy";
+import { SignIn } from "@clerk/nextjs";
 import { ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import Link from "next/link";
 
+import { signInAppearance } from "@/components/auth/clerk-appearance";
 import { AuthDivider, AuthHeader, AuthNotice, OAuthGoogleButton } from "@/components/auth/auth-primitives";
-import { parseClerkError } from "@/components/auth/clerk-error";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { Button } from "@/components/ui/button";
 import { FilledInput } from "@/components/ui/filled-input";
-import { getSafeRedirectPath } from "@/lib/auth-redirect";
-
-type SignInValues = {
-  email: string;
-  password: string;
-};
+import {
+  DEFAULT_AUTH_REDIRECT_PATH,
+  SIGN_IN_PATH,
+  SIGN_UP_PATH,
+  buildAuthRedirectHref,
+  getSafeRedirectPath,
+} from "@/lib/auth-redirect";
 
 type SignInFormProps = {
   redirectPath?: string | null;
@@ -23,16 +23,20 @@ type SignInFormProps = {
 
 export function SignInForm({ redirectPath }: SignInFormProps) {
   const { isClerkConfigured } = usePlaceholderMode();
-  const safeRedirectPath = getSafeRedirectPath(redirectPath) ?? "/dashboard";
+  const safeRedirectPath = getSafeRedirectPath(redirectPath);
 
   if (!isClerkConfigured) {
-    return <DisabledSignInForm />;
+    return <DisabledSignInForm redirectPath={safeRedirectPath} />;
   }
 
   return <LiveSignInForm redirectPath={safeRedirectPath} />;
 }
 
-function DisabledSignInForm() {
+type DisabledSignInFormProps = {
+  redirectPath?: string | null;
+};
+
+function DisabledSignInForm({ redirectPath }: DisabledSignInFormProps) {
   return (
     <div className="space-y-6">
       <AuthHeader title="Welcome back" subtitle="Access your editorial ledger." />
@@ -48,132 +52,32 @@ function DisabledSignInForm() {
       <Button className="min-h-15 rounded-[1.15rem] text-[1.02rem] font-extrabold" disabled fullWidth size="lg">
         Sign In <ArrowRight className="h-4.5 w-4.5" />
       </Button>
+      <p className="pt-2 text-center text-sm text-on-surface-variant">
+        New to the collective?{" "}
+        <Link
+          href={buildAuthRedirectHref(SIGN_UP_PATH, redirectPath)}
+          className="font-headline font-bold text-primary transition hover:text-primary/80"
+        >
+          Create access
+        </Link>
+      </p>
     </div>
   );
 }
 
 type LiveSignInFormProps = {
-  redirectPath: string;
+  redirectPath?: string | null;
 };
 
 function LiveSignInForm({ redirectPath }: LiveSignInFormProps) {
-  const router = useRouter();
-  const { isLoaded, setActive, signIn } = useSignIn();
-  const [values, setValues] = useState<SignInValues>({ email: "", password: "" });
-  const [formError, setFormError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGooglePending, setIsGooglePending] = useState(false);
-
-  function updateValue<K extends keyof SignInValues>(key: K, value: SignInValues[K]) {
-    setValues((current) => ({ ...current, [key]: value }));
-    setFieldErrors((current) => ({ ...current, [key]: "" }));
-    setFormError(null);
-  }
-
-  async function handleEmailPasswordSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!isLoaded) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    setFormError(null);
-    setFieldErrors({});
-
-    try {
-      const result = await signIn.create({
-        identifier: values.email.trim(),
-        password: values.password,
-        strategy: "password",
-      });
-
-      if (result.status !== "complete" || !result.createdSessionId) {
-        setFormError("Additional verification is required for this account. Use a password-enabled account for this flow.");
-        return;
-      }
-
-      await setActive({ session: result.createdSessionId });
-      router.replace(redirectPath);
-      router.refresh();
-    } catch (error) {
-      const parsed = parseClerkError(error);
-      setFormError(parsed.formError);
-      setFieldErrors(parsed.fieldErrors);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleGoogleSignIn() {
-    if (!isLoaded) {
-      return;
-    }
-
-    setIsGooglePending(true);
-    setFormError(null);
-    setFieldErrors({});
-
-    try {
-      await signIn.authenticateWithRedirect({
-        redirectUrl: "/sso-callback",
-        redirectUrlComplete: redirectPath,
-        strategy: "oauth_google",
-      });
-    } catch (error) {
-      const parsed = parseClerkError(error);
-      setFormError(parsed.formError);
-      setFieldErrors(parsed.fieldErrors);
-      setIsGooglePending(false);
-    }
-  }
-
   return (
-    <div className="space-y-6">
-      <AuthHeader title="Welcome back" subtitle="Access your editorial ledger." />
-
-      {formError ? <AuthNotice tone="error">{formError}</AuthNotice> : null}
-
-      <OAuthGoogleButton disabled={!isLoaded || isSubmitting} onClick={handleGoogleSignIn} pending={isGooglePending} />
-
-      <AuthDivider />
-
-      <form className="space-y-5" onSubmit={handleEmailPasswordSubmit}>
-        <FilledInput
-          autoComplete="email"
-          error={fieldErrors.email}
-          label="Email Address"
-          onChange={(event) => updateValue("email", event.target.value)}
-          placeholder="ledger@split-it.com"
-          type="email"
-          value={values.email}
-        />
-        <FilledInput
-          autoComplete="current-password"
-          error={fieldErrors.password}
-          label="Password"
-          labelAction={
-            <span className="text-[0.64rem] font-semibold uppercase tracking-[0.22em] text-primary/75">
-              Clerk secured
-            </span>
-          }
-          onChange={(event) => updateValue("password", event.target.value)}
-          placeholder="••••••••"
-          type="password"
-          value={values.password}
-        />
-
-        <Button
-          className="min-h-15 rounded-[1.15rem] text-[1.02rem] font-extrabold shadow-[0_22px_55px_rgba(78,222,163,0.16)]"
-          disabled={!isLoaded || isSubmitting || isGooglePending}
-          fullWidth
-          size="lg"
-          type="submit"
-        >
-          {isSubmitting ? "Signing In..." : "Sign In"} <ArrowRight className="h-4.5 w-4.5" />
-        </Button>
-      </form>
-    </div>
+    <SignIn
+      appearance={signInAppearance}
+      fallbackRedirectUrl={DEFAULT_AUTH_REDIRECT_PATH}
+      oauthFlow="redirect"
+      path={SIGN_IN_PATH}
+      routing="path"
+      signUpUrl={buildAuthRedirectHref(SIGN_UP_PATH, redirectPath)}
+    />
   );
 }
