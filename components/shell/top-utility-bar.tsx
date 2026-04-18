@@ -1,4 +1,8 @@
+"use client";
+
 import { BellDot, Search, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { ShellSessionAvatar } from "@/components/shell/shell-session-controls";
 import { buttonVariants } from "@/components/ui/button";
@@ -12,12 +16,34 @@ type TopUtilityBarProps = {
   isConvexConfigured: boolean;
 };
 
+function isGroupDetailRoute(pathname: string | null) {
+  if (pathname === null) {
+    return false;
+  }
+  if (!pathname.startsWith("/groups/")) {
+    return false;
+  }
+  if (pathname.endsWith("/settings")) {
+    return false;
+  }
+  if (pathname.includes("/expenses/")) {
+    return false;
+  }
+  return true;
+}
+
 export function TopUtilityBar({
   meta,
   mode,
   isClerkConfigured,
   isConvexConfigured,
 }: TopUtilityBarProps) {
+  const pathname = usePathname();
+  const settleUpHref =
+    meta.topActionLabel === "Settle Up" && isGroupDetailRoute(pathname)
+      ? `${pathname}?settle=1`
+      : null;
+
   return (
     <div className="glass-panel hidden items-center justify-between gap-6 border-b border-white/5 px-10 py-5 lg:flex">
       <div className="flex min-w-0 flex-1 items-center gap-4">
@@ -46,9 +72,19 @@ export function TopUtilityBar({
           <BellDot className="h-5 w-5" />
         </button>
         {meta.topActionLabel ? (
-          <button type="button" className={cn(buttonVariants({ variant: "ghost" }), "px-5")}>
-            {meta.topActionLabel}
-          </button>
+          settleUpHref ? (
+            <Link
+              href={settleUpHref}
+              scroll={false}
+              className={cn(buttonVariants({ variant: "ghost" }), "px-5")}
+            >
+              {meta.topActionLabel}
+            </Link>
+          ) : (
+            <button type="button" className={cn(buttonVariants({ variant: "ghost" }), "px-5")}>
+              {meta.topActionLabel}
+            </button>
+          )
         ) : null}
         <ShellSessionAvatar />
       </div>

@@ -26,3 +26,8 @@ pnpm-debug.log*
 
 designs_desktop.zip
 stitch.zip
+
+# stray screenshots dropped at repo root
+/*.png
+/*.jpg
+/*.jpeg

@@ -93,6 +93,61 @@ export function buildMemberBalanceSnapshots(
   return balances;
 }
 
+export type SimplifiedSettlement = {
+  fromUserId: Id<"users">;
+  toUserId: Id<"users">;
+  amountCents: number;
+};
+
+export function simplifyDebts(
+  balances: Map<Id<"users">, GroupBalanceSnapshot>,
+): SimplifiedSettlement[] {
+  type RemainingEntry = { userId: Id<"users">; remainingCents: number };
+
+  const creditors: RemainingEntry[] = [];
+  const debtors: RemainingEntry[] = [];
+
+  for (const [userId, snapshot] of balances) {
+    if (snapshot.balanceCents > 0) {
+      creditors.push({ userId, remainingCents: snapshot.balanceCents });
+    } else if (snapshot.balanceCents < 0) {
+      debtors.push({ userId, remainingCents: -snapshot.balanceCents });
+    }
+  }
+
+  creditors.sort((left, right) => right.remainingCents - left.remainingCents);
+  debtors.sort((left, right) => right.remainingCents - left.remainingCents);
+
+  const settlements: SimplifiedSettlement[] = [];
+  let creditorIndex = 0;
+  let debtorIndex = 0;
+
+  while (creditorIndex < creditors.length && debtorIndex < debtors.length) {
+    const creditor = creditors[creditorIndex]!;
+    const debtor = debtors[debtorIndex]!;
+    const transferCents = Math.min(creditor.remainingCents, debtor.remainingCents);
+
+    if (transferCents > 0) {
+      settlements.push({
+        fromUserId: debtor.userId,
+        toUserId: creditor.userId,
+        amountCents: transferCents,
+      });
+      creditor.remainingCents -= transferCents;
+      debtor.remainingCents -= transferCents;
+    }
+
+    if (creditor.remainingCents === 0) {
+      creditorIndex += 1;
+    }
+    if (debtor.remainingCents === 0) {
+      debtorIndex += 1;
+    }
+  }
+
+  return settlements;
+}
+
 export function getCurrentUserExpenseNetCents(
   record: GroupExpenseRecord,
   userId: Id<"users">,

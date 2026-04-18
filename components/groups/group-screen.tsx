@@ -1,10 +1,12 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import type { CSSProperties, ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowUpRight,
   Download,
+  HandCoins,
   ReceiptText,
   SlidersHorizontal,
   TrendingDown,
@@ -16,9 +18,13 @@ import Link from "next/link";
 
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { PageContainer } from "@/components/shell/page-container";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
+import {
+  SettleUpDialog,
+  type SettleUpSuggestion,
+} from "@/components/groups/settle-up-dialog";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { looksLikeConvexId } from "@/lib/convex-ids";
@@ -73,9 +79,13 @@ type GroupSceneData = {
     paidByCurrentUser: boolean;
     currentUserNetCents: number;
     splitType: "equal" | "exact";
+    kind: "expense" | "settlement";
+    counterpartyName: string | null;
+    counterpartyIsCurrentUser: boolean;
     participantCount: number;
     iconKey: IconKey;
   }>;
+  suggestedSettlements: SettleUpSuggestion[];
   insights: {
     totalSpendCents: number;
     averageExpenseCents: number;
@@ -304,9 +314,13 @@ function getMockGroupSceneData(
       paidByCurrentUser: expense.paidBy === "Jordan Dale",
       currentUserNetCents: Math.round(expense.signedBalance * 100),
       splitType: "equal" as const,
+      kind: "expense" as const,
+      counterpartyName: null,
+      counterpartyIsCurrentUser: false,
       participantCount: mockMembers.length,
       iconKey: expense.icon,
     })),
+    suggestedSettlements: [],
     insights: {
       totalSpendCents: 594_800,
       averageExpenseCents: 74_350,
@@ -440,6 +454,12 @@ function LiveGroupScreen({ groupId }: GroupScreenProps) {
       id: String(expense.id),
       iconKey: expense.iconKey as IconKey,
     })),
+    suggestedSettlements: (group.suggestedSettlements ?? []).map((settlement) => ({
+      counterpartyId: String(settlement.counterpartyId),
+      counterpartyName: settlement.counterpartyName,
+      amountCents: settlement.amountCents,
+      direction: settlement.direction,
+    })),
     insights: {
       ...group.insights,
       topContributors: group.insights.topContributors.map((member) => ({
@@ -458,13 +478,31 @@ type GroupSceneProps = {
 };
 
 function GroupScene({ group, isMock = false }: GroupSceneProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const shouldAutoOpen = searchParams.get("settle") === "1";
+  const [localOpen, setLocalOpen] = useState(false);
+  const isSettleOpen = shouldAutoOpen || localOpen;
+
+  const openSettle = () => setLocalOpen(true);
+  const closeSettle = () => {
+    setLocalOpen(false);
+    if (shouldAutoOpen) {
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete("settle");
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname);
+    }
+  };
+
   return (
     <PageContainer className="page-glow relative space-y-6 lg:space-y-8">
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.82fr)] xl:items-start">
         <div className="space-y-5 lg:space-y-8">
           <GroupHeroCard group={group} />
           <div className="xl:hidden">
-            <CurrentStandingCard group={group} />
+            <CurrentStandingCard group={group} onSettleUp={openSettle} />
           </div>
           <RecentExpensesCard group={group} />
           <div className="xl:hidden">
@@ -473,10 +511,24 @@ function GroupScene({ group, isMock = false }: GroupSceneProps) {
         </div>
 
         <aside className="hidden xl:block space-y-6">
-          <CurrentStandingCard group={group} />
+          <CurrentStandingCard group={group} onSettleUp={openSettle} />
           <GroupInsightsCard group={group} isMock={isMock} />
         </aside>
       </section>
+
+      <SettleUpDialog
+        open={isSettleOpen}
+        onClose={closeSettle}
+        groupId={group.groupId}
+        groupCurrency={group.groupCurrency}
+        members={group.members.map((member) => ({
+          id: member.id,
+          name: member.name,
+          isCurrentUser: member.isCurrentUser,
+        }))}
+        suggestions={group.suggestedSettlements}
+        isMock={isMock}
+      />
     </PageContainer>
   );
 }
@@ -588,7 +640,13 @@ function MemberOrb({ member }: { member: GroupSceneData["members"][number] }) {
   );
 }
 
-function CurrentStandingCard({ group }: { group: GroupSceneData }) {
+function CurrentStandingCard({
+  group,
+  onSettleUp,
+}: {
+  group: GroupSceneData;
+  onSettleUp: () => void;
+}) {
   const standing = getStandingDescriptor(group.currentStanding.balanceCents);
   const StandingIcon = standing.Icon;
   const memberRows = getStandingMemberRows(group.members);
@@ -668,7 +726,17 @@ function CurrentStandingCard({ group }: { group: GroupSceneData }) {
           ) : null}
         </div>
 
-        <div className="mt-5 xl:mt-8">
+        <div className="mt-5 flex flex-col gap-2 xl:mt-8">
+          <Button
+            variant="primary"
+            size="lg"
+            fullWidth
+            onClick={onSettleUp}
+            disabled={group.memberCount < 2}
+          >
+            <HandCoins className="h-4.5 w-4.5" />
+            Settle Up
+          </Button>
           <Link
             href={`/groups/${group.groupId}/settings`}
             className={cn(
@@ -838,74 +906,128 @@ function ExpenseRow({
   expense: GroupSceneData["recentExpenses"][number];
 }) {
   const { month, day } = formatDateParts(expense.expenseAt);
-  const Icon = iconMap[expense.iconKey];
+  const isSettlement = expense.kind === "settlement";
+  const Icon = isSettlement ? HandCoins : iconMap[expense.iconKey];
   const net = getExpenseNetDescriptor(expense.currentUserNetCents, currency);
+
+  const counterpartyLabel = expense.counterpartyName ?? "a member";
+  const settlementTitle = expense.paidByCurrentUser
+    ? `You paid ${counterpartyLabel}`
+    : expense.counterpartyIsCurrentUser
+      ? `${expense.paidByName} paid you`
+      : `${expense.paidByName} paid ${counterpartyLabel}`;
+  const settlementSubtitle = expense.paidByCurrentUser
+    ? "Settlement recorded"
+    : expense.counterpartyIsCurrentUser
+      ? "Settlement received"
+      : "Settlement between members";
+
+  const rowContent = (
+    <div className="grid gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto] md:items-center">
+      <div className="flex w-10 flex-col items-center justify-center">
+        <span className="text-[0.6rem] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
+          {month}
+        </span>
+        <span className="font-headline text-lg font-extrabold leading-none text-on-surface">
+          {day}
+        </span>
+      </div>
+
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <div
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition group-hover:scale-[1.03]",
+            isSettlement
+              ? "bg-primary/12 text-primary"
+              : "bg-surface-container-highest text-on-surface-variant",
+          )}
+        >
+          <Icon className="h-5 w-5" strokeWidth={2.1} />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate font-headline text-[0.98rem] font-bold tracking-tight text-on-surface">
+            {isSettlement ? settlementTitle : expense.description}
+          </p>
+          <p className="text-[0.68rem] uppercase tracking-[0.2em] text-on-surface-variant">
+            {isSettlement ? (
+              settlementSubtitle
+            ) : (
+              <>
+                Paid by {expense.paidByName}
+                <span className="hidden md:inline">
+                  {" "}
+                  · {expense.participantCount} participants
+                </span>
+              </>
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="hidden text-right md:block">
+        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
+          {isSettlement ? "Payment" : "Total Expense"}
+        </p>
+        <p
+          className={cn(
+            "mt-1 font-headline text-xl font-bold tracking-tight",
+            isSettlement ? "text-primary" : "text-on-surface",
+          )}
+        >
+          {formatMoneyFromCents(expense.amountCents, currency)}
+        </p>
+      </div>
+
+      <div className="ml-auto text-right">
+        {isSettlement ? (
+          <p className="font-headline text-base font-bold tracking-tight text-primary sm:text-xl md:hidden">
+            {formatMoneyFromCents(expense.amountCents, currency)}
+          </p>
+        ) : (
+          <>
+            <p
+              className={cn(
+                "hidden text-[0.68rem] font-semibold uppercase tracking-[0.2em] md:block",
+                net.tone === "positive" && "text-primary",
+                net.tone === "negative" && "text-secondary",
+                net.tone === "neutral" && "text-on-surface-variant",
+              )}
+            >
+              {net.label}
+            </p>
+            <p
+              className={cn(
+                "font-headline text-base font-bold tracking-tight sm:text-xl",
+                net.tone === "positive" && "text-primary",
+                net.tone === "negative" && "text-secondary",
+                net.tone === "neutral" && "text-on-surface",
+              )}
+            >
+              {net.valueLabel}
+            </p>
+            <p className="text-xs text-on-surface-variant md:hidden">
+              {formatMoneyFromCents(expense.amountCents, currency)}
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  if (isSettlement) {
+    return (
+      <div className="group block rounded-[1.6rem] border border-transparent bg-surface-container-low px-4 py-4 sm:px-5 sm:py-5">
+        {rowContent}
+      </div>
+    );
+  }
 
   return (
     <Link
       href={`/groups/${groupId}/expenses/${expense.id}/edit`}
       className="group block rounded-[1.6rem] border border-transparent bg-surface-container-low px-4 py-4 transition hover:border-white/6 hover:bg-surface-container-high sm:px-5 sm:py-5"
     >
-      <div className="grid gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto] md:items-center">
-        <div className="flex w-10 flex-col items-center justify-center">
-          <span className="text-[0.6rem] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-            {month}
-          </span>
-          <span className="font-headline text-lg font-extrabold leading-none text-on-surface">
-            {day}
-          </span>
-        </div>
-
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-container-highest text-on-surface-variant transition group-hover:scale-[1.03]">
-            <Icon className="h-5 w-5" strokeWidth={2.1} />
-          </div>
-          <div className="min-w-0">
-            <p className="truncate font-headline text-[0.98rem] font-bold tracking-tight text-on-surface">
-              {expense.description}
-            </p>
-            <p className="text-[0.68rem] uppercase tracking-[0.2em] text-on-surface-variant">
-              Paid by {expense.paidByName}
-              <span className="hidden md:inline"> · {expense.participantCount} participants</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="hidden text-right md:block">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
-            Total Expense
-          </p>
-          <p className="mt-1 font-headline text-xl font-bold tracking-tight text-on-surface">
-            {formatMoneyFromCents(expense.amountCents, currency)}
-          </p>
-        </div>
-
-        <div className="ml-auto text-right">
-          <p
-            className={cn(
-              "hidden text-[0.68rem] font-semibold uppercase tracking-[0.2em] md:block",
-              net.tone === "positive" && "text-primary",
-              net.tone === "negative" && "text-secondary",
-              net.tone === "neutral" && "text-on-surface-variant",
-            )}
-          >
-            {net.label}
-          </p>
-          <p
-            className={cn(
-              "font-headline text-base font-bold tracking-tight sm:text-xl",
-              net.tone === "positive" && "text-primary",
-              net.tone === "negative" && "text-secondary",
-              net.tone === "neutral" && "text-on-surface",
-            )}
-          >
-            {net.valueLabel}
-          </p>
-          <p className="text-xs text-on-surface-variant md:hidden">
-            {formatMoneyFromCents(expense.amountCents, currency)}
-          </p>
-        </div>
-      </div>
+      {rowContent}
     </Link>
   );
 }
