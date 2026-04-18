@@ -8,7 +8,7 @@ import { api } from "@/convex/_generated/api";
 
 export function CurrentUserSync() {
   const { isLoading, isAuthenticated } = useConvexAuth();
-  const { user } = useUser();
+  const { isLoaded, user } = useUser();
   const lastSyncedKeyRef = useRef<string | null>(null);
   const inFlightSyncKeyRef = useRef<string | null>(null);
   const storeCurrentUser = useMutation(api.users.storeCurrentUser);
@@ -26,6 +26,10 @@ export function CurrentUserSync() {
       return;
     }
 
+    if (!isLoaded || user === null) {
+      return;
+    }
+
     if (lastSyncedKeyRef.current === syncKey || inFlightSyncKeyRef.current === syncKey) {
       return;
     }
@@ -34,7 +38,11 @@ export function CurrentUserSync() {
     let retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
     inFlightSyncKeyRef.current = syncKey;
 
-    void storeCurrentUser({})
+    void storeCurrentUser({
+      email: user.primaryEmailAddress?.emailAddress ?? undefined,
+      imageUrl: user.imageUrl || undefined,
+      name: user.fullName || user.username || undefined,
+    })
       .then(() => {
         if (!cancelled) {
           lastSyncedKeyRef.current = syncKey;
@@ -58,10 +66,12 @@ export function CurrentUserSync() {
     };
   }, [
     isAuthenticated,
+    isLoaded,
     isLoading,
     retryNonce,
     syncKey,
     storeCurrentUser,
+    user,
   ]);
 
   return null;

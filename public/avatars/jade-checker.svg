@@ -1,0 +1,15 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="44" fill="#101513"/>
+  <rect x="24" y="24" width="112" height="112" rx="34" fill="url(#jade-checker-bg)"/>
+  <rect x="42" y="42" width="24" height="24" rx="8" fill="#E7FFF2"/>
+  <rect x="66" y="66" width="24" height="24" rx="8" fill="#E7FFF2"/>
+  <rect x="90" y="42" width="24" height="24" rx="8" fill="#E7FFF2"/>
+  <rect x="42" y="90" width="24" height="24" rx="8" fill="#E7FFF2"/>
+  <rect x="90" y="90" width="24" height="24" rx="8" fill="#E7FFF2"/>
+  <defs>
+    <linearGradient id="jade-checker-bg" x1="30" y1="24" x2="124" y2="136" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2FAF7A"/>
+      <stop offset="1" stop-color="#14392B"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,0 +1,15 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="44" fill="#0F1419"/>
+  <circle cx="80" cy="80" r="56" fill="url(#ocean-bloom-bg)"/>
+  <circle cx="80" cy="58" r="14" fill="#E5F5FF"/>
+  <circle cx="58" cy="86" r="14" fill="#E5F5FF"/>
+  <circle cx="102" cy="86" r="14" fill="#E5F5FF"/>
+  <circle cx="68" cy="108" r="14" fill="#E5F5FF"/>
+  <circle cx="92" cy="108" r="14" fill="#E5F5FF"/>
+  <defs>
+    <linearGradient id="ocean-bloom-bg" x1="38" y1="24" x2="118" y2="140" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7DD3FC"/>
+      <stop offset="1" stop-color="#113A60"/>
+    </linearGradient>
+  </defs>
+</svg>

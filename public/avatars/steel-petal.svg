@@ -1,0 +1,15 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="44" fill="#101214"/>
+  <circle cx="80" cy="80" r="54" fill="url(#steel-petal-bg)"/>
+  <ellipse cx="80" cy="54" rx="14" ry="20" fill="#F1F6FA"/>
+  <ellipse cx="106" cy="80" rx="20" ry="14" fill="#F1F6FA"/>
+  <ellipse cx="80" cy="106" rx="14" ry="20" fill="#F1F6FA"/>
+  <ellipse cx="54" cy="80" rx="20" ry="14" fill="#F1F6FA"/>
+  <circle cx="80" cy="80" r="12" fill="#1B2229"/>
+  <defs>
+    <linearGradient id="steel-petal-bg" x1="34" y1="28" x2="122" y2="132" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7D95A8"/>
+      <stop offset="1" stop-color="#27323D"/>
+    </linearGradient>
+  </defs>
+</svg>

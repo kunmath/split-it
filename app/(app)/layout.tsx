@@ -1,3 +1,4 @@
+import { ProfileCompletionGate } from "@/components/auth/profile-completion-gate";
 import { AppShell } from "@/components/shell/app-shell";
 
 export default function AuthenticatedLayout({
@@ -5,5 +6,9 @@ export default function AuthenticatedLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <ProfileCompletionGate>
+      <AppShell>{children}</AppShell>
+    </ProfileCompletionGate>
+  );
 }

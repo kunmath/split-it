@@ -1,0 +1,13 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="44" fill="#111313"/>
+  <circle cx="80" cy="80" r="52" fill="url(#mint-orbit-bg)"/>
+  <circle cx="80" cy="80" r="32" fill="#131515"/>
+  <path d="M38 84C46.5 54.5 69.5 38 102.5 38C117.5 38 130.167 41.1667 140.5 47.5" stroke="#9AF3CF" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="118" cy="49" r="11" fill="#9AF3CF"/>
+  <defs>
+    <linearGradient id="mint-orbit-bg" x1="40" y1="32" x2="120" y2="132" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4EDEA3"/>
+      <stop offset="1" stop-color="#13211D"/>
+    </linearGradient>
+  </defs>
+</svg>

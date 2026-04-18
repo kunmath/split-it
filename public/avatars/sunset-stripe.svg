@@ -1,0 +1,14 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="44" fill="#1A1412"/>
+  <rect x="22" y="28" width="116" height="104" rx="32" fill="url(#sunset-stripe-bg)"/>
+  <path d="M46 52H114" stroke="#FFF1DE" stroke-width="10" stroke-linecap="round"/>
+  <path d="M46 80H102" stroke="#FFF1DE" stroke-width="10" stroke-linecap="round"/>
+  <path d="M46 108H90" stroke="#FFF1DE" stroke-width="10" stroke-linecap="round"/>
+  <circle cx="114" cy="108" r="14" fill="#FFF1DE"/>
+  <defs>
+    <linearGradient id="sunset-stripe-bg" x1="32" y1="28" x2="132" y2="132" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB59E"/>
+      <stop offset="1" stop-color="#7F2A0D"/>
+    </linearGradient>
+  </defs>
+</svg>

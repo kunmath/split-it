@@ -4,6 +4,7 @@ import { v } from "convex/values";
 const groupMemberRole = v.union(v.literal("owner"), v.literal("member"));
 const groupMemberStatus = v.union(v.literal("active"), v.literal("invited"));
 const inviteStatus = v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired"));
+const expenseKind = v.union(v.literal("expense"), v.literal("settlement"));
 const expenseSplitType = v.union(v.literal("equal"), v.literal("exact"));
 
 export default defineSchema({
@@ -11,7 +12,9 @@ export default defineSchema({
     name: v.string(),
     email: v.string(),
     clerkUserId: v.string(),
+    avatarKey: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    profileCompletedAt: v.optional(v.number()),
   })
     .index("by_clerk_user_id", ["clerkUserId"])
     .index("by_email", ["email"]),
@@ -56,6 +59,7 @@ export default defineSchema({
     groupId: v.id("groups"),
     description: v.string(),
     amountCents: v.number(),
+    kind: v.optional(expenseKind),
     paidBy: v.id("users"),
     splitType: expenseSplitType,
     expenseAt: v.number(),

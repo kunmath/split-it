@@ -10,10 +10,10 @@ import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { Button } from "@/components/ui/button";
 import { FilledInput } from "@/components/ui/filled-input";
 import {
-  DEFAULT_AUTH_REDIRECT_PATH,
   SIGN_IN_PATH,
   SIGN_UP_PATH,
   buildAuthRedirectHref,
+  buildProfileOnboardingHref,
   getSafeRedirectPath,
 } from "@/lib/auth-redirect";
 
@@ -75,7 +75,7 @@ function LiveSignUpForm({ redirectPath }: LiveSignUpFormProps) {
   return (
     <SignUp
       appearance={signUpAppearance}
-      fallbackRedirectUrl={DEFAULT_AUTH_REDIRECT_PATH}
+      fallbackRedirectUrl={buildProfileOnboardingHref(redirectPath)}
       oauthFlow="redirect"
       path={SIGN_UP_PATH}
       routing="path"

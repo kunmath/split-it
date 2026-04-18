@@ -1,0 +1,12 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="44" fill="#10131B"/>
+  <rect x="24" y="24" width="112" height="112" rx="34" fill="url(#cobalt-wave-bg)"/>
+  <path d="M38 96C48.5 81.3333 59.3333 74 70.5 74C87.8333 74 94.8333 104 111.5 104C117.167 104 123.333 100.667 130 94" stroke="#E5ECFF" stroke-width="10" stroke-linecap="round"/>
+  <path d="M38 70C48.5 55.3333 59.3333 48 70.5 48C87.8333 48 94.8333 78 111.5 78C117.167 78 123.333 74.6667 130 68" stroke="#E5ECFF" stroke-width="10" stroke-linecap="round" opacity="0.78"/>
+  <defs>
+    <linearGradient id="cobalt-wave-bg" x1="32" y1="24" x2="128" y2="136" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4C74FF"/>
+      <stop offset="1" stop-color="#16234C"/>
+    </linearGradient>
+  </defs>
+</svg>

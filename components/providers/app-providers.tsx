@@ -7,7 +7,7 @@ import { createContext, useContext, useState, type ReactNode } from "react";
 import { ConvexClerkProvider } from "@/components/providers/convex-clerk-provider";
 import { clerkGlobalAppearance } from "@/components/auth/clerk-appearance";
 import { CurrentUserSync } from "@/components/providers/current-user-sync";
-import { DEFAULT_AUTH_REDIRECT_PATH, SIGN_IN_PATH, SIGN_UP_PATH } from "@/lib/auth-redirect";
+import { DEFAULT_AUTH_REDIRECT_PATH, PROFILE_ONBOARDING_PATH, SIGN_IN_PATH, SIGN_UP_PATH } from "@/lib/auth-redirect";
 import type { PlaceholderMode } from "@/lib/env";
 
 type PlaceholderContextValue = {
@@ -72,7 +72,7 @@ export function AppProviders({
         publishableKey={clerkPublishableKey}
         signInFallbackRedirectUrl={DEFAULT_AUTH_REDIRECT_PATH}
         signInUrl={SIGN_IN_PATH}
-        signUpFallbackRedirectUrl={DEFAULT_AUTH_REDIRECT_PATH}
+        signUpFallbackRedirectUrl={PROFILE_ONBOARDING_PATH}
         signUpUrl={SIGN_UP_PATH}
       >
         {clerkTree}

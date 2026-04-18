@@ -1,0 +1,12 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="44" fill="#1A1210"/>
+  <circle cx="80" cy="80" r="56" fill="url(#coral-loop-bg)"/>
+  <circle cx="68" cy="68" r="24" stroke="#FFF0EA" stroke-width="12"/>
+  <circle cx="94" cy="94" r="24" stroke="#FFF0EA" stroke-width="12"/>
+  <defs>
+    <linearGradient id="coral-loop-bg" x1="34" y1="30" x2="122" y2="132" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF8E75"/>
+      <stop offset="1" stop-color="#6A2416"/>
+    </linearGradient>
+  </defs>
+</svg>

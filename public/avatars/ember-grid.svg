@@ -1,0 +1,16 @@
+<svg width="160" height="160" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="160" height="160" rx="44" fill="#161110"/>
+  <rect x="28" y="28" width="104" height="104" rx="30" fill="url(#ember-grid-bg)"/>
+  <path d="M58 44V116" stroke="#FFE7DA" stroke-width="8" stroke-linecap="round"/>
+  <path d="M80 44V116" stroke="#FFE7DA" stroke-width="8" stroke-linecap="round"/>
+  <path d="M102 44V116" stroke="#FFE7DA" stroke-width="8" stroke-linecap="round"/>
+  <path d="M44 58H116" stroke="#FFE7DA" stroke-width="8" stroke-linecap="round"/>
+  <path d="M44 80H116" stroke="#FFE7DA" stroke-width="8" stroke-linecap="round"/>
+  <path d="M44 102H116" stroke="#FFE7DA" stroke-width="8" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="ember-grid-bg" x1="36" y1="28" x2="120" y2="132" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C65B36"/>
+      <stop offset="1" stop-color="#3D1510"/>
+    </linearGradient>
+  </defs>
+</svg>
