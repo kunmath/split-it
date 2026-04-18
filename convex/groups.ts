@@ -1,7 +1,13 @@
 import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { ensureUser, getCurrentUser, requireUser } from "./lib/auth";
 import {
   buildMemberBalanceSnapshots,
@@ -89,7 +95,7 @@ function sanitizeGroupDescription(value: string | undefined) {
 }
 
 function sanitizeCurrency(value: string | undefined) {
-  const normalized = value?.trim().toUpperCase() || "USD";
+  const normalized = value?.trim().toUpperCase() || "INR";
 
   if (!/^[A-Z]{3}$/.test(normalized)) {
     throw new ConvexError("Currency must be a 3-letter ISO code");
@@ -544,5 +550,22 @@ export const getDashboardSummary = query({
       totalYouOweCents,
       activeGroupCount: groups.length,
     };
+  },
+});
+
+export const migrateCurrencyToINR = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const groups = await ctx.db.query("groups").collect();
+    let patched = 0;
+
+    for (const group of groups) {
+      if (group.currency !== "INR") {
+        await ctx.db.patch(group._id, { currency: "INR" });
+        patched++;
+      }
+    }
+
+    return { totalGroups: groups.length, patched };
   },
 });

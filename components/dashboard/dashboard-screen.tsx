@@ -59,7 +59,7 @@ type CreateGroupDraft = {
 const DEFAULT_CREATE_GROUP_DRAFT: CreateGroupDraft = {
   name: "",
   description: "",
-  currency: "USD",
+  currency: "INR",
   iconKey: "home",
 };
 
@@ -82,7 +82,7 @@ function buildGroupHref(id: string, name: string, description?: string) {
   return `/groups/${id}?${params.toString()}`;
 }
 
-function formatBalanceLabel(valueCents: number, currency = "USD") {
+function formatBalanceLabel(valueCents: number, currency = "INR") {
   if (valueCents === 0) {
     return "Settled";
   }
@@ -505,24 +505,14 @@ function DashboardScene({
                     hint="Optional. Keep it short so it fits cleanly on the dashboard card."
                   />
 
-                  <label className="block space-y-2">
-                    <span className="block text-xs font-medium uppercase tracking-[0.2em] text-on-surface-variant">
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium uppercase tracking-[0.2em] text-on-surface-variant">
                       Currency
-                    </span>
-                    <span className="flex min-h-14 items-center rounded-[1.25rem] bg-surface-container-lowest px-4 ring-1 ring-white/5">
-                      <select
-                        value={draft.currency}
-                        onChange={(event) =>
-                          setDraft((current) => ({ ...current, currency: event.target.value }))
-                        }
-                        className="w-full bg-transparent text-sm text-on-surface focus:outline-none"
-                      >
-                        <option value="USD" className="bg-surface text-on-surface">
-                          USD - US Dollar
-                        </option>
-                      </select>
-                    </span>
-                  </label>
+                    </p>
+                    <div className="flex min-h-14 items-center rounded-[1.25rem] bg-surface-container-lowest px-4 text-sm text-on-surface ring-1 ring-white/5">
+                      INR — Indian Rupee
+                    </div>
+                  </div>
 
                   <div className="space-y-3">
                     <div className="flex items-center justify-between gap-3">

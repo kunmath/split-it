@@ -174,7 +174,7 @@ export const seedForEmail = internalMutation({
     const groupId = await ctx.db.insert("groups", {
       name: DEMO_GROUP_NAME,
       description: DEMO_GROUP_DESCRIPTION,
-      currency: "USD",
+      currency: "INR",
       createdBy: owner._id,
       createdAt: now,
       iconKey: "plane",

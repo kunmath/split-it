@@ -176,7 +176,7 @@ export function getGroupDetail(groupId: string) {
     title: titleFromSlug(canonical),
     description:
       "Adventuring through the land of fire and ice. Track every glacier tour, 4x4 rental, and shared meal in the highlands.",
-    currency: "USD",
+    currency: "INR",
     createdAt: new Date("2024-08-01T00:00:00.000Z").getTime(),
     iconKey: "mountain" as const,
     coverImageUrl: undefined,
