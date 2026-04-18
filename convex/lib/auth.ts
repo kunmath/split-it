@@ -4,6 +4,7 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 
 type UserLookupCtx = QueryCtx | MutationCtx;
+type UserMutationCtx = MutationCtx;
 
 const NOT_AUTHENTICATED_ERROR = "Not authenticated";
 const CURRENT_USER_NOT_SYNCED_ERROR = "Current user not synced";
@@ -19,6 +20,25 @@ async function getUserByClerkUserId(ctx: UserLookupCtx, clerkUserId: string) {
     .unique();
 }
 
+function buildUserFieldsFromIdentity(identity: {
+  email?: string;
+  name?: string;
+  pictureUrl?: string;
+  subject: string;
+}) {
+  const email = identity.email?.trim().toLowerCase();
+  if (!email) {
+    throw new ConvexError("Authenticated user is missing an email address");
+  }
+
+  return {
+    name: identity.name?.trim() || email,
+    email,
+    clerkUserId: identity.subject,
+    imageUrl: identity.pictureUrl?.trim() || undefined,
+  } satisfies Pick<Doc<"users">, "name" | "email" | "clerkUserId" | "imageUrl">;
+}
+
 export async function getCurrentUser(ctx: UserLookupCtx): Promise<Doc<"users"> | null> {
   const identity = await getAuthIdentity(ctx);
   if (identity === null) {
@@ -26,6 +46,28 @@ export async function getCurrentUser(ctx: UserLookupCtx): Promise<Doc<"users"> |
   }
 
   return getUserByClerkUserId(ctx, identity.subject);
+}
+
+export async function ensureUser(ctx: UserMutationCtx): Promise<Doc<"users">> {
+  const identity = await getAuthIdentity(ctx);
+  if (identity === null) {
+    throw new ConvexError(NOT_AUTHENTICATED_ERROR);
+  }
+
+  const existingUser = await getUserByClerkUserId(ctx, identity.subject);
+  if (existingUser !== null) {
+    return existingUser;
+  }
+
+  const userFields = buildUserFieldsFromIdentity(identity);
+  const userId = await ctx.db.insert("users", userFields);
+  const createdUser = await ctx.db.get(userId);
+
+  if (createdUser === null) {
+    throw new ConvexError("Failed to create current user");
+  }
+
+  return createdUser;
 }
 
 export async function requireUser(ctx: UserLookupCtx): Promise<Doc<"users">> {

@@ -1,10 +1,10 @@
 "use client";
 
-import { ClerkProvider, useAuth } from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { createContext, useContext, useState, type ReactNode } from "react";
 
+import { ConvexClerkProvider } from "@/components/providers/convex-clerk-provider";
 import { clerkGlobalAppearance } from "@/components/auth/clerk-appearance";
 import { CurrentUserSync } from "@/components/providers/current-user-sync";
 import { DEFAULT_AUTH_REDIRECT_PATH, SIGN_IN_PATH, SIGN_UP_PATH } from "@/lib/auth-redirect";
@@ -59,10 +59,10 @@ export function AppProviders({
   if (clerkPublishableKey) {
     const clerkTree = shouldUseAuthBridge && convexClient
       ? (
-          <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
+          <ConvexClerkProvider client={convexClient}>
             <CurrentUserSync />
             {tree}
-          </ConvexProviderWithClerk>
+          </ConvexClerkProvider>
         )
       : tree;
 

@@ -445,12 +445,16 @@ function LiveExpenseComposerScreen({
   const updateExpense = useMutation(api.expenses.updateExpense);
   const deleteExpense = useMutation(api.expenses.deleteExpense);
 
-  if (currentUser === undefined || composer === undefined) {
+  if (currentUser === undefined) {
     return <LoadingComposerState />;
   }
 
   if (currentUser === null) {
     return <SyncingComposerState />;
+  }
+
+  if (composer === undefined) {
+    return <LoadingComposerState />;
   }
 
   if (composer === null) {

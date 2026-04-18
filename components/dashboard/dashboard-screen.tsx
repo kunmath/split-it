@@ -183,36 +183,17 @@ function MockDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps
 }
 
 function LiveDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps) {
-  const currentUser = useQuery(api.users.current);
-  const summary = useQuery(
-    api.groups.getDashboardSummary,
-    currentUser ? {} : "skip",
-  );
-  const groups = useQuery(
-    api.groups.listActiveForCurrentUser,
-    currentUser ? {} : "skip",
-  );
+  const summary = useQuery(api.groups.getDashboardSummary, {});
+  const groups = useQuery(api.groups.listActiveForCurrentUser, {});
   const createGroup = useMutation(api.groups.create);
 
-  if (currentUser === undefined || summary === undefined || groups === undefined) {
+  if (summary === undefined || groups === undefined) {
     return (
       <PageContainer className="space-y-6">
         <ScreenState
           state="loading"
           title="Loading dashboard"
           description="Pulling your active groups, portfolio totals, and create-group tools into place."
-        />
-      </PageContainer>
-    );
-  }
-
-  if (currentUser === null) {
-    return (
-      <PageContainer className="space-y-6">
-        <ScreenState
-          state="loading"
-          title="Syncing your workspace"
-          description="Your account is authenticated, but the Split-It ledger record is still finishing setup."
         />
       </PageContainer>
     );

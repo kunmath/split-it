@@ -1,4 +1,4 @@
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
@@ -33,14 +33,28 @@ export const current = query({
 });
 
 export const storeCurrentUser = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    clerkUserId: v.string(),
+    email: v.string(),
+    imageUrl: v.optional(v.string()),
+    name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
       throw new ConvexError("Called storeCurrentUser without authentication");
     }
 
-    const userFields = buildCurrentUserFields(identity);
+    if (identity.subject !== args.clerkUserId) {
+      throw new ConvexError("Authenticated user does not match the Clerk session");
+    }
+
+    const userFields = buildCurrentUserFields({
+      email: args.email,
+      name: args.name,
+      pictureUrl: args.imageUrl,
+      subject: args.clerkUserId,
+    });
     const existingUser = await ctx.db
       .query("users")
       .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", userFields.clerkUserId))

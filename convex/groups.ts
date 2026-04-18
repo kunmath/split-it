@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { requireUser } from "./lib/auth";
+import { ensureUser, getCurrentUser, requireUser } from "./lib/auth";
 import {
   buildMemberBalanceSnapshots,
   createBalanceSnapshot,
@@ -179,7 +179,7 @@ export const create = mutation({
     iconKey: v.optional(groupIconKey),
   },
   handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
+    const user = await ensureUser(ctx);
     const now = Date.now();
     const name = sanitizeGroupName(args.name);
     const description = sanitizeGroupDescription(args.description);
@@ -261,7 +261,11 @@ export const archive = mutation({
 export const listActiveForCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUser(ctx);
+    const user = await getCurrentUser(ctx);
+    if (user === null) {
+      return [];
+    }
+
     const groups = await getActiveGroupRecords(ctx, user._id);
 
     return groups.map((item) => ({
@@ -510,7 +514,15 @@ export const getSettingsOverview = query({
 export const getDashboardSummary = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUser(ctx);
+    const user = await getCurrentUser(ctx);
+    if (user === null) {
+      return {
+        overallYouAreOwedCents: 0,
+        totalYouOweCents: 0,
+        activeGroupCount: 0,
+      };
+    }
+
     const groups = await getActiveGroupRecords(ctx, user._id);
 
     let overallYouAreOwedCents = 0;

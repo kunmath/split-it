@@ -353,7 +353,7 @@ function LiveGroupScreen({ groupId }: GroupScreenProps) {
     currentUser ? { groupId: groupId as Id<"groups"> } : "skip",
   );
 
-  if (currentUser === undefined || group === undefined) {
+  if (currentUser === undefined) {
     return (
       <PageContainer className="flex min-h-[60vh] items-center justify-center">
         <ScreenState
@@ -372,6 +372,18 @@ function LiveGroupScreen({ groupId }: GroupScreenProps) {
           state="loading"
           title="Syncing your workspace"
           description="Your account is authenticated, but the ledger record is still finishing setup. Refresh in a moment if this state persists."
+        />
+      </PageContainer>
+    );
+  }
+
+  if (group === undefined) {
+    return (
+      <PageContainer className="flex min-h-[60vh] items-center justify-center">
+        <ScreenState
+          state="loading"
+          title="Loading group detail"
+          description="Pulling members, standing, and the latest expense activity into view."
         />
       </PageContainer>
     );
