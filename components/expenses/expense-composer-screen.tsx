@@ -224,7 +224,7 @@ function toExpenseTimestamp(value: string) {
 
 function getCurrencyToken(currency: string) {
   return (
-    new Intl.NumberFormat("en-US", {
+    new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency,
       minimumFractionDigits: 2,
