@@ -61,6 +61,7 @@ export const getGroupExpenseExport = query({
           group_name: access.group.name,
           currency: access.group.currency,
           expense_date: formatExportDate(record.expense.expenseAt),
+          kind: record.expense.kind ?? "expense",
           description: record.expense.description,
           amount: formatExportAmount(record.expense.amountCents),
           paid_by: userLookup.get(record.expense.paidBy) ?? "Group member",

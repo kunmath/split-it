@@ -10,6 +10,7 @@ import {
   getCurrentUserExpenseNetCents,
   getExpenseIconKey,
   getGroupExpenseRecords,
+  simplifyDebts,
   type GroupExpenseRecord,
 } from "./lib/expenseHelpers";
 import { expirePendingGroupInvites } from "./lib/inviteHelpers";
@@ -333,6 +334,28 @@ export const getDetail = query({
       }, null) ?? null;
     const currentUserStanding = memberBalanceSnapshots.get(user._id) ?? createBalanceSnapshot(0, 0);
     const resolvedIconKey = resolveGroupIconKey(group);
+    const allSettlementSuggestions = simplifyDebts(memberBalanceSnapshots);
+    const currentUserSuggestions = allSettlementSuggestions
+      .filter(
+        (settlement) =>
+          settlement.fromUserId === user._id || settlement.toUserId === user._id,
+      )
+      .map((settlement) => {
+        const counterpartyId =
+          settlement.fromUserId === user._id ? settlement.toUserId : settlement.fromUserId;
+        const counterpartyUser = userLookup.get(counterpartyId);
+
+        return {
+          counterpartyId,
+          counterpartyName: counterpartyUser?.name ?? "Group member",
+          counterpartyImageUrl: counterpartyUser?.imageUrl,
+          amountCents: settlement.amountCents,
+          direction:
+            settlement.fromUserId === user._id
+              ? ("youPay" as const)
+              : ("youReceive" as const),
+        };
+      });
 
     const members = activeMemberships
       .map((member) => {
@@ -393,9 +416,15 @@ export const getDetail = query({
         paidByCurrentUser: record.expense.paidBy === user._id,
         currentUserNetCents: getCurrentUserExpenseNetCents(record, user._id),
         splitType: record.expense.splitType,
+        kind: record.expense.kind ?? ("expense" as const),
         participantCount: record.shares.length,
         iconKey: getExpenseIconKey(record.expense.description, resolvedIconKey),
+        counterpartyName:
+          record.expense.kind === "settlement"
+            ? userLookup.get(record.shares[0]?.userId as Id<"users">)?.name ?? "Group member"
+            : null,
       })),
+      suggestedSettlements: currentUserSuggestions,
       insights: {
         totalSpendCents,
         averageExpenseCents:

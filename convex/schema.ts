@@ -5,6 +5,7 @@ const groupMemberRole = v.union(v.literal("owner"), v.literal("member"));
 const groupMemberStatus = v.union(v.literal("active"), v.literal("invited"));
 const inviteStatus = v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired"));
 const expenseSplitType = v.union(v.literal("equal"), v.literal("exact"));
+const expenseKind = v.union(v.literal("expense"), v.literal("settlement"));
 
 export default defineSchema({
   users: defineTable({
@@ -58,6 +59,7 @@ export default defineSchema({
     amountCents: v.number(),
     paidBy: v.id("users"),
     splitType: expenseSplitType,
+    kind: v.optional(expenseKind),
     expenseAt: v.number(),
     createdBy: v.id("users"),
     updatedAt: v.optional(v.number()),

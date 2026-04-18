@@ -405,6 +405,7 @@ export const listForGroup = query({
         paidByName: userLookup.get(record.expense.paidBy)?.name ?? "Group member",
         paidByCurrentUser: record.expense.paidBy === access.user._id,
         splitType: record.expense.splitType,
+        kind: record.expense.kind ?? ("expense" as const),
         notes: record.expense.notes,
         participantCount: record.shares.length,
         currentUserNetCents: getCurrentUserExpenseNetCents(
