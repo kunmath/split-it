@@ -1,6 +1,6 @@
 # split-it
 
-Split-It is a responsive shared-expense MVP built with Next.js, Convex, and Clerk. Phase 9 completes the settings utilities, optional Resend-backed invite emails, expense-level CSV export, demo seeding, polished screen states, and the Next 16 `proxy.ts` auth hook rename.
+Split-It is a responsive shared-expense MVP built with Next.js, Convex, and Clerk. 
 
 ## App Overview
 
@@ -28,6 +28,7 @@ Split-It is a responsive shared-expense MVP built with Next.js, Convex, and Cler
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Optional | Next.js | Clerk client key |
 | `CLERK_SECRET_KEY` | Optional | Next.js | Clerk server key |
 | `CLERK_JWT_ISSUER_DOMAIN` | Optional for live auth bridge | Next.js + Convex | Clerk issuer used by Convex auth config |
+| `CLERK_WEBHOOK_SECRET` | Optional, recommended for durable user sync | Convex | Svix signing secret for the Clerk `user.*` webhook endpoint |
 | `NEXT_PUBLIC_CONVEX_URL` | Optional for live Convex | Next.js | Convex client URL |
 | `CONVEX_DEPLOYMENT` | Optional | Convex CLI | Deployment selection when needed |
 | `RESEND_API_KEY` | Optional | Convex | Invite email delivery via Resend |
@@ -37,6 +38,7 @@ Notes:
 
 - `NEXT_PUBLIC_APP_URL` should point at the user-facing Next.js app URL in every environment.
 - `RESEND_API_KEY`, `INVITE_EMAIL_FROM`, and `NEXT_PUBLIC_APP_URL` must exist in the Convex runtime environment for invite email delivery to work. Setting them only on the Next.js host is not sufficient.
+- For durable Clerk-to-Convex user sync, add a Clerk webhook pointing to `https://<deployment>.convex.site/clerk-users-webhook` and set `CLERK_WEBHOOK_SECRET` in the Convex runtime environment.
 - Clerk development keys are fine for local work but must be replaced with real production keys when deploying.
 
 ## Local Development

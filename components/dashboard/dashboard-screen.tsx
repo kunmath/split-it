@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import {
   ArrowUpRight,
   Coins,
@@ -183,9 +183,47 @@ function MockDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps
 }
 
 function LiveDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps) {
-  const summary = useQuery(api.groups.getDashboardSummary, {});
-  const groups = useQuery(api.groups.listActiveForCurrentUser, {});
+  const { isLoading: isConvexAuthLoading, isAuthenticated: isConvexAuthenticated } = useConvexAuth();
+  const currentUser = useQuery(api.users.current);
+  const summary = useQuery(
+    api.groups.getDashboardSummary,
+    currentUser === undefined ? "skip" : {},
+  );
+  const groups = useQuery(
+    api.groups.listActiveForCurrentUser,
+    currentUser === undefined ? "skip" : {},
+  );
   const createGroup = useMutation(api.groups.create);
+
+  if (currentUser === undefined) {
+    return (
+      <PageContainer className="space-y-6">
+        <ScreenState
+          state="loading"
+          title="Loading dashboard"
+          description="Pulling your active groups, portfolio totals, and create-group tools into place."
+        />
+      </PageContainer>
+    );
+  }
+
+  if (currentUser === null) {
+    return (
+      <PageContainer className="space-y-6">
+        <ScreenState
+          state={isConvexAuthLoading ? "loading" : "unavailable"}
+          title={isConvexAuthLoading ? "Syncing your workspace" : "Convex auth bridge unavailable"}
+          description={
+            isConvexAuthLoading
+              ? "Your account is authenticated, but the ledger record is still finishing setup. Refresh in a moment if this state persists."
+              : isConvexAuthenticated
+                ? "Your account is authenticated, but the ledger record was not found in Convex. The Clerk webhook or current-user sync still needs attention."
+                : "Clerk sign-in succeeded, but Convex did not receive a valid auth token for this session. Check the Clerk JWT template named `convex`, its `aud` claim, and whether it matches this app's publishable key and issuer domain."
+          }
+        />
+      </PageContainer>
+    );
+  }
 
   if (summary === undefined || groups === undefined) {
     return (

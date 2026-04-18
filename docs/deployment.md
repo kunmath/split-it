@@ -22,6 +22,7 @@ This phase does not add a production Dockerfile. Docker Compose remains the docu
 
 - `NEXT_PUBLIC_APP_URL`
 - `CLERK_JWT_ISSUER_DOMAIN`
+- `CLERK_WEBHOOK_SECRET` for Clerk `user.*` webhook verification
 - `RESEND_API_KEY` when invite emails are enabled
 - `INVITE_EMAIL_FROM` when invite emails are enabled
 
@@ -35,12 +36,15 @@ Important:
 - Development Clerk keys are suitable only for local or test environments.
 - Replace them with production Clerk keys and issuer settings before launch.
 - The authenticated route gate now lives in `proxy.ts`, which is the required Next 16-compatible filename for this phase.
+- Add a Clerk webhook for `user.created`, `user.updated`, and `user.deleted` pointing to `https://<your deployment>.convex.site/clerk-users-webhook`.
+- Store the webhook's Svix signing secret as `CLERK_WEBHOOK_SECRET` in the Convex deployment environment.
 
 ## Convex
 
 - Keep the schema unchanged for this phase.
 - Deploy the new backend functions for group rename/archive, invite email scheduling, expense export, and demo seeding together with the frontend.
 - Ensure the Convex deployment environment includes `CLERK_JWT_ISSUER_DOMAIN` before pushing the live auth bridge.
+- Ensure the Convex deployment environment includes `CLERK_WEBHOOK_SECRET` before enabling Clerk user webhooks.
 
 ## Resend
 

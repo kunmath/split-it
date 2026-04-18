@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 
 import type { Doc } from "./_generated/dataModel";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
 import { getCurrentUser } from "./lib/auth";
 
 type StoredUserFields = Pick<Doc<"users">, "name" | "email" | "clerkUserId" | "imageUrl">;
@@ -25,6 +25,35 @@ function buildCurrentUserFields(identity: {
   };
 }
 
+async function upsertUser(ctx: MutationCtx, userFields: StoredUserFields) {
+  const existingUser = await ctx.db
+    .query("users")
+    .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", userFields.clerkUserId))
+    .unique();
+
+  if (existingUser !== null) {
+    const patch: Partial<StoredUserFields> = {};
+
+    if (existingUser.name !== userFields.name) {
+      patch.name = userFields.name;
+    }
+    if (existingUser.email !== userFields.email) {
+      patch.email = userFields.email;
+    }
+    if (existingUser.imageUrl !== userFields.imageUrl) {
+      patch.imageUrl = userFields.imageUrl;
+    }
+
+    if (Object.keys(patch).length > 0) {
+      await ctx.db.patch(existingUser._id, patch);
+    }
+
+    return existingUser._id;
+  }
+
+  return ctx.db.insert("users", userFields);
+}
+
 export const current = query({
   args: {},
   handler: async (ctx) => {
@@ -33,6 +62,18 @@ export const current = query({
 });
 
 export const storeCurrentUser = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (identity === null) {
+      throw new ConvexError("Called storeCurrentUser without authentication");
+    }
+
+    return upsertUser(ctx, buildCurrentUserFields(identity));
+  },
+});
+
+export const upsertFromClerk = internalMutation({
   args: {
     clerkUserId: v.string(),
     email: v.string(),
@@ -40,46 +81,14 @@ export const storeCurrentUser = mutation({
     name: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (identity === null) {
-      throw new ConvexError("Called storeCurrentUser without authentication");
-    }
-
-    if (identity.subject !== args.clerkUserId) {
-      throw new ConvexError("Authenticated user does not match the Clerk session");
-    }
-
-    const userFields = buildCurrentUserFields({
-      email: args.email,
-      name: args.name,
-      pictureUrl: args.imageUrl,
-      subject: args.clerkUserId,
-    });
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", userFields.clerkUserId))
-      .unique();
-
-    if (existingUser !== null) {
-      const patch: Partial<StoredUserFields> = {};
-
-      if (existingUser.name !== userFields.name) {
-        patch.name = userFields.name;
-      }
-      if (existingUser.email !== userFields.email) {
-        patch.email = userFields.email;
-      }
-      if (existingUser.imageUrl !== userFields.imageUrl) {
-        patch.imageUrl = userFields.imageUrl;
-      }
-
-      if (Object.keys(patch).length > 0) {
-        await ctx.db.patch(existingUser._id, patch);
-      }
-
-      return existingUser._id;
-    }
-
-    return ctx.db.insert("users", userFields);
+    return upsertUser(
+      ctx,
+      buildCurrentUserFields({
+        email: args.email,
+        name: args.name,
+        pictureUrl: args.imageUrl,
+        subject: args.clerkUserId,
+      }),
+    );
   },
 });

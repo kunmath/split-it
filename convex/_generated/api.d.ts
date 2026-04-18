@@ -12,6 +12,7 @@ import type * as demo from "../demo.js";
 import type * as expenses from "../expenses.js";
 import type * as exports from "../exports.js";
 import type * as groups from "../groups.js";
+import type * as http from "../http.js";
 import type * as invites from "../invites.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_expenseHelpers from "../lib/expenseHelpers.js";
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   expenses: typeof expenses;
   exports: typeof exports;
   groups: typeof groups;
+  http: typeof http;
   invites: typeof invites;
   "lib/auth": typeof lib_auth;
   "lib/expenseHelpers": typeof lib_expenseHelpers;

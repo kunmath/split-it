@@ -8,32 +8,23 @@ import { api } from "@/convex/_generated/api";
 
 export function CurrentUserSync() {
   const { isLoading, isAuthenticated } = useConvexAuth();
-  const { isLoaded, user } = useUser();
+  const { user } = useUser();
   const lastSyncedKeyRef = useRef<string | null>(null);
   const inFlightSyncKeyRef = useRef<string | null>(null);
   const storeCurrentUser = useMutation(api.users.storeCurrentUser);
   const [retryNonce, setRetryNonce] = useState(0);
-  const userId = user?.id ?? null;
-  const fullName = user?.fullName ?? "";
-  const emailAddress = user?.primaryEmailAddress?.emailAddress ?? "";
-  const imageUrl = user?.imageUrl ?? "";
+  const syncKey = user?.id ?? "__current_user__";
 
   useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
     if (!isAuthenticated) {
       lastSyncedKeyRef.current = null;
       inFlightSyncKeyRef.current = null;
       return;
     }
-
-    if (isLoading || !isLoaded || !userId) {
-      return;
-    }
-
-    if (!emailAddress) {
-      return;
-    }
-
-    const syncKey = [userId, fullName, emailAddress, imageUrl].join("::");
 
     if (lastSyncedKeyRef.current === syncKey || inFlightSyncKeyRef.current === syncKey) {
       return;
@@ -43,12 +34,7 @@ export function CurrentUserSync() {
     let retryTimeoutId: ReturnType<typeof setTimeout> | null = null;
     inFlightSyncKeyRef.current = syncKey;
 
-    void storeCurrentUser({
-        clerkUserId: userId,
-        email: emailAddress,
-        imageUrl: imageUrl || undefined,
-        name: fullName || undefined,
-      })
+    void storeCurrentUser({})
       .then(() => {
         if (!cancelled) {
           lastSyncedKeyRef.current = syncKey;
@@ -71,15 +57,11 @@ export function CurrentUserSync() {
       }
     };
   }, [
-    emailAddress,
-    fullName,
-    imageUrl,
     isAuthenticated,
-    isLoaded,
     isLoading,
     retryNonce,
+    syncKey,
     storeCurrentUser,
-    userId,
   ]);
 
   return null;
