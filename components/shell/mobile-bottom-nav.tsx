@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { mobileNav } from "@/lib/navigation";
+import { getSectionFromPathname, mobileNav } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
 export function MobileBottomNav() {
@@ -14,8 +14,7 @@ export function MobileBottomNav() {
       <div className="mx-auto grid max-w-md grid-cols-4 gap-1 rounded-[1.75rem] bg-surface/60 px-1">
         {mobileNav.map((item) => {
           const Icon = item.icon;
-          const active =
-            pathname === item.href || (item.href === "/dashboard" && pathname.startsWith("/groups"));
+          const active = getSectionFromPathname(pathname) === item.section;
 
           return (
             <Link

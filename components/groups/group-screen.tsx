@@ -21,6 +21,7 @@ import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { looksLikeConvexId } from "@/lib/convex-ids";
 import { formatMoneyFromCents, formatSignedMoneyFromCents } from "@/lib/format";
 import { iconMap } from "@/lib/icon-map";
 import {
@@ -348,10 +349,29 @@ export function GroupScreen({ groupId, initialDescription, initialName }: GroupS
 
 function LiveGroupScreen({ groupId }: GroupScreenProps) {
   const currentUser = useQuery(api.users.current);
+  const hasValidGroupId = looksLikeConvexId(groupId);
   const group = useQuery(
     api.groups.getDetail,
-    currentUser ? { groupId: groupId as Id<"groups"> } : "skip",
+    currentUser && hasValidGroupId ? { groupId: groupId as Id<"groups"> } : "skip",
   );
+
+  if (!hasValidGroupId) {
+    return (
+      <PageContainer className="space-y-6">
+        <ScreenState
+          state="unavailable"
+          title="Group unavailable"
+          description="This group route is invalid or no longer points at an active ledger."
+          icon={<Users className="h-7 w-7 text-secondary" />}
+          actions={
+            <Link href="/groups" className={buttonVariants({ variant: "primary", size: "lg" })}>
+              Back to groups
+            </Link>
+          }
+        />
+      </PageContainer>
+    );
+  }
 
   if (currentUser === undefined) {
     return (

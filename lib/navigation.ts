@@ -22,7 +22,7 @@ export const desktopPrimaryNav: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, section: "dashboard" },
   { label: "Activity", href: "/activity", icon: BellDot, section: "activity" },
   { label: "Friends", href: "/friends", icon: Users, section: "friends" },
-  { label: "Groups", href: "/groups/demo-group", icon: WalletCards, section: "groups" },
+  { label: "Groups", href: "/groups", icon: WalletCards, section: "groups" },
 ];
 
 export const desktopSecondaryNav = [
@@ -31,7 +31,7 @@ export const desktopSecondaryNav = [
 ];
 
 export const mobileNav: NavItem[] = [
-  { label: "Groups", href: "/dashboard", icon: WalletCards, section: "dashboard" },
+  { label: "Groups", href: "/groups", icon: WalletCards, section: "groups" },
   { label: "Friends", href: "/friends", icon: Users, section: "friends" },
   { label: "Activity", href: "/activity", icon: BellDot, section: "activity" },
   { label: "Account", href: "/account", icon: UserRound, section: "account" },

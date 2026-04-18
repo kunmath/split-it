@@ -54,6 +54,13 @@ async function upsertUser(ctx: MutationCtx, userFields: StoredUserFields) {
   return ctx.db.insert("users", userFields);
 }
 
+async function getUserByClerkUserId(ctx: MutationCtx, clerkUserId: string) {
+  return ctx.db
+    .query("users")
+    .withIndex("by_clerk_user_id", (q) => q.eq("clerkUserId", clerkUserId))
+    .unique();
+}
+
 export const current = query({
   args: {},
   handler: async (ctx) => {
@@ -67,6 +74,11 @@ export const storeCurrentUser = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (identity === null) {
       throw new ConvexError("Called storeCurrentUser without authentication");
+    }
+
+    const existingUser = await getUserByClerkUserId(ctx, identity.subject);
+    if (existingUser !== null) {
+      return existingUser._id;
     }
 
     return upsertUser(ctx, buildCurrentUserFields(identity));

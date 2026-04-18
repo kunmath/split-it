@@ -29,6 +29,7 @@ import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { looksLikeConvexId } from "@/lib/convex-ids";
 import { formatMoneyFromCents, formatSignedMoneyFromCents } from "@/lib/format";
 import { getGroupDetail, memberBalances as mockMemberBalances } from "@/lib/placeholder-data";
 import { cn, getInitials } from "@/lib/utils";
@@ -309,10 +310,29 @@ export function GroupSettingsScreen({ groupId }: GroupSettingsScreenProps) {
 
 function LiveGroupSettingsScreen({ groupId }: GroupSettingsScreenProps) {
   const currentUser = useQuery(api.users.current);
+  const hasValidGroupId = looksLikeConvexId(groupId);
   const settingsOverview = useQuery(
     api.groups.getSettingsOverview,
-    currentUser ? { groupId: groupId as Id<"groups"> } : "skip",
+    currentUser && hasValidGroupId ? { groupId: groupId as Id<"groups"> } : "skip",
   );
+
+  if (!hasValidGroupId) {
+    return (
+      <PageContainer className="space-y-6">
+        <ScreenState
+          state="unavailable"
+          title="Group unavailable"
+          description="This group route is invalid or no longer points at an active ledger."
+          icon={<Users className="h-7 w-7 text-secondary" />}
+          actions={
+            <Link href="/groups" className={buttonVariants({ variant: "primary", size: "lg" })}>
+              Back to groups
+            </Link>
+          }
+        />
+      </PageContainer>
+    );
+  }
 
   if (currentUser === undefined) {
     return (

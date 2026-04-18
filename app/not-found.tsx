@@ -23,8 +23,8 @@ export default function NotFound() {
           <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg" })}>
             Go to Dashboard
           </Link>
-          <Link href="/groups/demo-group" className={buttonVariants({ variant: "ghost", size: "lg" })}>
-            Open Demo Group
+          <Link href="/groups" className={buttonVariants({ variant: "ghost", size: "lg" })}>
+            Open Groups
           </Link>
         </div>
       </div>

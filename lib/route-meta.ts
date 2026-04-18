@@ -18,10 +18,26 @@ function getGroupExpenseHref(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
   const groupId = segments[1];
 
-  return groupId ? `/groups/${groupId}/expenses/new` : "/groups/demo-group/expenses/new";
+  return groupId ? `/groups/${groupId}/expenses/new` : "/dashboard";
 }
 
 export function getRouteMeta(pathname: string): AppRouteMeta {
+  if (pathname === "/groups") {
+    return {
+      section: "groups",
+      title: "All Groups",
+      eyebrow: "Shared Ledgers",
+      searchPlaceholder: "Search groups...",
+      showFab: true,
+      fabLabel: "New Group",
+      fabHref: "/dashboard?create=1",
+      railActionLabel: "New Group",
+      railActionHref: "/dashboard?create=1",
+      topActionLabel: "Create Group",
+      updatedLabel: "Active group directory",
+    };
+  }
+
   if (pathname.startsWith("/groups/") && pathname.endsWith("/settings")) {
     return {
       section: "groups",

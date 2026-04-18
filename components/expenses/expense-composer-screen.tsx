@@ -1435,7 +1435,7 @@ function ExpenseComposerScene({
 
             <SurfaceCard
               variant="hero"
-              className="fixed bottom-4 left-4 right-4 z-20 rounded-[2rem] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.36)] sm:left-6 sm:right-6 lg:static lg:p-6 lg:shadow-[0_24px_80px_rgba(0,0,0,0.36)] xl:sticky xl:top-28"
+              className="rounded-[2rem] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.36)] lg:p-6 xl:sticky xl:top-28"
             >
               <p className="text-xs uppercase tracking-[0.24em] text-primary">Split Summary</p>
 
