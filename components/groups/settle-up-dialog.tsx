@@ -35,16 +35,21 @@ type SettleUpDialogProps = {
   isMock?: boolean;
 };
 
+const AMOUNT_PATTERN = /^\d+(?:\.\d{1,2})?$/;
+
 function parseAmountToCents(value: string) {
   const trimmed = value.trim();
-  if (!trimmed) {
+  if (!trimmed || !AMOUNT_PATTERN.test(trimmed)) {
     return null;
   }
-  const asNumber = Number(trimmed);
-  if (!Number.isFinite(asNumber) || asNumber <= 0) {
+  const [wholePart, fractionalPart = ""] = trimmed.split(".");
+  const wholeCents = Number(wholePart) * 100;
+  const fractionalCents = Number(fractionalPart.padEnd(2, "0"));
+  const totalCents = wholeCents + fractionalCents;
+  if (!Number.isSafeInteger(totalCents) || totalCents <= 0) {
     return null;
   }
-  return Math.round(asNumber * 100);
+  return totalCents;
 }
 
 export function SettleUpDialog({
@@ -79,14 +84,23 @@ export function SettleUpDialog({
     }
     setError(null);
     setIsSubmitting(false);
+    setNote("");
     if (payableSuggestions.length > 0) {
       const first = payableSuggestions[0]!;
       setToUserId(first.counterpartyId);
       setAmount((first.amountCents / 100).toFixed(2));
-    } else if (otherMembers.length > 0 && !toUserId) {
+    } else if (otherMembers.length > 0) {
       setToUserId(otherMembers[0]!.id);
+      setAmount("");
+    } else {
+      setToUserId("");
+      setAmount("");
     }
-  }, [open, payableSuggestions, otherMembers, toUserId]);
+    // Intentionally only fires when the dialog transitions to open so the user's
+    // manual recipient/amount edits aren't overwritten. Suggestions and member
+    // list are captured at the moment of opening.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const handleSuggestionClick = (suggestion: SettleUpSuggestion) => {
     setToUserId(suggestion.counterpartyId);

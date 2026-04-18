@@ -81,6 +81,7 @@ type GroupSceneData = {
     splitType: "equal" | "exact";
     kind: "expense" | "settlement";
     counterpartyName: string | null;
+    counterpartyIsCurrentUser: boolean;
     participantCount: number;
     iconKey: IconKey;
   }>;
@@ -315,6 +316,7 @@ function getMockGroupSceneData(
       splitType: "equal" as const,
       kind: "expense" as const,
       counterpartyName: null,
+      counterpartyIsCurrentUser: false,
       participantCount: mockMembers.length,
       iconKey: expense.icon,
     })),
@@ -908,14 +910,17 @@ function ExpenseRow({
   const Icon = isSettlement ? HandCoins : iconMap[expense.iconKey];
   const net = getExpenseNetDescriptor(expense.currentUserNetCents, currency);
 
+  const counterpartyLabel = expense.counterpartyName ?? "a member";
   const settlementTitle = expense.paidByCurrentUser
-    ? `You paid ${expense.counterpartyName ?? "a member"}`
-    : `${expense.paidByName} paid ${
-        expense.counterpartyName ?? "you"
-      }`;
+    ? `You paid ${counterpartyLabel}`
+    : expense.counterpartyIsCurrentUser
+      ? `${expense.paidByName} paid you`
+      : `${expense.paidByName} paid ${counterpartyLabel}`;
   const settlementSubtitle = expense.paidByCurrentUser
     ? "Settlement recorded"
-    : "Settlement received";
+    : expense.counterpartyIsCurrentUser
+      ? "Settlement received"
+      : "Settlement between members";
 
   const rowContent = (
     <div className="grid gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto] md:items-center">
