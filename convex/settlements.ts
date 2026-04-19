@@ -3,6 +3,11 @@ import { ConvexError, v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import { mutation } from "./_generated/server";
 import { requireGroupMember } from "./lib/permissions";
+import {
+  EXPENSE_KIND,
+  EXPENSE_SPLIT_TYPE,
+  MEMBERSHIP_STATUS,
+} from "./lib/constants";
 
 function assertGroupIsActive(group: Doc<"groups">) {
   if (group.archivedAt !== undefined) {
@@ -58,7 +63,7 @@ export const create = mutation({
       )
       .unique();
 
-    if (counterpartyMembership === null || counterpartyMembership.status !== "active") {
+    if (counterpartyMembership === null || counterpartyMembership.status !== MEMBERSHIP_STATUS.ACTIVE) {
       throw new ConvexError("Counterparty must be an active group member");
     }
 
@@ -71,8 +76,8 @@ export const create = mutation({
       description: "Settlement",
       amountCents,
       paidBy: access.user._id,
-      splitType: "exact",
-      kind: "settlement",
+      splitType: EXPENSE_SPLIT_TYPE.EXACT,
+      kind: EXPENSE_KIND.SETTLEMENT,
       expenseAt: now,
       createdBy: access.user._id,
       notes: note,

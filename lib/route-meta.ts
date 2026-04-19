@@ -1,4 +1,9 @@
 import type { AppSection } from "@/lib/navigation";
+import {
+  DASHBOARD_CREATE_GROUP_HREF,
+  ROUTES,
+  groupExpenseNewPath,
+} from "@/lib/routes";
 
 export type AppRouteMeta = {
   section: AppSection;
@@ -18,11 +23,11 @@ function getGroupExpenseHref(pathname: string) {
   const segments = pathname.split("/").filter(Boolean);
   const groupId = segments[1];
 
-  return groupId ? `/groups/${groupId}/expenses/new` : "/dashboard";
+  return groupId ? groupExpenseNewPath(groupId) : ROUTES.dashboard;
 }
 
 export function getRouteMeta(pathname: string): AppRouteMeta {
-  if (pathname === "/groups") {
+  if (pathname === ROUTES.groups) {
     return {
       section: "groups",
       title: "All Groups",
@@ -30,15 +35,15 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search groups...",
       showFab: true,
       fabLabel: "New Group",
-      fabHref: "/dashboard?create=1",
+      fabHref: DASHBOARD_CREATE_GROUP_HREF,
       railActionLabel: "New Group",
-      railActionHref: "/dashboard?create=1",
+      railActionHref: DASHBOARD_CREATE_GROUP_HREF,
       topActionLabel: "Create Group",
       updatedLabel: "Active group directory",
     };
   }
 
-  if (pathname.startsWith("/groups/") && pathname.endsWith("/settings")) {
+  if (pathname.startsWith(`${ROUTES.groups}/`) && pathname.endsWith("/settings")) {
     return {
       section: "groups",
       title: "Group Totals",
@@ -86,7 +91,7 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
     };
   }
 
-  if (pathname.startsWith("/groups/")) {
+  if (pathname.startsWith(`${ROUTES.groups}/`)) {
     return {
       section: "groups",
       title: "Group Details",
@@ -102,7 +107,7 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
     };
   }
 
-  if (pathname.startsWith("/friends")) {
+  if (pathname.startsWith(ROUTES.friends)) {
     return {
       section: "friends",
       title: "Friends",
@@ -110,15 +115,15 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search friends...",
       showFab: false,
       fabLabel: "Add",
-      fabHref: "/dashboard?create=1",
+      fabHref: DASHBOARD_CREATE_GROUP_HREF,
       railActionLabel: "New Group",
-      railActionHref: "/dashboard?create=1",
+      railActionHref: DASHBOARD_CREATE_GROUP_HREF,
       topActionLabel: "Invite",
       updatedLabel: "Placeholder space",
     };
   }
 
-  if (pathname.startsWith("/activity")) {
+  if (pathname.startsWith(ROUTES.activity)) {
     return {
       section: "activity",
       title: "Activity",
@@ -126,15 +131,15 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search activity...",
       showFab: false,
       fabLabel: "Add",
-      fabHref: "/dashboard?create=1",
+      fabHref: DASHBOARD_CREATE_GROUP_HREF,
       railActionLabel: "New Group",
-      railActionHref: "/dashboard?create=1",
+      railActionHref: DASHBOARD_CREATE_GROUP_HREF,
       topActionLabel: "Filter",
       updatedLabel: "Quiet feed",
     };
   }
 
-  if (pathname.startsWith("/account")) {
+  if (pathname.startsWith(ROUTES.account)) {
     return {
       section: "account",
       title: "Account",
@@ -142,9 +147,9 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       searchPlaceholder: "Search settings...",
       showFab: false,
       fabLabel: "Save",
-      fabHref: "/dashboard?create=1",
+      fabHref: DASHBOARD_CREATE_GROUP_HREF,
       railActionLabel: "New Group",
-      railActionHref: "/dashboard?create=1",
+      railActionHref: DASHBOARD_CREATE_GROUP_HREF,
       topActionLabel: "Manage",
       updatedLabel: "Profile shell",
     };
@@ -157,9 +162,9 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
     searchPlaceholder: "Search transactions...",
     showFab: true,
     fabLabel: "New Group",
-    fabHref: "/dashboard?create=1",
+    fabHref: DASHBOARD_CREATE_GROUP_HREF,
     railActionLabel: "New Group",
-    railActionHref: "/dashboard?create=1",
+    railActionHref: DASHBOARD_CREATE_GROUP_HREF,
     topActionLabel: "Settle Up",
     updatedLabel: "Updated 2 minutes ago",
   };

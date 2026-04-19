@@ -27,7 +27,16 @@ import {
 } from "@/components/groups/settle-up-dialog";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import {
+  EXPENSE_KIND,
+  EXPENSE_SPLIT_TYPE,
+  GROUP_MEMBER_ROLE,
+  type ExpenseKind,
+  type ExpenseSplitType,
+  type GroupMemberRole,
+} from "@/convex/lib/constants";
 import { looksLikeConvexId } from "@/lib/convex-ids";
+import { ROUTES } from "@/lib/routes";
 import { formatMoneyFromCents, formatSignedMoneyFromCents } from "@/lib/format";
 import { iconMap } from "@/lib/icon-map";
 import {
@@ -63,7 +72,7 @@ type GroupSceneData = {
     name: string;
     email: string;
     imageUrl?: string;
-    role: "member" | "owner";
+    role: GroupMemberRole;
     isCurrentUser: boolean;
     joinedAt: number | null;
     paidCents: number;
@@ -78,8 +87,8 @@ type GroupSceneData = {
     paidByName: string;
     paidByCurrentUser: boolean;
     currentUserNetCents: number;
-    splitType: "equal" | "exact";
-    kind: "expense" | "settlement";
+    splitType: ExpenseSplitType;
+    kind: ExpenseKind;
     counterpartyName: string | null;
     counterpartyIsCurrentUser: boolean;
     participantCount: number;
@@ -225,7 +234,7 @@ function getMockGroupSceneData(
       id: "mock-member-jordan",
       name: "Jordan Dale",
       email: "jordan@example.com",
-      role: "owner",
+      role: GROUP_MEMBER_ROLE.OWNER,
       isCurrentUser: true,
       joinedAt: group.createdAt,
       paidCents: 224_400,
@@ -236,7 +245,7 @@ function getMockGroupSceneData(
       id: "mock-member-sarah",
       name: "Sarah Jenkins",
       email: "sarah@example.com",
-      role: "member",
+      role: GROUP_MEMBER_ROLE.MEMBER,
       isCurrentUser: false,
       joinedAt: group.createdAt + 86_400_000,
       paidCents: 132_400,
@@ -247,7 +256,7 @@ function getMockGroupSceneData(
       id: "mock-member-elena",
       name: "Elena Rodriguez",
       email: "elena@example.com",
-      role: "member",
+      role: GROUP_MEMBER_ROLE.MEMBER,
       isCurrentUser: false,
       joinedAt: group.createdAt + 2 * 86_400_000,
       paidCents: 146_000,
@@ -258,7 +267,7 @@ function getMockGroupSceneData(
       id: "mock-member-james",
       name: "James Chen",
       email: "james@example.com",
-      role: "member",
+      role: GROUP_MEMBER_ROLE.MEMBER,
       isCurrentUser: false,
       joinedAt: group.createdAt + 3 * 86_400_000,
       paidCents: 68_000,
@@ -269,7 +278,7 @@ function getMockGroupSceneData(
       id: "mock-member-marcus",
       name: "Marcus Vale",
       email: "marcus@example.com",
-      role: "member",
+      role: GROUP_MEMBER_ROLE.MEMBER,
       isCurrentUser: false,
       joinedAt: group.createdAt + 4 * 86_400_000,
       paidCents: 24_000,
@@ -280,7 +289,7 @@ function getMockGroupSceneData(
       id: "mock-member-priya",
       name: "Priya Nair",
       email: "priya@example.com",
-      role: "member",
+      role: GROUP_MEMBER_ROLE.MEMBER,
       isCurrentUser: false,
       joinedAt: group.createdAt + 5 * 86_400_000,
       paidCents: 0,
@@ -313,8 +322,8 @@ function getMockGroupSceneData(
       paidByName: expense.paidBy,
       paidByCurrentUser: expense.paidBy === "Jordan Dale",
       currentUserNetCents: Math.round(expense.signedBalance * 100),
-      splitType: "equal" as const,
-      kind: "expense" as const,
+      splitType: EXPENSE_SPLIT_TYPE.EQUAL,
+      kind: EXPENSE_KIND.EXPENSE,
       counterpartyName: null,
       counterpartyIsCurrentUser: false,
       participantCount: mockMembers.length,
@@ -378,7 +387,7 @@ function LiveGroupScreen({ groupId }: GroupScreenProps) {
           description="This group route is invalid or no longer points at an active ledger."
           icon={<Users className="h-7 w-7 text-secondary" />}
           actions={
-            <Link href="/groups" className={buttonVariants({ variant: "primary", size: "lg" })}>
+            <Link href={ROUTES.groups} className={buttonVariants({ variant: "primary", size: "lg" })}>
               Back to groups
             </Link>
           }
@@ -432,7 +441,7 @@ function LiveGroupScreen({ groupId }: GroupScreenProps) {
           description="You do not have access to this group, or it is no longer active."
           icon={<Users className="h-7 w-7 text-secondary" />}
           actions={
-            <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg" })}>
+            <Link href={ROUTES.dashboard} className={buttonVariants({ variant: "primary", size: "lg" })}>
               Back to dashboard
             </Link>
           }
@@ -767,7 +776,7 @@ function getStandingMemberRows(members: GroupSceneData["members"]) {
   const candidateMembers = withoutCurrentUser.length > 0 ? withoutCurrentUser : members;
 
   return candidateMembers
-    .filter((member) => member.balanceCents !== 0 || member.role === "owner" || member.isCurrentUser)
+    .filter((member) => member.balanceCents !== 0 || member.role === GROUP_MEMBER_ROLE.OWNER || member.isCurrentUser)
     .sort((left, right) => Math.abs(right.balanceCents) - Math.abs(left.balanceCents))
     .slice(0, 4);
 }
@@ -786,7 +795,7 @@ function StandingMemberRow({
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-on-surface">{member.name}</p>
           <p className="text-xs text-on-surface-variant">
-            {member.role === "owner" ? "Owner" : member.isCurrentUser ? "You" : "Member"}
+            {member.role === GROUP_MEMBER_ROLE.OWNER ? "Owner" : member.isCurrentUser ? "You" : "Member"}
           </p>
         </div>
       </div>
@@ -906,7 +915,7 @@ function ExpenseRow({
   expense: GroupSceneData["recentExpenses"][number];
 }) {
   const { month, day } = formatDateParts(expense.expenseAt);
-  const isSettlement = expense.kind === "settlement";
+  const isSettlement = expense.kind === EXPENSE_KIND.SETTLEMENT;
   const Icon = isSettlement ? HandCoins : iconMap[expense.iconKey];
   const net = getExpenseNetDescriptor(expense.currentUserNetCents, currency);
 

@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { ShellSessionAvatar } from "@/components/shell/shell-session-controls";
 import { buttonVariants } from "@/components/ui/button";
 import type { AppRouteMeta } from "@/lib/route-meta";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 type TopUtilityBarProps = {
@@ -20,7 +21,7 @@ function isGroupDetailRoute(pathname: string | null) {
   if (pathname === null) {
     return false;
   }
-  if (!pathname.startsWith("/groups/")) {
+  if (!pathname.startsWith(`${ROUTES.groups}/`)) {
     return false;
   }
   if (pathname.endsWith("/settings")) {

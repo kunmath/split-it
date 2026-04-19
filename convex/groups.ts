@@ -21,6 +21,12 @@ import {
 } from "./lib/expenseHelpers";
 import { expirePendingGroupInvites } from "./lib/inviteHelpers";
 import { requireGroupOwner } from "./lib/permissions";
+import {
+  EXPENSE_KIND,
+  GROUP_MEMBER_ROLE,
+  MEMBERSHIP_STATUS,
+  type GroupMemberRole,
+} from "./lib/constants";
 
 const GROUP_ICON_KEYS = ["home", "plane", "utensils", "cart", "mountain", "fuel"] as const;
 const groupIconKey = v.union(
@@ -45,7 +51,7 @@ type GroupSettingsBalanceMember = {
   name: string;
   email: string;
   imageUrl?: string;
-  role: "member" | "owner";
+  role: GroupMemberRole;
   isCurrentUser: boolean;
   joinedAt: number | null;
   paidCents: number;
@@ -120,7 +126,9 @@ async function getActiveGroupRecords(
     .withIndex("by_user", (q) => q.eq("userId", userId))
     .collect();
 
-  const activeMemberships = memberships.filter((membership) => membership.status === "active");
+  const activeMemberships = memberships.filter(
+    (membership) => membership.status === MEMBERSHIP_STATUS.ACTIVE,
+  );
 
   const groups = await Promise.all(
     activeMemberships.map(async (membership) => {
@@ -144,7 +152,9 @@ async function getActiveGroupRecords(
       return {
         group,
         membership,
-        memberCount: groupMembers.filter((member) => member.status === "active").length,
+        memberCount: groupMembers.filter(
+          (member) => member.status === MEMBERSHIP_STATUS.ACTIVE,
+        ).length,
         expenseCount: groupExpenses.length,
         balanceCents: balanceSnapshot.balanceCents,
       };
@@ -205,8 +215,8 @@ export const create = mutation({
     await ctx.db.insert("groupMembers", {
       groupId,
       userId: user._id,
-      role: "owner",
-      status: "active",
+      role: GROUP_MEMBER_ROLE.OWNER,
+      status: MEMBERSHIP_STATUS.ACTIVE,
       joinedAt: now,
     });
 
@@ -307,13 +317,13 @@ export const getDetail = query({
       .withIndex("by_group_user", (q) => q.eq("groupId", args.groupId).eq("userId", user._id))
       .unique();
 
-    if (membership === null || membership.status !== "active") {
+    if (membership === null || membership.status !== MEMBERSHIP_STATUS.ACTIVE) {
       return null;
     }
 
     const activeMemberships = (
       await ctx.db.query("groupMembers").withIndex("by_group", (q) => q.eq("groupId", args.groupId)).collect()
-    ).filter((member) => member.status === "active");
+    ).filter((member) => member.status === MEMBERSHIP_STATUS.ACTIVE);
     const memberUsers = await Promise.all(activeMemberships.map((member) => ctx.db.get(member.userId)));
     const expenseRecords = await getGroupExpenseRecords(ctx, args.groupId);
     const memberBalanceSnapshots = buildMemberBalanceSnapshots(
@@ -330,7 +340,7 @@ export const getDetail = query({
     });
 
     const spendOnlyRecords = expenseRecords.filter(
-      (record) => record.expense.kind !== "settlement",
+      (record) => record.expense.kind !== EXPENSE_KIND.SETTLEMENT,
     );
     const totalSpendCents = spendOnlyRecords.reduce(
       (sum, record) => sum + record.expense.amountCents,
@@ -403,11 +413,11 @@ export const getDetail = query({
           return 1;
         }
 
-        if (left.role === "owner" && right.role !== "owner") {
+        if (left.role === GROUP_MEMBER_ROLE.OWNER && right.role !== GROUP_MEMBER_ROLE.OWNER) {
           return -1;
         }
 
-        if (left.role !== "owner" && right.role === "owner") {
+        if (left.role !== GROUP_MEMBER_ROLE.OWNER && right.role === GROUP_MEMBER_ROLE.OWNER) {
           return 1;
         }
 
@@ -428,7 +438,7 @@ export const getDetail = query({
       members,
       recentExpenses: expenseRecords.slice(0, 5).map((record) => {
         const settlementRecipientId =
-          record.expense.kind === "settlement"
+          record.expense.kind === EXPENSE_KIND.SETTLEMENT
             ? (record.shares[0]?.userId as Id<"users"> | undefined) ?? null
             : null;
 
@@ -441,7 +451,7 @@ export const getDetail = query({
           paidByCurrentUser: record.expense.paidBy === user._id,
           currentUserNetCents: getCurrentUserExpenseNetCents(record, user._id),
           splitType: record.expense.splitType,
-          kind: record.expense.kind ?? ("expense" as const),
+          kind: record.expense.kind ?? EXPENSE_KIND.EXPENSE,
           participantCount: record.shares.length,
           iconKey: getExpenseIconKey(record.expense.description, resolvedIconKey),
           counterpartyName:
@@ -506,7 +516,7 @@ export const getSettingsOverview = query({
       )
       .unique();
 
-    if (membership === null || membership.status !== "active") {
+    if (membership === null || membership.status !== MEMBERSHIP_STATUS.ACTIVE) {
       return null;
     }
 
@@ -515,7 +525,7 @@ export const getSettingsOverview = query({
         .query("groupMembers")
         .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
         .collect()
-    ).filter((member) => member.status === "active");
+    ).filter((member) => member.status === MEMBERSHIP_STATUS.ACTIVE);
     const memberUsers = await Promise.all(
       activeMemberships.map((member) => ctx.db.get(member.userId)),
     );

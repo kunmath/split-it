@@ -11,6 +11,13 @@ import {
   requireExpenseEditPermission,
   requireGroupMember,
 } from "./lib/permissions";
+import {
+  EXPENSE_KIND,
+  EXPENSE_SPLIT_TYPE,
+  GROUP_MEMBER_ROLE,
+  MEMBERSHIP_STATUS,
+  type ExpenseSplitType,
+} from "./lib/constants";
 
 const exactShareValidator = v.object({
   userId: v.id("users"),
@@ -133,7 +140,7 @@ async function getActiveMemberProfiles(
     .withIndex("by_group", (q) => q.eq("groupId", groupId))
     .collect();
   const activeMemberships = memberships.filter(
-    (membership) => membership.status === "active",
+    (membership) => membership.status === MEMBERSHIP_STATUS.ACTIVE,
   );
   const users = await Promise.all(
     activeMemberships.map((membership) => ctx.db.get(membership.userId)),
@@ -176,11 +183,17 @@ function sortMembersForComposer(
       return 1;
     }
 
-    if (left.membership.role === "owner" && right.membership.role !== "owner") {
+    if (
+      left.membership.role === GROUP_MEMBER_ROLE.OWNER &&
+      right.membership.role !== GROUP_MEMBER_ROLE.OWNER
+    ) {
       return -1;
     }
 
-    if (left.membership.role !== "owner" && right.membership.role === "owner") {
+    if (
+      left.membership.role !== GROUP_MEMBER_ROLE.OWNER &&
+      right.membership.role === GROUP_MEMBER_ROLE.OWNER
+    ) {
       return 1;
     }
 
@@ -209,13 +222,13 @@ function validateActiveGroupMemberIds(
 function assertShareTotalMatchesAmount(
   shareRows: ShareRow[],
   amountCents: number,
-  splitType: "equal" | "exact",
+  splitType: ExpenseSplitType,
 ) {
   const shareTotal = shareRows.reduce((sum, share) => sum + share.shareCents, 0);
 
   if (shareTotal !== amountCents) {
     throw new ConvexError(
-      splitType === "equal"
+      splitType === EXPENSE_SPLIT_TYPE.EQUAL
         ? "Equal split shares must sum exactly to the expense amount"
         : "Exact split shares must sum exactly to the expense amount",
     );
@@ -227,14 +240,14 @@ async function buildValidatedShareRows(
   groupId: Id<"groups">,
   payerId: Id<"users">,
   amountCents: number,
-  splitType: "equal" | "exact",
+  splitType: ExpenseSplitType,
   participantIds: Id<"users">[] | undefined,
   exactShares: ShareRow[] | undefined,
 ) {
   const activeMembers = await getActiveMemberProfiles(ctx, groupId);
   const activeUserIds = new Set(activeMembers.map((member) => member.user._id));
 
-  if (splitType === "equal") {
+  if (splitType === EXPENSE_SPLIT_TYPE.EQUAL) {
     const normalizedParticipantIds = normalizeParticipantIds(participantIds ?? []);
     validateActiveGroupMemberIds(
       activeUserIds,
@@ -248,7 +261,7 @@ async function buildValidatedShareRows(
       shareCents: shareCents[index] ?? 0,
     }));
 
-    assertShareTotalMatchesAmount(shareRows, amountCents, "equal");
+    assertShareTotalMatchesAmount(shareRows, amountCents, EXPENSE_SPLIT_TYPE.EQUAL);
     return shareRows;
   }
 
@@ -258,7 +271,7 @@ async function buildValidatedShareRows(
     payerId,
     normalizedExactShares.map((share) => share.userId),
   );
-  assertShareTotalMatchesAmount(normalizedExactShares, amountCents, "exact");
+  assertShareTotalMatchesAmount(normalizedExactShares, amountCents, EXPENSE_SPLIT_TYPE.EXACT);
 
   return normalizedExactShares;
 }
@@ -398,7 +411,7 @@ export const listForGroup = query({
       groupCurrency: access.group.currency,
       expenses: expenseRecords.map((record) => {
         const settlementRecipientId =
-          record.expense.kind === "settlement"
+          record.expense.kind === EXPENSE_KIND.SETTLEMENT
             ? record.shares[0]?.userId ?? null
             : null;
 
@@ -411,7 +424,7 @@ export const listForGroup = query({
           paidByName: userLookup.get(record.expense.paidBy)?.name ?? "Group member",
           paidByCurrentUser: record.expense.paidBy === access.user._id,
           splitType: record.expense.splitType,
-          kind: record.expense.kind ?? ("expense" as const),
+          kind: record.expense.kind ?? EXPENSE_KIND.EXPENSE,
           notes: record.expense.notes,
           participantCount: record.shares.length,
           currentUserNetCents: getCurrentUserExpenseNetCents(
@@ -443,7 +456,10 @@ export const createExpense = mutation({
     description: v.string(),
     amountCents: v.number(),
     paidBy: v.id("users"),
-    splitType: v.union(v.literal("equal"), v.literal("exact")),
+    splitType: v.union(
+      v.literal(EXPENSE_SPLIT_TYPE.EQUAL),
+      v.literal(EXPENSE_SPLIT_TYPE.EXACT),
+    ),
     participantIds: v.optional(v.array(v.id("users"))),
     exactShares: v.optional(v.array(exactShareValidator)),
     expenseAt: v.number(),
@@ -489,7 +505,10 @@ export const updateExpense = mutation({
     description: v.string(),
     amountCents: v.number(),
     paidBy: v.id("users"),
-    splitType: v.union(v.literal("equal"), v.literal("exact")),
+    splitType: v.union(
+      v.literal(EXPENSE_SPLIT_TYPE.EQUAL),
+      v.literal(EXPENSE_SPLIT_TYPE.EXACT),
+    ),
     participantIds: v.optional(v.array(v.id("users"))),
     exactShares: v.optional(v.array(exactShareValidator)),
     expenseAt: v.number(),

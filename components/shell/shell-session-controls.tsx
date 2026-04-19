@@ -8,6 +8,7 @@ import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { buttonVariants } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { api } from "@/convex/_generated/api";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 export function ShellSessionCard() {
@@ -77,7 +78,7 @@ function LiveShellSessionCard() {
         </div>
         <UserAvatar imageUrl={imageUrl} name={displayName} size="md" />
       </div>
-      <SignOutButton redirectUrl="/sign-in">
+      <SignOutButton redirectUrl={ROUTES.signIn}>
         <button className={cn(buttonVariants({ variant: "ghost", fullWidth: true }), "mt-4 min-h-11 rounded-[1rem] px-4")}>
           Sign out <LogOut className="h-4 w-4" />
         </button>
@@ -97,7 +98,7 @@ function ClerkShellSessionCard() {
         </div>
         <UserAvatar name={displayName} size="md" />
       </div>
-      <SignOutButton redirectUrl="/sign-in">
+      <SignOutButton redirectUrl={ROUTES.signIn}>
         <button className={cn(buttonVariants({ variant: "ghost", fullWidth: true }), "mt-4 min-h-11 rounded-[1rem] px-4")}>
           Sign out <LogOut className="h-4 w-4" />
         </button>
@@ -124,7 +125,7 @@ function LiveShellMobileSessionControls() {
   return (
     <div className="flex items-center gap-2">
       <UserAvatar imageUrl={imageUrl} name={displayName} size="md" />
-      <SignOutButton redirectUrl="/sign-in">
+      <SignOutButton redirectUrl={ROUTES.signIn}>
         <button
           type="button"
           className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/8 bg-transparent px-3 text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-on-surface-variant transition hover:bg-white/4 hover:text-on-surface"
@@ -143,7 +144,7 @@ function ClerkShellMobileSessionControls() {
   return (
     <div className="flex items-center gap-2">
       <UserAvatar name={displayName} size="md" />
-      <SignOutButton redirectUrl="/sign-in">
+      <SignOutButton redirectUrl={ROUTES.signIn}>
         <button
           type="button"
           className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/8 bg-transparent px-3 text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-on-surface-variant transition hover:bg-white/4 hover:text-on-surface"

@@ -1,11 +1,34 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import {
+  EXPENSE_KIND,
+  EXPENSE_SPLIT_TYPE,
+  GROUP_MEMBER_ROLE,
+  INVITE_STATUS,
+  MEMBERSHIP_STATUS,
+} from "./lib/constants";
 
-const groupMemberRole = v.union(v.literal("owner"), v.literal("member"));
-const groupMemberStatus = v.union(v.literal("active"), v.literal("invited"));
-const inviteStatus = v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired"));
-const expenseKind = v.union(v.literal("expense"), v.literal("settlement"));
-const expenseSplitType = v.union(v.literal("equal"), v.literal("exact"));
+const groupMemberRole = v.union(
+  v.literal(GROUP_MEMBER_ROLE.OWNER),
+  v.literal(GROUP_MEMBER_ROLE.MEMBER),
+);
+const groupMemberStatus = v.union(
+  v.literal(MEMBERSHIP_STATUS.ACTIVE),
+  v.literal(MEMBERSHIP_STATUS.INVITED),
+);
+const inviteStatus = v.union(
+  v.literal(INVITE_STATUS.PENDING),
+  v.literal(INVITE_STATUS.ACCEPTED),
+  v.literal(INVITE_STATUS.EXPIRED),
+);
+const expenseKind = v.union(
+  v.literal(EXPENSE_KIND.EXPENSE),
+  v.literal(EXPENSE_KIND.SETTLEMENT),
+);
+const expenseSplitType = v.union(
+  v.literal(EXPENSE_SPLIT_TYPE.EQUAL),
+  v.literal(EXPENSE_SPLIT_TYPE.EXACT),
+);
 
 export default defineSchema({
   users: defineTable({

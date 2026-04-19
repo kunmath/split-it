@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { PageContainer } from "@/components/shell/page-container";
 import { SurfaceCard } from "@/components/ui/surface-card";
+import { ROUTES } from "@/lib/routes";
 
 type PublicShellProps = {
   eyebrow: string;
@@ -23,7 +24,7 @@ export function PublicShell({
     <div className="page-glow relative min-h-screen overflow-hidden bg-surface">
       <PageContainer className="relative flex min-h-screen flex-col px-4 py-6 sm:px-6 lg:px-10">
         <header className="flex items-center justify-between py-3">
-          <Link href="/dashboard" className="font-headline text-2xl font-extrabold tracking-tight text-primary">
+          <Link href={ROUTES.dashboard} className="font-headline text-2xl font-extrabold tracking-tight text-primary">
             split-it
           </Link>
           <div className="hidden items-center gap-6 text-xs uppercase tracking-[0.2em] text-on-surface-variant md:flex">

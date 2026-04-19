@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { PageContainer } from "@/components/shell/page-container";
 import { buttonVariants } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
+import { ROUTES } from "@/lib/routes";
 
 export default function AppError({
   error,
@@ -43,7 +44,7 @@ export default function AppError({
             >
               Go Back
             </button>
-            <Link href="/dashboard" className={buttonVariants({ variant: "ghost", size: "lg" })}>
+            <Link href={ROUTES.dashboard} className={buttonVariants({ variant: "ghost", size: "lg" })}>
               Dashboard
             </Link>
           </>

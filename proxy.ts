@@ -1,14 +1,9 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextFetchEvent, NextRequest, NextResponse } from "next/server";
 
-const isProtectedRoute = createRouteMatcher([
-  "/dashboard(.*)",
-  "/groups(.*)",
-  "/friends(.*)",
-  "/activity(.*)",
-  "/account(.*)",
-  "/onboarding/profile(.*)",
-]);
+import { PROTECTED_ROUTE_MATCHERS } from "@/lib/routes";
+
+const isProtectedRoute = createRouteMatcher([...PROTECTED_ROUTE_MATCHERS]);
 
 const liveProxy = clerkMiddleware(async (auth, req) => {
   if (!isProtectedRoute(req)) {
