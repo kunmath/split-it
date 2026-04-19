@@ -475,28 +475,43 @@ export const listForGroup = query({
       groupId: access.group._id,
       groupName: access.group.name,
       groupCurrency: access.group.currency,
-      expenses: expenseRecords.map((record) => ({
-        id: record.expense._id,
-        description: record.expense.description,
-        amountCents: record.expense.amountCents,
-        expenseAt: record.expense.expenseAt,
-        paidById: record.expense.paidBy,
-        paidByName: userLookup.get(record.expense.paidBy)?.name ?? "Group member",
-        paidByCurrentUser: record.expense.paidBy === access.user._id,
-        splitType: record.expense.splitType,
-        notes: record.expense.notes,
-        participantCount: record.shares.length,
-        currentUserNetCents: getCurrentUserExpenseNetCents(
-          record,
-          access.user._id,
-        ),
-        shares: record.shares.map((share) => ({
-          userId: share.userId,
-          name: userLookup.get(share.userId)?.name ?? "Group member",
-          shareCents: share.shareCents,
-          isCurrentUser: share.userId === access.user._id,
-        })),
-      })),
+      expenses: expenseRecords.map((record) => {
+        const settlementRecipientId =
+          record.expense.kind === "settlement"
+            ? record.shares[0]?.userId ?? null
+            : null;
+
+        return {
+          id: record.expense._id,
+          description: record.expense.description,
+          amountCents: record.expense.amountCents,
+          expenseAt: record.expense.expenseAt,
+          paidById: record.expense.paidBy,
+          paidByName: userLookup.get(record.expense.paidBy)?.name ?? "Group member",
+          paidByCurrentUser: record.expense.paidBy === access.user._id,
+          splitType: record.expense.splitType,
+          kind: record.expense.kind ?? ("expense" as const),
+          notes: record.expense.notes,
+          participantCount: record.shares.length,
+          currentUserNetCents: getCurrentUserExpenseNetCents(
+            record,
+            access.user._id,
+          ),
+          counterpartyName:
+            settlementRecipientId === null
+              ? null
+              : userLookup.get(settlementRecipientId)?.name ?? "Group member",
+          counterpartyIsCurrentUser:
+            settlementRecipientId !== null &&
+            settlementRecipientId === access.user._id,
+          shares: record.shares.map((share) => ({
+            userId: share.userId,
+            name: userLookup.get(share.userId)?.name ?? "Group member",
+            shareCents: share.shareCents,
+            isCurrentUser: share.userId === access.user._id,
+          })),
+        };
+      }),
     };
   },
 });
