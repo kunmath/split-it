@@ -117,6 +117,25 @@ export async function ensureUser(ctx: UserMutationCtx): Promise<Doc<"users">> {
     return updatedUser;
   }
 
+  // Fallback: check by email if not found by clerkUserId
+  if (identity.email?.trim()) {
+    const email = normalizeEmail(identity.email);
+    const existingUserByEmail = await getUserByEmail(ctx, email);
+    if (existingUserByEmail !== null) {
+      await patchUserIdentity(ctx, existingUserByEmail, {
+        clerkUserId: identity.subject,
+        email,
+      });
+
+      const updatedUser = await ctx.db.get(existingUserByEmail._id);
+      if (updatedUser === null) {
+        throw new ConvexError("Failed to update current user");
+      }
+
+      return updatedUser;
+    }
+  }
+
   const userFields = buildUserFieldsFromIdentity(identity);
   const userId = await ctx.db.insert("users", userFields);
   const createdUser = await ctx.db.get(userId);
