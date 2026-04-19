@@ -16,6 +16,7 @@ import {
   getCurrentUserExpenseNetCents,
   getExpenseIconKey,
   getGroupExpenseRecords,
+  simplifyDebts,
   type GroupExpenseRecord,
 } from "./lib/expenseHelpers";
 import { expirePendingGroupInvites } from "./lib/inviteHelpers";
@@ -328,17 +329,52 @@ export const getDetail = query({
       }
     });
 
-    const totalSpendCents = expenseRecords.reduce((sum, record) => sum + record.expense.amountCents, 0);
+    const spendOnlyRecords = expenseRecords.filter(
+      (record) => record.expense.kind !== "settlement",
+    );
+    const totalSpendCents = spendOnlyRecords.reduce(
+      (sum, record) => sum + record.expense.amountCents,
+      0,
+    );
     const largestExpenseRecord =
-      expenseRecords.reduce<GroupExpenseRecord | null>((largest, record) => {
+      spendOnlyRecords.reduce<GroupExpenseRecord | null>((largest, record) => {
         if (largest === null || record.expense.amountCents > largest.expense.amountCents) {
           return record;
         }
 
         return largest;
       }, null) ?? null;
+    const memberSpendPaidCents = new Map<Id<"users">, number>();
+    for (const record of spendOnlyRecords) {
+      memberSpendPaidCents.set(
+        record.expense.paidBy,
+        (memberSpendPaidCents.get(record.expense.paidBy) ?? 0) + record.expense.amountCents,
+      );
+    }
     const currentUserStanding = memberBalanceSnapshots.get(user._id) ?? createBalanceSnapshot(0, 0);
     const resolvedIconKey = resolveGroupIconKey(group);
+    const allSettlementSuggestions = simplifyDebts(memberBalanceSnapshots);
+    const currentUserSuggestions = allSettlementSuggestions
+      .filter(
+        (settlement) =>
+          settlement.fromUserId === user._id || settlement.toUserId === user._id,
+      )
+      .map((settlement) => {
+        const counterpartyId =
+          settlement.fromUserId === user._id ? settlement.toUserId : settlement.fromUserId;
+        const counterpartyUser = userLookup.get(counterpartyId);
+
+        return {
+          counterpartyId,
+          counterpartyName: counterpartyUser?.name ?? "Group member",
+          counterpartyImageUrl: counterpartyUser?.imageUrl,
+          amountCents: settlement.amountCents,
+          direction:
+            settlement.fromUserId === user._id
+              ? ("youPay" as const)
+              : ("youReceive" as const),
+        };
+      });
 
     const members = activeMemberships
       .map((member) => {
@@ -390,34 +426,61 @@ export const getDetail = query({
       expenseCount: expenseRecords.length,
       currentStanding: currentUserStanding,
       members,
-      recentExpenses: expenseRecords.slice(0, 5).map((record) => ({
-        id: record.expense._id,
-        description: record.expense.description,
-        amountCents: record.expense.amountCents,
-        expenseAt: record.expense.expenseAt,
-        paidByName: userLookup.get(record.expense.paidBy)?.name ?? "Group member",
-        paidByCurrentUser: record.expense.paidBy === user._id,
-        currentUserNetCents: getCurrentUserExpenseNetCents(record, user._id),
-        splitType: record.expense.splitType,
-        participantCount: record.shares.length,
-        iconKey: getExpenseIconKey(record.expense.description, resolvedIconKey),
-      })),
+      recentExpenses: expenseRecords.slice(0, 5).map((record) => {
+        const settlementRecipientId =
+          record.expense.kind === "settlement"
+            ? (record.shares[0]?.userId as Id<"users"> | undefined) ?? null
+            : null;
+
+        return {
+          id: record.expense._id,
+          description: record.expense.description,
+          amountCents: record.expense.amountCents,
+          expenseAt: record.expense.expenseAt,
+          paidByName: userLookup.get(record.expense.paidBy)?.name ?? "Group member",
+          paidByCurrentUser: record.expense.paidBy === user._id,
+          currentUserNetCents: getCurrentUserExpenseNetCents(record, user._id),
+          splitType: record.expense.splitType,
+          kind: record.expense.kind ?? ("expense" as const),
+          participantCount: record.shares.length,
+          iconKey: getExpenseIconKey(record.expense.description, resolvedIconKey),
+          counterpartyName:
+            settlementRecipientId === null
+              ? null
+              : userLookup.get(settlementRecipientId)?.name ?? "Group member",
+          counterpartyIsCurrentUser:
+            settlementRecipientId !== null && settlementRecipientId === user._id,
+        };
+      }),
+      suggestedSettlements: currentUserSuggestions,
       insights: {
         totalSpendCents,
         averageExpenseCents:
-          expenseRecords.length === 0 ? 0 : Math.round(totalSpendCents / expenseRecords.length),
+          spendOnlyRecords.length === 0
+            ? 0
+            : Math.round(totalSpendCents / spendOnlyRecords.length),
         largestExpenseCents: largestExpenseRecord?.expense.amountCents ?? 0,
         largestExpenseLabel: largestExpenseRecord?.expense.description ?? null,
         topContributors: members
-          .filter((member) => member.paidCents > 0)
-          .sort((left, right) => right.paidCents - left.paidCents)
+          .map((member) => ({
+            id: member.id,
+            name: member.name,
+            spendPaidCents: memberSpendPaidCents.get(member.id) ?? 0,
+          }))
+          .filter((member) => member.spendPaidCents > 0)
+          .sort((left, right) => right.spendPaidCents - left.spendPaidCents)
           .slice(0, 3)
           .map((member) => ({
             id: member.id,
             name: member.name,
-            paidCents: member.paidCents,
+            paidCents: member.spendPaidCents,
             percentOfSpend:
-              totalSpendCents === 0 ? 0 : Math.max(1, Math.round((member.paidCents / totalSpendCents) * 100)),
+              totalSpendCents === 0
+                ? 0
+                : Math.max(
+                    1,
+                    Math.round((member.spendPaidCents / totalSpendCents) * 100),
+                  ),
           })),
       },
     };
