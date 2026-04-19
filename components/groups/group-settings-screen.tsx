@@ -29,7 +29,13 @@ import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import {
+  GROUP_MEMBER_ROLE,
+  type ExpenseSplitType,
+  type GroupMemberRole,
+} from "@/convex/lib/constants";
 import { looksLikeConvexId } from "@/lib/convex-ids";
+import { ROUTES } from "@/lib/routes";
 import { formatMoneyFromCents, formatSignedMoneyFromCents } from "@/lib/format";
 import { getGroupDetail, memberBalances as mockMemberBalances } from "@/lib/placeholder-data";
 import { cn, getInitials } from "@/lib/utils";
@@ -43,7 +49,7 @@ type GroupSettingsBalanceMember = {
   name: string;
   email: string;
   imageUrl?: string;
-  role: "member" | "owner";
+  role: GroupMemberRole;
   isCurrentUser: boolean;
   joinedAt: number | null;
   paidCents: number;
@@ -62,7 +68,7 @@ type GroupSettingsSceneData = {
   currentUserBalanceCents: number;
   currentUserPaidCents: number;
   currentUserOwedCents: number;
-  viewerRole: "owner" | "member";
+  viewerRole: GroupMemberRole;
   memberBalances: GroupSettingsBalanceMember[];
 };
 
@@ -77,7 +83,7 @@ type ExpenseExportRow = {
   participant_count: number;
   participants: string;
   split_summary: string;
-  split_type: "equal" | "exact";
+  split_type: ExpenseSplitType;
 };
 
 const CSV_COLUMNS = [
@@ -129,7 +135,7 @@ function getMockGroupSettingsData(groupId: string): GroupSettingsSceneData {
       name: member.name,
       email: `${member.name.toLowerCase().replace(/\s+/g, ".")}@example.com`,
       imageUrl: undefined,
-      role: "member" as const,
+      role: GROUP_MEMBER_ROLE.MEMBER,
       isCurrentUser: false,
       joinedAt: null,
       paidCents: member.amount > 0 ? Math.round(member.amount * 180) : Math.round(Math.abs(member.amount) * 30),
@@ -148,7 +154,7 @@ function getMockGroupSettingsData(groupId: string): GroupSettingsSceneData {
     currentUserBalanceCents: Math.round(currentUserBalance * 100),
     currentUserPaidCents: Math.round(group.youAreOwed * 100),
     currentUserOwedCents: Math.round(group.youOwe * 100),
-    viewerRole: "owner",
+    viewerRole: GROUP_MEMBER_ROLE.OWNER,
     memberBalances,
   };
 }
@@ -325,7 +331,7 @@ function LiveGroupSettingsScreen({ groupId }: GroupSettingsScreenProps) {
           description="This group route is invalid or no longer points at an active ledger."
           icon={<Users className="h-7 w-7 text-secondary" />}
           actions={
-            <Link href="/groups" className={buttonVariants({ variant: "primary", size: "lg" })}>
+            <Link href={ROUTES.groups} className={buttonVariants({ variant: "primary", size: "lg" })}>
               Back to groups
             </Link>
           }
@@ -379,7 +385,7 @@ function LiveGroupSettingsScreen({ groupId }: GroupSettingsScreenProps) {
           description="You do not have access to this group, or it is no longer active."
           icon={<Users className="h-7 w-7 text-secondary" />}
           actions={
-            <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg" })}>
+            <Link href={ROUTES.dashboard} className={buttonVariants({ variant: "primary", size: "lg" })}>
               Back to dashboard
             </Link>
           }
@@ -427,7 +433,7 @@ function GroupSettingsScene({
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.04fr)_minmax(320px,0.72fr)] xl:items-end">
         <div className="hidden max-w-2xl space-y-5 xl:block">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-on-surface-variant">
-            <Link href="/dashboard" className="transition hover:text-on-surface">
+            <Link href={ROUTES.dashboard} className="transition hover:text-on-surface">
               Groups
             </Link>{" "}
             <span className="px-2 text-white/16">›</span> {group.groupName}
@@ -883,10 +889,10 @@ function DialogNotice({
 function StaticSettingsActionsCard({
   viewerRole,
 }: {
-  viewerRole: "owner" | "member";
+  viewerRole: GroupMemberRole;
 }) {
   const stubNote =
-    viewerRole === "owner"
+    viewerRole === GROUP_MEMBER_ROLE.OWNER
       ? "Settings actions stay live-only in the configured workspace. Mock mode keeps the same layout without running destructive flows."
       : "Owner-only controls stay visible for layout parity. In live mode, export remains available while protected actions stay disabled.";
 
@@ -927,7 +933,7 @@ function LiveSettingsActionsCard({
   groupCurrency: string;
   groupId: string;
   groupName: string;
-  viewerRole: "owner" | "member";
+  viewerRole: GroupMemberRole;
 }) {
   const router = useRouter();
   const convex = useConvex();
@@ -949,7 +955,7 @@ function LiveSettingsActionsCard({
   const [archiveConfirmation, setArchiveConfirmation] = useState("");
   const [archiveError, setArchiveError] = useState<string | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
-  const isOwner = viewerRole === "owner";
+  const isOwner = viewerRole === GROUP_MEMBER_ROLE.OWNER;
   const composerData = useQuery(
     api.invites.getGroupComposerData,
     openDialog === "members" ? { groupId: groupId as Id<"groups"> } : "skip",
@@ -1131,7 +1137,7 @@ function LiveSettingsActionsCard({
       });
 
       startTransition(() => {
-        router.push("/dashboard");
+        router.push(ROUTES.dashboard);
       });
     } catch (error) {
       setArchiveError(getErrorMessage(error));
@@ -1377,7 +1383,7 @@ function LiveSettingsActionsCard({
                       </div>
 
                       <div className="flex flex-wrap justify-end gap-2">
-                        {member.role === "owner" ? (
+                        {member.role === GROUP_MEMBER_ROLE.OWNER ? (
                           <span className="rounded-full bg-primary/12 px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.18em] text-primary">
                             Owner
                           </span>

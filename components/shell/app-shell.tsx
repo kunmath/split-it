@@ -12,6 +12,7 @@ import { MobileBottomNav } from "@/components/shell/mobile-bottom-nav";
 import { ShellMobileSessionControls } from "@/components/shell/shell-session-controls";
 import { TopUtilityBar } from "@/components/shell/top-utility-bar";
 import { getRouteMeta } from "@/lib/route-meta";
+import { ROUTES, groupSettingsPath } from "@/lib/routes";
 
 type AppShellProps = {
   children: ReactNode;
@@ -23,12 +24,12 @@ export function AppShell({ children }: AppShellProps) {
   const { mode, isClerkConfigured, isConvexConfigured } = usePlaceholderMode();
   const isFocusedExpenseCreateRoute = pathname.endsWith("/expenses/new");
   const isGroupDetailRoute =
-    pathname.startsWith("/groups/") &&
+    pathname.startsWith(`${ROUTES.groups}/`) &&
     !pathname.endsWith("/settings") &&
     !pathname.includes("/expenses/");
   const pathnameSegments = pathname.split("/").filter(Boolean);
   const groupId = pathnameSegments[1];
-  const groupSettingsHref = groupId ? `/groups/${groupId}/settings` : "/dashboard";
+  const groupSettingsHref = groupId ? groupSettingsPath(groupId) : ROUTES.dashboard;
 
   return (
     <div className="min-h-screen bg-surface text-on-surface">
@@ -41,7 +42,7 @@ export function AppShell({ children }: AppShellProps) {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Link
-                    href="/dashboard"
+                    href={ROUTES.dashboard}
                     className="flex h-11 w-11 items-center justify-center rounded-full text-on-surface-variant transition hover:bg-white/5 hover:text-on-surface"
                     aria-label="Back to dashboard"
                   >

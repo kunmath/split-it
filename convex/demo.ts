@@ -3,6 +3,12 @@ import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import { expirePendingGroupInvites } from "./lib/inviteHelpers";
+import {
+  EXPENSE_SPLIT_TYPE,
+  GROUP_MEMBER_ROLE,
+  MEMBERSHIP_STATUS,
+  type ExpenseSplitType,
+} from "./lib/constants";
 
 const DEMO_GROUP_NAME = "Iceland Expedition";
 const DEMO_GROUP_DESCRIPTION =
@@ -99,7 +105,7 @@ async function insertExpense(
       shareCents: number;
       userId: Id<"users">;
     }>;
-    splitType: "equal" | "exact";
+    splitType: ExpenseSplitType;
   },
 ) {
   const expenseId = await ctx.db.insert("expenses", {
@@ -183,8 +189,8 @@ export const seedForEmail = internalMutation({
     await ctx.db.insert("groupMembers", {
       groupId,
       userId: owner._id,
-      role: "owner",
-      status: "active",
+      role: GROUP_MEMBER_ROLE.OWNER,
+      status: MEMBERSHIP_STATUS.ACTIVE,
       joinedAt: now - 5 * 24 * 60 * 60 * 1000,
     });
 
@@ -192,8 +198,8 @@ export const seedForEmail = internalMutation({
       await ctx.db.insert("groupMembers", {
         groupId,
         userId: memberId,
-        role: "member",
-        status: "active",
+        role: GROUP_MEMBER_ROLE.MEMBER,
+        status: MEMBERSHIP_STATUS.ACTIVE,
         joinedAt: now - 4 * 24 * 60 * 60 * 1000,
       });
     }
@@ -205,7 +211,7 @@ export const seedForEmail = internalMutation({
       description: "Cabin reservation",
       amountCents: 288_000,
       paidBy: owner._id,
-      splitType: "exact",
+      splitType: EXPENSE_SPLIT_TYPE.EXACT,
       expenseAt: Date.UTC(2026, 3, 8, 12, 0, 0),
       notes: "Seeded by the Split-It demo helper for the edit route QA pass.",
       shares: [
@@ -223,7 +229,7 @@ export const seedForEmail = internalMutation({
       description: "Golden Circle fuel refill",
       amountCents: 9_400,
       paidBy: syntheticMembers[2]!,
-      splitType: "equal",
+      splitType: EXPENSE_SPLIT_TYPE.EQUAL,
       expenseAt: Date.UTC(2026, 3, 9, 12, 0, 0),
       shares: allMemberIds.map((userId) => ({
         userId,
@@ -237,7 +243,7 @@ export const seedForEmail = internalMutation({
       description: "Groceries at Bonus",
       amountCents: 12_650,
       paidBy: syntheticMembers[0]!,
-      splitType: "equal",
+      splitType: EXPENSE_SPLIT_TYPE.EQUAL,
       expenseAt: Date.UTC(2026, 3, 10, 12, 0, 0),
       notes: "Snacks, breakfast, and road-trip supplies.",
       shares: [
@@ -255,7 +261,7 @@ export const seedForEmail = internalMutation({
       description: "Lagoon tickets",
       amountCents: 42_100,
       paidBy: owner._id,
-      splitType: "exact",
+      splitType: EXPENSE_SPLIT_TYPE.EXACT,
       expenseAt: Date.UTC(2026, 3, 11, 12, 0, 0),
       shares: [
         { userId: owner._id, shareCents: 8_420 },

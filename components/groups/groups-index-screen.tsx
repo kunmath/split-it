@@ -10,8 +10,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
+import { GROUP_MEMBER_ROLE } from "@/convex/lib/constants";
 import { iconMap } from "@/lib/icon-map";
 import { dashboardGroups, type IconKey, type StatTone } from "@/lib/placeholder-data";
+import { DASHBOARD_CREATE_GROUP_HREF, groupPath } from "@/lib/routes";
 import { cn, formatCurrencyFromCents, getInitials } from "@/lib/utils";
 
 type GroupListItem = {
@@ -34,7 +36,7 @@ function buildGroupHref(id: string, name: string, description?: string) {
     params.set("description", description.trim());
   }
 
-  return `/groups/${id}?${params.toString()}`;
+  return `${groupPath(id)}?${params.toString()}`;
 }
 
 function formatBalanceLabel(valueCents: number, currency = "USD") {
@@ -56,7 +58,7 @@ function mapMockGroups(): GroupListItem[] {
     icon: group.icon,
     accentCount: group.accentCount ?? Math.max(group.memberCount - 2, 0),
     isOwner: true,
-    href: `/groups/${group.id}`,
+    href: groupPath(group.id),
   }));
 }
 
@@ -114,7 +116,7 @@ function LiveGroupsIndexScreen() {
     balanceTone: group.balanceCents === 0 ? "neutral" : group.balanceCents > 0 ? "positive" : "negative",
     icon: group.iconKey,
     accentCount: Math.max(group.memberCount - 2, 0),
-    isOwner: group.role === "owner",
+    isOwner: group.role === GROUP_MEMBER_ROLE.OWNER,
     href: buildGroupHref(group._id, group.name, group.description),
   }));
 
@@ -143,7 +145,7 @@ function GroupsIndexScene({
               Browse every active split, jump back into a ledger, or start a new one from the dashboard composer.
             </p>
           </div>
-          <Link href="/dashboard?create=1" className={buttonVariants({ variant: "primary", size: "lg" })}>
+          <Link href={DASHBOARD_CREATE_GROUP_HREF} className={buttonVariants({ variant: "primary", size: "lg" })}>
             <Plus className="h-4.5 w-4.5" />
             New Group
           </Link>
@@ -288,7 +290,7 @@ function EmptyGroupsState() {
 
         <div>
           <Link
-            href="/dashboard?create=1"
+            href={DASHBOARD_CREATE_GROUP_HREF}
             className={buttonVariants({ variant: "primary", size: "lg" })}
           >
             <Plus className="h-4.5 w-4.5" />

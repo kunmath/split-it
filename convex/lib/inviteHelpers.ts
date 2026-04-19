@@ -2,6 +2,7 @@ import { ConvexError } from "convex/values";
 
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { INVITE_STATUS } from "./constants";
 
 export const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -15,15 +16,15 @@ export function deriveInviteStatus(
   invite: Doc<"groupInvites">,
   now: number,
 ): InviteStatus {
-  if (invite.status === "accepted") {
-    return "accepted";
+  if (invite.status === INVITE_STATUS.ACCEPTED) {
+    return INVITE_STATUS.ACCEPTED;
   }
 
-  if (invite.status === "expired" || invite.expiresAt <= now) {
-    return "expired";
+  if (invite.status === INVITE_STATUS.EXPIRED || invite.expiresAt <= now) {
+    return INVITE_STATUS.EXPIRED;
   }
 
-  return "pending";
+  return INVITE_STATUS.PENDING;
 }
 
 export async function getInviteByToken(ctx: InviteCtx, token: string) {
@@ -59,8 +60,8 @@ export async function expirePendingGroupInvites(
     .collect();
 
   for (const invite of invites) {
-    if (invite.status === "pending") {
-      await ctx.db.patch(invite._id, { status: "expired" });
+    if (invite.status === INVITE_STATUS.PENDING) {
+      await ctx.db.patch(invite._id, { status: INVITE_STATUS.EXPIRED });
     }
   }
 }
@@ -77,7 +78,7 @@ export async function getPendingInviteForGroup(
 
   return (
     invites
-      .filter((invite) => deriveInviteStatus(invite, now) === "pending")
+      .filter((invite) => deriveInviteStatus(invite, now) === INVITE_STATUS.PENDING)
       .sort((left, right) => right._creationTime - left._creationTime)[0] ??
     null
   );
@@ -100,7 +101,7 @@ export async function createPendingInvite(
     groupId: args.groupId,
     invitedBy: args.invitedBy,
     token,
-    status: "pending",
+    status: INVITE_STATUS.PENDING,
     expiresAt,
   });
 

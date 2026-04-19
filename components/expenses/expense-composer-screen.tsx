@@ -24,6 +24,12 @@ import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import {
+  EXPENSE_SPLIT_TYPE,
+  GROUP_MEMBER_ROLE,
+  type ExpenseSplitType,
+  type GroupMemberRole,
+} from "@/convex/lib/constants";
 import { formatMoneyFromCents } from "@/lib/format";
 import { getGroupDetail } from "@/lib/placeholder-data";
 import { cn, getInitials } from "@/lib/utils";
@@ -33,14 +39,14 @@ type ExpenseComposerScreenProps = {
   expenseId?: string;
 };
 
-type SplitType = "equal" | "exact";
+type SplitType = ExpenseSplitType;
 
 type ComposerMember = {
   id: string;
   name: string;
   email: string;
   imageUrl?: string;
-  role: "owner" | "member";
+  role: GroupMemberRole;
   isCurrentUser: boolean;
 };
 
@@ -103,42 +109,42 @@ const MOCK_MEMBERS: ComposerMember[] = [
     id: "mock-member-jordan",
     name: "Jordan Dale",
     email: "jordan@example.com",
-    role: "owner",
+    role: GROUP_MEMBER_ROLE.OWNER,
     isCurrentUser: true,
   },
   {
     id: "mock-member-sarah",
     name: "Sarah Jenkins",
     email: "sarah@example.com",
-    role: "member",
+    role: GROUP_MEMBER_ROLE.MEMBER,
     isCurrentUser: false,
   },
   {
     id: "mock-member-elena",
     name: "Elena Rodriguez",
     email: "elena@example.com",
-    role: "member",
+    role: GROUP_MEMBER_ROLE.MEMBER,
     isCurrentUser: false,
   },
   {
     id: "mock-member-james",
     name: "James Chen",
     email: "james@example.com",
-    role: "member",
+    role: GROUP_MEMBER_ROLE.MEMBER,
     isCurrentUser: false,
   },
   {
     id: "mock-member-marcus",
     name: "Marcus Vale",
     email: "marcus@example.com",
-    role: "member",
+    role: GROUP_MEMBER_ROLE.MEMBER,
     isCurrentUser: false,
   },
   {
     id: "mock-member-priya",
     name: "Priya Nair",
     email: "priya@example.com",
-    role: "member",
+    role: GROUP_MEMBER_ROLE.MEMBER,
     isCurrentUser: false,
   },
 ];
@@ -280,7 +286,7 @@ function buildMockComposerData(
           description: "Dinner at Prime",
           amountCents: 12_000,
           paidBy: "mock-member-jordan",
-          splitType: "exact",
+          splitType: EXPENSE_SPLIT_TYPE.EXACT,
           expenseAt: new Date("2024-10-27T12:00:00.000Z").getTime(),
           notes: "Mock edit mode uses the same composer and delete affordance as live mode.",
           shares: [
@@ -303,7 +309,7 @@ function buildSceneData(
       name: string;
       email: string;
       imageUrl?: string;
-      role: "owner" | "member";
+      role: GroupMemberRole;
       isCurrentUser: boolean;
     }>;
     expense: {
@@ -554,7 +560,7 @@ function ExpenseComposerScene({
   );
   const [paidById, setPaidById] = useState(defaultPayerId);
   const [splitType, setSplitType] = useState<SplitType>(
-    existingExpense?.splitType ?? "equal",
+    existingExpense?.splitType ?? EXPENSE_SPLIT_TYPE.EQUAL,
   );
   const [selectedParticipantIds, setSelectedParticipantIds] = useState(
     initialSelectedParticipantIds,
@@ -622,7 +628,7 @@ function ExpenseComposerScene({
 
   let splitSummary: SplitSummaryState;
 
-  if (splitType === "equal") {
+  if (splitType === EXPENSE_SPLIT_TYPE.EQUAL) {
     if (hasInvalidAmount) {
       splitSummary = {
         tone: "error",
@@ -707,7 +713,7 @@ function ExpenseComposerScene({
     !isSaving &&
     !isDeleting &&
     data.members.length > 0 &&
-    (splitType === "equal" || splitSummary.canSubmit);
+    (splitType === EXPENSE_SPLIT_TYPE.EQUAL || splitSummary.canSubmit);
 
   function clearSplitErrors() {
     setFieldErrors((current) => ({
@@ -739,14 +745,14 @@ function ExpenseComposerScene({
         ? current.filter((participantId) => participantId !== memberId)
         : [...current, memberId];
 
-      if (splitType === "exact" && isSelected) {
+      if (splitType === EXPENSE_SPLIT_TYPE.EXACT && isSelected) {
         setExactShareInputs((currentInputs) => ({
           ...currentInputs,
           [memberId]: "",
         }));
       }
 
-      if (splitType === "exact" && !isSelected) {
+      if (splitType === EXPENSE_SPLIT_TYPE.EXACT && !isSelected) {
         const currentInput = exactShareInputs[memberId] ?? "";
 
         if (!currentInput.trim()) {
@@ -815,7 +821,7 @@ function ExpenseComposerScene({
       nextErrors.participants = "Select at least one participant.";
     }
 
-    if (splitType === "exact") {
+    if (splitType === EXPENSE_SPLIT_TYPE.EXACT) {
       if (exactRows.some((row) => row.isInvalid)) {
         nextErrors.exactShares = "Fix invalid exact amounts before saving.";
       } else if (exactRows.some((row) => row.needsAmount)) {
@@ -854,10 +860,10 @@ function ExpenseComposerScene({
         paidBy: paidById,
         splitType,
         participantIds:
-          splitType === "equal"
+          splitType === EXPENSE_SPLIT_TYPE.EQUAL
             ? normalizedParticipantIds
             : exactShareRows.map((share) => share.userId),
-        exactShares: splitType === "exact" ? exactShareRows : undefined,
+        exactShares: splitType === EXPENSE_SPLIT_TYPE.EXACT ? exactShareRows : undefined,
         expenseAt: timestamp ?? 0,
         notes: notes.trim() || undefined,
       });
@@ -1084,7 +1090,7 @@ function ExpenseComposerScene({
                           {member.isCurrentUser ? "You" : member.name}
                         </span>
                         <span className="block text-[0.7rem] uppercase tracking-[0.16em] text-on-surface-variant">
-                          {member.role === "owner" ? "Owner" : "Member"}
+                          {member.role === GROUP_MEMBER_ROLE.OWNER ? "Owner" : "Member"}
                         </span>
                       </span>
                     </button>
@@ -1141,20 +1147,20 @@ function ExpenseComposerScene({
                     Split With
                   </p>
                   <h2 className="mt-2 font-headline text-2xl font-bold tracking-tight text-on-surface">
-                    {splitType === "equal" ? "Split equally" : "Split by amount"}
+                    {splitType === EXPENSE_SPLIT_TYPE.EQUAL ? "Split equally" : "Split by amount"}
                   </h2>
                 </div>
                 <div className="inline-flex rounded-[1rem] bg-surface-container-low p-1">
                   <button
                     type="button"
                     onClick={() => {
-                      setSplitType("equal");
+                      setSplitType(EXPENSE_SPLIT_TYPE.EQUAL);
                       setFieldErrors((current) => ({ ...current, exactShares: undefined }));
                       setFormError(null);
                     }}
                     className={cn(
                       "rounded-[0.85rem] px-4 py-2 text-xs font-headline font-semibold uppercase tracking-[0.18em] transition",
-                      splitType === "equal"
+                      splitType === EXPENSE_SPLIT_TYPE.EQUAL
                         ? "bg-surface-container-high text-primary shadow-sm"
                         : "text-on-surface-variant hover:text-on-surface",
                     )}
@@ -1164,9 +1170,9 @@ function ExpenseComposerScene({
                   <button
                     type="button"
                     onClick={() => {
-                      setSplitType("exact");
+                      setSplitType(EXPENSE_SPLIT_TYPE.EXACT);
 
-                      if (existingExpense?.splitType !== "exact" && exactShareRows.length === 0) {
+                      if (existingExpense?.splitType !== EXPENSE_SPLIT_TYPE.EXACT && exactShareRows.length === 0) {
                         seedExactAmounts(orderedSelectedParticipantIds);
                       }
 
@@ -1179,7 +1185,7 @@ function ExpenseComposerScene({
                     }}
                     className={cn(
                       "rounded-[0.85rem] px-4 py-2 text-xs font-headline font-semibold uppercase tracking-[0.18em] transition",
-                      splitType === "exact"
+                      splitType === EXPENSE_SPLIT_TYPE.EXACT
                         ? "bg-surface-container-high text-on-surface shadow-sm"
                         : "text-on-surface-variant hover:text-on-surface",
                     )}
@@ -1196,7 +1202,7 @@ function ExpenseComposerScene({
                     const allMemberIds = data.members.map((member) => member.id);
                     setSelectedParticipantIds(allMemberIds);
 
-                    if (splitType === "exact") {
+                    if (splitType === EXPENSE_SPLIT_TYPE.EXACT) {
                       const evenPreview = buildEqualSharePreview(
                         amountCents && amountCents > 0 ? amountCents : 0,
                         allMemberIds,
@@ -1228,7 +1234,7 @@ function ExpenseComposerScene({
                   Select all
                 </button>
 
-                {splitType === "equal" ? (
+                {splitType === EXPENSE_SPLIT_TYPE.EQUAL ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -1262,7 +1268,7 @@ function ExpenseComposerScene({
               </div>
 
               <div className="mt-5 space-y-3">
-                {splitType === "equal"
+                {splitType === EXPENSE_SPLIT_TYPE.EQUAL
                   ? data.members.map((member) => {
                       const isIncluded = orderedSelectedParticipantIds.includes(member.id);
                       const memberShareCents = sharePreview.get(member.id) ?? 0;
@@ -1450,12 +1456,12 @@ function ExpenseComposerScene({
                 </div>
                 <div className="text-right">
                   <p className="text-[0.7rem] uppercase tracking-[0.2em] text-on-surface-variant">
-                    {splitType === "exact" ? "Total assigned" : "Per person"}
+                    {splitType === EXPENSE_SPLIT_TYPE.EXACT ? "Total assigned" : "Per person"}
                   </p>
                   <p
                     className={cn(
                       "mt-1 font-headline text-2xl font-extrabold",
-                      splitType === "exact"
+                      splitType === EXPENSE_SPLIT_TYPE.EXACT
                         ? splitSummary.tone === "matched"
                           ? "text-primary"
                           : splitSummary.tone === "warning"
@@ -1464,7 +1470,7 @@ function ExpenseComposerScene({
                         : "text-secondary",
                     )}
                   >
-                    {splitType === "exact"
+                    {splitType === EXPENSE_SPLIT_TYPE.EXACT
                       ? formatMoneyFromCents(exactAssignedCents, data.groupCurrency)
                       : orderedSelectedParticipantIds.length === 0 || hasInvalidAmount
                         ? "--"
@@ -1516,21 +1522,21 @@ function ExpenseComposerScene({
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span>
-                    {splitType === "exact" ? "Difference" : "Assigned total"}
+                    {splitType === EXPENSE_SPLIT_TYPE.EXACT ? "Difference" : "Assigned total"}
                   </span>
                   <span
                     className={cn(
                       "font-medium",
-                      splitType === "exact" && splitSummary.tone === "matched"
+                      splitType === EXPENSE_SPLIT_TYPE.EXACT && splitSummary.tone === "matched"
                         ? "text-primary"
-                        : splitType === "exact" && splitSummary.tone === "warning"
+                        : splitType === EXPENSE_SPLIT_TYPE.EXACT && splitSummary.tone === "warning"
                           ? "text-amber-200"
-                          : splitType === "exact"
+                          : splitType === EXPENSE_SPLIT_TYPE.EXACT
                             ? "text-secondary"
                             : "text-on-surface",
                     )}
                   >
-                    {splitType === "exact"
+                    {splitType === EXPENSE_SPLIT_TYPE.EXACT
                       ? hasInvalidAmount || exactDifferenceCents === null
                         ? "--"
                         : formatMoneyFromCents(exactDifferenceCents, data.groupCurrency)
@@ -1561,7 +1567,7 @@ function ExpenseComposerScene({
                   ) : null}
                 </div>
                 <span className="text-xs uppercase tracking-[0.18em] text-on-surface-variant">
-                  {splitType === "equal"
+                  {splitType === EXPENSE_SPLIT_TYPE.EQUAL
                     ? "Auto-rounded in cents"
                     : splitSummary.tone === "matched"
                       ? "Ready to save"

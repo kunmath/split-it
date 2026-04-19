@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PublicShell } from "@/components/shell/public-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { ROUTES } from "@/lib/routes";
 
 export default function NotFound() {
   return (
@@ -20,10 +21,10 @@ export default function NotFound() {
           Try the dashboard or a live group route instead.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg" })}>
+          <Link href={ROUTES.dashboard} className={buttonVariants({ variant: "primary", size: "lg" })}>
             Go to Dashboard
           </Link>
-          <Link href="/groups" className={buttonVariants({ variant: "ghost", size: "lg" })}>
+          <Link href={ROUTES.groups} className={buttonVariants({ variant: "ghost", size: "lg" })}>
             Open Groups
           </Link>
         </div>

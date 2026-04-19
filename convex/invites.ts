@@ -18,6 +18,11 @@ import {
   rotatePendingInviteForGroup,
 } from "./lib/inviteHelpers";
 import { requireGroupOwner } from "./lib/permissions";
+import {
+  GROUP_MEMBER_ROLE,
+  INVITE_STATUS,
+  MEMBERSHIP_STATUS,
+} from "./lib/constants";
 
 function assertGroupIsActive(group: Doc<"groups">) {
   if (group.archivedAt !== undefined) {
@@ -126,7 +131,7 @@ export const getGroupComposerData = query({
       .withIndex("by_group_user", (q) => q.eq("groupId", args.groupId).eq("userId", user._id))
       .unique();
 
-    if (membership === null || membership.status !== "active") {
+    if (membership === null || membership.status !== MEMBERSHIP_STATUS.ACTIVE) {
       return null;
     }
 
@@ -134,11 +139,15 @@ export const getGroupComposerData = query({
       .query("groupMembers")
       .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
       .collect();
-    const activeMemberships = groupMembers.filter((member) => member.status === "active");
+    const activeMemberships = groupMembers.filter(
+      (member) => member.status === MEMBERSHIP_STATUS.ACTIVE,
+    );
     const memberUsers = await Promise.all(activeMemberships.map((member) => ctx.db.get(member.userId)));
     const now = Date.now();
     const activeInvite =
-      membership.role === "owner" ? await getPendingInviteForGroup(ctx, group._id, now) : null;
+      membership.role === GROUP_MEMBER_ROLE.OWNER
+        ? await getPendingInviteForGroup(ctx, group._id, now)
+        : null;
 
     return {
       groupId: group._id,
@@ -146,7 +155,7 @@ export const getGroupComposerData = query({
       groupDescription: group.description,
       groupCurrency: group.currency,
       currentUserRole: membership.role,
-      canInvite: membership.role === "owner",
+      canInvite: membership.role === GROUP_MEMBER_ROLE.OWNER,
       inviteEmailEnabled: isInviteEmailEnabled(),
       memberCount: activeMemberships.length,
       members: activeMemberships
@@ -171,11 +180,11 @@ export const getGroupComposerData = query({
             return 1;
           }
 
-          if (left.role === "owner" && right.role !== "owner") {
+          if (left.role === GROUP_MEMBER_ROLE.OWNER && right.role !== GROUP_MEMBER_ROLE.OWNER) {
             return -1;
           }
 
-          if (left.role !== "owner" && right.role === "owner") {
+          if (left.role !== GROUP_MEMBER_ROLE.OWNER && right.role === GROUP_MEMBER_ROLE.OWNER) {
             return 1;
           }
 
@@ -216,7 +225,9 @@ export const getByToken = query({
       .query("groupMembers")
       .withIndex("by_group", (q) => q.eq("groupId", group._id))
       .collect();
-    const activeMemberships = groupMembers.filter((member) => member.status === "active");
+    const activeMemberships = groupMembers.filter(
+      (member) => member.status === MEMBERSHIP_STATUS.ACTIVE,
+    );
     const activeUsers = await Promise.all(activeMemberships.map((member) => ctx.db.get(member.userId)));
     const currentUser = await getCurrentUser(ctx);
     const viewerMembership =
@@ -245,7 +256,9 @@ export const getByToken = query({
         }))
         .slice(0, 4),
       viewerMembershipRole:
-        viewerMembership !== null && viewerMembership.status === "active" ? viewerMembership.role : null,
+        viewerMembership !== null && viewerMembership.status === MEMBERSHIP_STATUS.ACTIVE
+          ? viewerMembership.role
+          : null,
     };
   },
 });
@@ -385,13 +398,13 @@ export const accept = mutation({
     const now = Date.now();
     const inviteStatus = deriveInviteStatus(invite, now);
 
-    if (inviteStatus === "accepted") {
+    if (inviteStatus === INVITE_STATUS.ACCEPTED) {
       throw new ConvexError("This invite link has already been used");
     }
 
-    if (inviteStatus === "expired") {
-      if (invite.status === "pending") {
-        await ctx.db.patch(invite._id, { status: "expired" });
+    if (inviteStatus === INVITE_STATUS.EXPIRED) {
+      if (invite.status === INVITE_STATUS.PENDING) {
+        await ctx.db.patch(invite._id, { status: INVITE_STATUS.EXPIRED });
       }
 
       throw new ConvexError("This invite link has expired");
@@ -402,7 +415,7 @@ export const accept = mutation({
       .withIndex("by_group_user", (q) => q.eq("groupId", group._id).eq("userId", user._id))
       .unique();
 
-    if (existingMembership !== null && existingMembership.status === "active") {
+    if (existingMembership !== null && existingMembership.status === MEMBERSHIP_STATUS.ACTIVE) {
       return {
         groupId: group._id,
         groupName: group.name,
@@ -413,22 +426,22 @@ export const accept = mutation({
     if (existingMembership !== null) {
       await ctx.db.patch(existingMembership._id, {
         role: existingMembership.role,
-        status: "active",
+        status: MEMBERSHIP_STATUS.ACTIVE,
         joinedAt: now,
       });
     } else {
       await ctx.db.insert("groupMembers", {
         groupId: group._id,
         userId: user._id,
-        role: "member",
-        status: "active",
+        role: GROUP_MEMBER_ROLE.MEMBER,
+        status: MEMBERSHIP_STATUS.ACTIVE,
         joinedAt: now,
       });
     }
 
     await ctx.db.patch(invite._id, {
       acceptedBy: user._id,
-      status: "accepted",
+      status: INVITE_STATUS.ACCEPTED,
     });
 
     return {

@@ -21,7 +21,9 @@ import { FilledInput } from "@/components/ui/filled-input";
 import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
+import { GROUP_MEMBER_ROLE } from "@/convex/lib/constants";
 import { iconMap } from "@/lib/icon-map";
+import { ROUTES } from "@/lib/routes";
 import { dashboardGroups, dashboardSummary, type IconKey, type StatTone } from "@/lib/placeholder-data";
 import { cn, formatCurrency, formatCurrencyFromCents, getInitials } from "@/lib/utils";
 
@@ -271,7 +273,7 @@ function LiveDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps
       balanceTone: group.balanceCents === 0 ? "neutral" : group.balanceCents > 0 ? "positive" : "negative",
       icon: group.iconKey,
       accentCount: Math.max(group.memberCount - 2, 0),
-      isOwner: group.role === "owner",
+      isOwner: group.role === GROUP_MEMBER_ROLE.OWNER,
       href: buildGroupHref(group._id, group.name, group.description),
     }));
 
@@ -332,7 +334,7 @@ function DashboardScene({
   function closeComposer() {
     setSubmissionError(null);
     setIsComposerOpen(false);
-    router.replace("/dashboard", { scroll: false });
+    router.replace(ROUTES.dashboard, { scroll: false });
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -366,7 +368,7 @@ function DashboardScene({
         setDraft(DEFAULT_CREATE_GROUP_DRAFT);
         setIsComposerOpen(false);
       });
-      router.replace("/dashboard", { scroll: false });
+      router.replace(ROUTES.dashboard, { scroll: false });
     } catch (error) {
       setSubmissionError(getErrorMessage(error));
     } finally {

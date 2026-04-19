@@ -7,6 +7,7 @@ import { ShellSessionCard } from "@/components/shell/shell-session-controls";
 import { buttonVariants } from "@/components/ui/button";
 import type { AppRouteMeta } from "@/lib/route-meta";
 import { desktopPrimaryNav, desktopSecondaryNav, getSectionFromPathname } from "@/lib/navigation";
+import { ROUTES } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 type DesktopRailProps = {
@@ -20,7 +21,7 @@ export function DesktopRail({ meta }: DesktopRailProps) {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r border-white/5 bg-surface px-5 py-7 lg:flex lg:flex-col">
       <div className="space-y-2 px-2">
-        <Link href="/dashboard" className="inline-flex items-center gap-3">
+        <Link href={ROUTES.dashboard} className="inline-flex items-center gap-3">
           <span className="font-headline text-[1.7rem] font-extrabold tracking-tight text-primary">
             split-it
           </span>

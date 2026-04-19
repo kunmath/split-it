@@ -3,6 +3,7 @@ import { ConvexError } from "convex/values";
 import type { Id, Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { requireUser } from "./auth";
+import { GROUP_MEMBER_ROLE, MEMBERSHIP_STATUS } from "./constants";
 
 type PermissionCtx = QueryCtx | MutationCtx;
 
@@ -34,7 +35,7 @@ export async function requireGroupMember(
     .withIndex("by_group_user", (q) => q.eq("groupId", groupId).eq("userId", user._id))
     .unique();
 
-  if (membership === null || membership.status !== "active") {
+  if (membership === null || membership.status !== MEMBERSHIP_STATUS.ACTIVE) {
     throw new ConvexError("Active group membership required");
   }
 
@@ -47,7 +48,7 @@ export async function requireGroupOwner(
 ): Promise<GroupAccess> {
   const access = await requireGroupMember(ctx, groupId);
 
-  if (access.membership.role !== "owner") {
+  if (access.membership.role !== GROUP_MEMBER_ROLE.OWNER) {
     throw new ConvexError("Group owner permission required");
   }
 
@@ -70,11 +71,11 @@ export async function requireExpenseEditPermission(
     .withIndex("by_group_user", (q) => q.eq("groupId", expense.groupId).eq("userId", user._id))
     .unique();
 
-  if (membership === null || membership.status !== "active") {
+  if (membership === null || membership.status !== MEMBERSHIP_STATUS.ACTIVE) {
     throw new ConvexError("Active group membership required");
   }
 
-  if (expense.createdBy !== user._id && membership.role !== "owner") {
+  if (expense.createdBy !== user._id && membership.role !== GROUP_MEMBER_ROLE.OWNER) {
     throw new ConvexError("Expense edit permission required");
   }
 

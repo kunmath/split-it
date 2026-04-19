@@ -18,7 +18,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
 import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
+import { INVITE_STATUS } from "@/convex/lib/constants";
 import { buildAuthRedirectHref } from "@/lib/auth-redirect";
+import { ROUTES, groupPath, inviteAcceptPath } from "@/lib/routes";
 import { getInitials } from "@/lib/utils";
 
 type InviteAcceptanceProps = {
@@ -90,10 +92,10 @@ function MockInviteAcceptance({ token }: InviteAcceptanceProps) {
       </SurfaceCard>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Link href="/sign-in" className={buttonVariants({ variant: "primary", size: "lg", className: "w-full" })}>
+        <Link href={ROUTES.signIn} className={buttonVariants({ variant: "primary", size: "lg", className: "w-full" })}>
           Sign In <ArrowRight className="h-4.5 w-4.5" />
         </Link>
-        <Link href="/sign-up" className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full" })}>
+        <Link href={ROUTES.signUp} className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full" })}>
           Create Access
         </Link>
       </div>
@@ -109,13 +111,13 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
   const [acceptedInvite, setAcceptedInvite] = useState<AcceptedInviteState | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const redirectPath = `/invites/${token}`;
-  const signInHref = buildAuthRedirectHref("/sign-in", redirectPath);
-  const signUpHref = buildAuthRedirectHref("/sign-up", redirectPath);
+  const redirectPath = inviteAcceptPath(token);
+  const signInHref = buildAuthRedirectHref(ROUTES.signIn, redirectPath);
+  const signUpHref = buildAuthRedirectHref(ROUTES.signUp, redirectPath);
 
   const groupHref = useMemo(() => {
     const joinedGroupId = acceptedInvite?.groupId ?? invite?.groupId;
-    return joinedGroupId ? `/groups/${joinedGroupId}` : "/dashboard";
+    return joinedGroupId ? groupPath(joinedGroupId) : ROUTES.dashboard;
   }, [acceptedInvite?.groupId, invite?.groupId]);
 
   async function handleAcceptInvite() {
@@ -158,10 +160,10 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
         description="This invite link could not be matched to an active group. It may be invalid, rotated, or tied to a group that is no longer available."
         actions={
           <>
-            <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg", className: "w-full sm:w-auto" })}>
+            <Link href={ROUTES.dashboard} className={buttonVariants({ variant: "primary", size: "lg", className: "w-full sm:w-auto" })}>
               Back to dashboard <ArrowRight className="h-4.5 w-4.5" />
             </Link>
-            <Link href="/sign-in" className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full sm:w-auto" })}>
+            <Link href={ROUTES.signIn} className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full sm:w-auto" })}>
               Sign In
             </Link>
           </>
@@ -215,9 +217,9 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
           <div className="rounded-[1.25rem] bg-surface-container-lowest/80 px-4 py-3">
             <p className="text-[0.62rem] uppercase tracking-[0.22em] text-on-surface-variant">Status</p>
             <p className="mt-2 font-headline text-lg font-bold text-on-surface">
-              {invite.inviteStatus === "pending"
+              {invite.inviteStatus === INVITE_STATUS.PENDING
                 ? "Open"
-                : invite.inviteStatus === "accepted"
+                : invite.inviteStatus === INVITE_STATUS.ACCEPTED
                   ? "Used"
                   : "Expired"}
             </p>
@@ -301,34 +303,34 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
           <Link href={groupHref} className={buttonVariants({ variant: "primary", size: "lg", className: "w-full" })}>
             Open Group <ArrowRight className="h-4.5 w-4.5" />
           </Link>
-          <Link href="/dashboard" className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full" })}>
+          <Link href={ROUTES.dashboard} className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full" })}>
             Dashboard
           </Link>
         </div>
-      ) : invite.inviteStatus === "expired" ? (
+      ) : invite.inviteStatus === INVITE_STATUS.EXPIRED ? (
         <div className="space-y-4">
           <AuthNotice tone="error">
             This invite has expired. Ask the group owner for a fresh link.
           </AuthNotice>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg", className: "w-full" })}>
+            <Link href={ROUTES.dashboard} className={buttonVariants({ variant: "primary", size: "lg", className: "w-full" })}>
               Back to dashboard <ArrowRight className="h-4.5 w-4.5" />
             </Link>
-            <Link href="/sign-in" className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full" })}>
+            <Link href={ROUTES.signIn} className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full" })}>
               Switch Account
             </Link>
           </div>
         </div>
-      ) : invite.inviteStatus === "accepted" ? (
+      ) : invite.inviteStatus === INVITE_STATUS.ACCEPTED ? (
         <div className="space-y-4">
           <AuthNotice tone="error">
             This link has already been used. Ask the owner to generate a fresh invite.
           </AuthNotice>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg", className: "w-full" })}>
+            <Link href={ROUTES.dashboard} className={buttonVariants({ variant: "primary", size: "lg", className: "w-full" })}>
               Back to dashboard <ArrowRight className="h-4.5 w-4.5" />
             </Link>
-            <Link href="/sign-in" className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full" })}>
+            <Link href={ROUTES.signIn} className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full" })}>
               Switch Account
             </Link>
           </div>
@@ -347,7 +349,7 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
               <ArrowRight className="h-4.5 w-4.5" />
             </Button>
             <Link
-              href="/dashboard"
+              href={ROUTES.dashboard}
               className={buttonVariants({ variant: "ghost", size: "lg", className: "w-full sm:w-auto" })}
             >
               Later

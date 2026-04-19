@@ -4,6 +4,7 @@ import type { Id } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import { getGroupExpenseRecords } from "./lib/expenseHelpers";
 import { requireGroupMember } from "./lib/permissions";
+import { EXPENSE_KIND } from "./lib/constants";
 
 function formatExportAmount(amountCents: number) {
   return (amountCents / 100).toFixed(2);
@@ -61,7 +62,7 @@ export const getGroupExpenseExport = query({
           group_name: access.group.name,
           currency: access.group.currency,
           expense_date: formatExportDate(record.expense.expenseAt),
-          kind: record.expense.kind ?? "expense",
+          kind: record.expense.kind ?? EXPENSE_KIND.EXPENSE,
           description: record.expense.description,
           amount: formatExportAmount(record.expense.amountCents),
           paid_by: userLookup.get(record.expense.paidBy) ?? "Group member",

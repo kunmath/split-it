@@ -1,7 +1,9 @@
-export const DEFAULT_AUTH_REDIRECT_PATH = "/dashboard";
-export const PROFILE_ONBOARDING_PATH = "/onboarding/profile";
-export const SIGN_IN_PATH = "/sign-in";
-export const SIGN_UP_PATH = "/sign-up";
+import { ROUTES } from "@/lib/routes";
+
+export const DEFAULT_AUTH_REDIRECT_PATH = ROUTES.dashboard;
+export const PROFILE_ONBOARDING_PATH = ROUTES.onboardingProfile;
+export const SIGN_IN_PATH = ROUTES.signIn;
+export const SIGN_UP_PATH = ROUTES.signUp;
 
 export function getSafeRedirectPath(value: string | null | undefined) {
   if (!value) {
