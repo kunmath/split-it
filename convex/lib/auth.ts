@@ -99,8 +99,6 @@ export async function ensureUser(ctx: UserMutationCtx): Promise<Doc<"users">> {
     throw new ConvexError(NOT_AUTHENTICATED_ERROR);
   }
 
-  console.log("Convex auth identity:", identity);
-
   const existingUser = await getUserByClerkUserId(ctx, identity.subject);
   if (existingUser !== null) {
     if (identity.email?.trim()) {

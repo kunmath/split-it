@@ -307,28 +307,36 @@ async function buildValidatedShareRows(
   // Calculate total shares
   const totalShares = normalizedShares.reduce((sum, share) => sum + share.share, 0);
 
-  // Distribute amount based on shares
-  const shareRows: ShareRow[] = [];
-  let totalDistributed = 0;
+  // Calculate exact amounts and fractional parts
+  const exactAmounts = normalizedShares.map((share) => ({
+    userId: share.userId,
+    exact: (amountCents * share.share) / totalShares,
+  }));
 
-  for (let i = 0; i < normalizedShares.length; i++) {
-    const share = normalizedShares[i]!;
-    const proportion = share.share / totalShares;
-    let shareCents = Math.round(amountCents * proportion);
+  // Floor all amounts
+  const flooredAmounts = exactAmounts.map((item) => ({
+    userId: item.userId,
+    shareCents: Math.floor(item.exact),
+    fraction: item.exact - Math.floor(item.exact),
+  }));
 
-    // Handle rounding to ensure total matches
-    if (i === normalizedShares.length - 1) {
-      // Last share gets the remainder to ensure total matches
-      shareCents = amountCents - totalDistributed;
-    } else {
-      totalDistributed += shareCents;
-    }
+  // Calculate total floored
+  const totalFloored = flooredAmounts.reduce((sum, item) => sum + item.shareCents, 0);
+  const remainder = amountCents - totalFloored;
 
-    shareRows.push({
-      userId: share.userId,
-      shareCents: shareCents,
-    });
+  // Sort by fractional part descending to distribute remainder
+  const sortedByFraction = [...flooredAmounts].sort((a, b) => b.fraction - a.fraction);
+
+  // Distribute remainder to top fractional parts
+  for (let i = 0; i < remainder; i++) {
+    sortedByFraction[i]!.shareCents += 1;
   }
+
+  // Create share rows
+  const shareRows: ShareRow[] = flooredAmounts.map((item) => ({
+    userId: item.userId,
+    shareCents: item.shareCents,
+  }));
 
   assertShareTotalMatchesAmount(shareRows, amountCents, "shares");
   return shareRows;

@@ -270,15 +270,35 @@ function buildInitialExactInputs(
   return inputs;
 }
 
-function buildInitialShareInputs(members: ComposerMember[]) {
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+function gcdArray(nums: number[]): number {
+  return nums.reduce((acc, num) => gcd(acc, num));
+}
+
+function buildInitialShareInputs(
+  members: ComposerMember[],
+  shares: ExistingExpenseDraft["shares"]
+) {
   const inputs: Record<string, string> = {};
 
+  // Default to "1" for all members (new expense case)
   for (const member of members) {
     inputs[member.id] = "1";
   }
 
-  // Default share values to 1 for each selected member on a new expense.
-  // Existing share ratios are not preserved for edits because shares are stored as cents.
+  // For edits, reconstruct ratios from persisted shareCents
+  if (shares.length > 0) {
+    const shareCents = shares.map(s => s.shareCents);
+    const g = gcdArray(shareCents);
+    for (const share of shares) {
+      const ratio = share.shareCents / g;
+      inputs[share.userId] = ratio.toString();
+    }
+  }
+
   return inputs;
 }
 
@@ -590,7 +610,7 @@ function ExpenseComposerScene({
     buildInitialExactInputs(data.members, existingExpense?.shares ?? []),
   );
   const [shareInputs, setShareInputs] = useState<Record<string, string>>(
-    buildInitialShareInputs(data.members),
+    buildInitialShareInputs(data.members, existingExpense?.shares ?? []),
   );
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
