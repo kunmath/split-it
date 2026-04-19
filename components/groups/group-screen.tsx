@@ -72,7 +72,7 @@ type GroupSceneData = {
     paidByName: string;
     paidByCurrentUser: boolean;
     currentUserNetCents: number;
-    splitType: "equal" | "exact";
+    splitType: "equal" | "exact" | "shares";
     participantCount: number;
     iconKey: IconKey;
   }>;

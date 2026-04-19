@@ -99,16 +99,18 @@ export async function ensureUser(ctx: UserMutationCtx): Promise<Doc<"users">> {
     throw new ConvexError(NOT_AUTHENTICATED_ERROR);
   }
 
-  const userFields = buildUserFieldsFromIdentity(identity);
-  const existingUser =
-    await getUserByEmail(ctx, userFields.email)
-    ?? await getUserByClerkUserId(ctx, identity.subject);
+  console.log("Convex auth identity:", identity);
 
+  const existingUser = await getUserByClerkUserId(ctx, identity.subject);
   if (existingUser !== null) {
-    await patchUserIdentity(ctx, existingUser, {
-      clerkUserId: userFields.clerkUserId,
-      email: userFields.email,
-    });
+    if (identity.email?.trim()) {
+      const email = normalizeEmail(identity.email);
+      await patchUserIdentity(ctx, existingUser, {
+        clerkUserId: identity.subject,
+        email,
+      });
+    }
+
     const updatedUser = await ctx.db.get(existingUser._id);
     if (updatedUser === null) {
       throw new ConvexError("Failed to update current user");
@@ -117,6 +119,7 @@ export async function ensureUser(ctx: UserMutationCtx): Promise<Doc<"users">> {
     return updatedUser;
   }
 
+  const userFields = buildUserFieldsFromIdentity(identity);
   const userId = await ctx.db.insert("users", userFields);
   const createdUser = await ctx.db.get(userId);
 
