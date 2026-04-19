@@ -99,16 +99,16 @@ export async function ensureUser(ctx: UserMutationCtx): Promise<Doc<"users">> {
     throw new ConvexError(NOT_AUTHENTICATED_ERROR);
   }
 
-  const userFields = buildUserFieldsFromIdentity(identity);
-  const existingUser =
-    await getUserByEmail(ctx, userFields.email)
-    ?? await getUserByClerkUserId(ctx, identity.subject);
-
+  const existingUser = await getUserByClerkUserId(ctx, identity.subject);
   if (existingUser !== null) {
-    await patchUserIdentity(ctx, existingUser, {
-      clerkUserId: userFields.clerkUserId,
-      email: userFields.email,
-    });
+    if (identity.email?.trim()) {
+      const email = normalizeEmail(identity.email);
+      await patchUserIdentity(ctx, existingUser, {
+        clerkUserId: identity.subject,
+        email,
+      });
+    }
+
     const updatedUser = await ctx.db.get(existingUser._id);
     if (updatedUser === null) {
       throw new ConvexError("Failed to update current user");
@@ -117,6 +117,26 @@ export async function ensureUser(ctx: UserMutationCtx): Promise<Doc<"users">> {
     return updatedUser;
   }
 
+  // Fallback: check by email if not found by clerkUserId
+  if (identity.email?.trim()) {
+    const email = normalizeEmail(identity.email);
+    const existingUserByEmail = await getUserByEmail(ctx, email);
+    if (existingUserByEmail !== null) {
+      await patchUserIdentity(ctx, existingUserByEmail, {
+        clerkUserId: identity.subject,
+        email,
+      });
+
+      const updatedUser = await ctx.db.get(existingUserByEmail._id);
+      if (updatedUser === null) {
+        throw new ConvexError("Failed to update current user");
+      }
+
+      return updatedUser;
+    }
+  }
+
+  const userFields = buildUserFieldsFromIdentity(identity);
   const userId = await ctx.db.insert("users", userFields);
   const createdUser = await ctx.db.get(userId);
 

@@ -99,7 +99,7 @@ async function insertExpense(
       shareCents: number;
       userId: Id<"users">;
     }>;
-    splitType: "equal" | "exact";
+    splitType: "equal" | "exact" | "shares";
   },
 ) {
   const expenseId = await ctx.db.insert("expenses", {

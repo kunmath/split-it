@@ -78,7 +78,7 @@ type GroupSceneData = {
     paidByName: string;
     paidByCurrentUser: boolean;
     currentUserNetCents: number;
-    splitType: "equal" | "exact";
+    splitType: "equal" | "exact" | "shares";
     kind: "expense" | "settlement";
     counterpartyName: string | null;
     counterpartyIsCurrentUser: boolean;

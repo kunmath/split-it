@@ -33,7 +33,7 @@ type ExpenseComposerScreenProps = {
   expenseId?: string;
 };
 
-type SplitType = "equal" | "exact";
+type SplitType = "equal" | "exact" | "shares";
 
 type ComposerMember = {
   id: string;
@@ -71,6 +71,11 @@ type ExactShareDraft = {
   shareCents: number;
 };
 
+type ShareDraft = {
+  userId: string;
+  share: number;
+};
+
 type ExpenseDraft = {
   description: string;
   amountCents: number;
@@ -78,6 +83,7 @@ type ExpenseDraft = {
   splitType: SplitType;
   participantIds: string[];
   exactShares?: ExactShareDraft[];
+  shares?: ShareDraft[];
   expenseAt: number;
   notes?: string;
 };
@@ -89,6 +95,7 @@ type FormErrors = {
   participants?: string;
   payer?: string;
   exactShares?: string;
+  shares?: string;
 };
 
 type SplitSummaryState = {
@@ -258,6 +265,38 @@ function buildInitialExactInputs(
 
   for (const share of shares) {
     inputs[share.userId] = formatCentsForInput(share.shareCents);
+  }
+
+  return inputs;
+}
+
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+function gcdArray(nums: number[]): number {
+  return nums.reduce((acc, num) => gcd(acc, num));
+}
+
+function buildInitialShareInputs(
+  members: ComposerMember[],
+  shares: ExistingExpenseDraft["shares"]
+) {
+  const inputs: Record<string, string> = {};
+
+  // Default to "1" for all members (new expense case)
+  for (const member of members) {
+    inputs[member.id] = "1";
+  }
+
+  // For edits, reconstruct ratios from persisted shareCents
+  if (shares.length > 0) {
+    const shareCents = shares.map(s => s.shareCents);
+    const g = gcdArray(shareCents);
+    for (const share of shares) {
+      const ratio = share.shareCents / g;
+      inputs[share.userId] = ratio.toString();
+    }
   }
 
   return inputs;
@@ -480,6 +519,10 @@ function LiveExpenseComposerScreen({
               userId: share.userId as Id<"users">,
               shareCents: share.shareCents,
             })),
+            shares: draft.shares?.map((share) => ({
+              userId: share.userId as Id<"users">,
+              share: share.share,
+            })),
             expenseAt: draft.expenseAt,
             notes: draft.notes,
           });
@@ -494,6 +537,10 @@ function LiveExpenseComposerScreen({
             exactShares: draft.exactShares?.map((share) => ({
               userId: share.userId as Id<"users">,
               shareCents: share.shareCents,
+            })),
+            shares: draft.shares?.map((share) => ({
+              userId: share.userId as Id<"users">,
+              share: share.share,
             })),
             expenseAt: draft.expenseAt,
             notes: draft.notes,
@@ -562,6 +609,9 @@ function ExpenseComposerScene({
   const [exactShareInputs, setExactShareInputs] = useState<Record<string, string>>(
     buildInitialExactInputs(data.members, existingExpense?.shares ?? []),
   );
+  const [shareInputs, setShareInputs] = useState<Record<string, string>>(
+    buildInitialShareInputs(data.members, existingExpense?.shares ?? []),
+  );
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -615,6 +665,34 @@ function ExpenseComposerScene({
       userId: row.member.id,
       shareCents: row.shareCents,
     }));
+
+  const shareRows = data.members.map((member) => {
+    const input = shareInputs[member.id] ?? "";
+    const parsedShare = parseFloat(input);
+    const isSelected = orderedSelectedParticipantIds.includes(member.id);
+    const isInvalid = isSelected && input.trim().length > 0 && (isNaN(parsedShare) || parsedShare <= 0);
+    const needsAmount = isSelected && (isNaN(parsedShare) || parsedShare <= 0);
+    const share = !isNaN(parsedShare) && parsedShare > 0 ? parsedShare : 0;
+
+    return {
+      member,
+      input,
+      parsedShare,
+      isSelected,
+      isInvalid,
+      needsAmount,
+      share,
+    };
+  });
+  const totalShares = shareRows.reduce((sum, row) => {
+    return row.isSelected ? sum + row.share : sum;
+  }, 0);
+  const shareShareRows = shareRows
+    .filter((row) => row.isSelected && row.share > 0)
+    .map((row) => ({
+      userId: row.member.id,
+      share: row.share,
+    }));
   const moneyLabel =
     amountCents === null
       ? "Invalid amount"
@@ -645,59 +723,105 @@ function ExpenseComposerScene({
         canSubmit: true,
       };
     }
-  } else if (hasInvalidAmount) {
-    splitSummary = {
-      tone: "error",
-      badge: "Invalid total",
-      detail: "Enter a valid total before exact amounts can be matched.",
-      canSubmit: false,
-    };
-  } else if (orderedSelectedParticipantIds.length === 0) {
-    splitSummary = {
-      tone: "error",
-      badge: "No participants",
-      detail: "Select at least one group member and assign an amount.",
-      canSubmit: false,
-    };
-  } else if (exactRows.some((row) => row.isInvalid)) {
-    splitSummary = {
-      tone: "error",
-      badge: "Invalid amounts",
-      detail: "Use dollar amounts with at most two decimals for each selected person.",
-      canSubmit: false,
-    };
-  } else if (exactRows.some((row) => row.needsAmount)) {
-    splitSummary = {
-      tone: "warning",
-      badge: "Missing amounts",
-      detail: "Every selected member needs a positive exact amount.",
-      canSubmit: false,
-    };
-  } else if (exactDifferenceCents === 0) {
-    splitSummary = {
-      tone: "matched",
-      badge: "Matched",
-      detail: "Exact shares add up perfectly to the total expense.",
-      canSubmit: true,
-    };
-  } else if ((exactDifferenceCents ?? 0) < 0) {
-    splitSummary = {
-      tone: "warning",
-      badge: "Under assigned",
-      detail: `${formatMoneyFromCents(
-        Math.abs(exactDifferenceCents ?? 0),
-        data.groupCurrency,
-      )} still needs to be assigned.`,
-      canSubmit: false,
-    };
+  } else if (splitType === "exact") {
+    if (hasInvalidAmount) {
+      splitSummary = {
+        tone: "error",
+        badge: "Invalid total",
+        detail: "Enter a valid total before exact amounts can be matched.",
+        canSubmit: false,
+      };
+    } else if (orderedSelectedParticipantIds.length === 0) {
+      splitSummary = {
+        tone: "error",
+        badge: "No participants",
+        detail: "Select at least one group member and assign an amount.",
+        canSubmit: false,
+      };
+    } else if (exactRows.some((row) => row.isInvalid)) {
+      splitSummary = {
+        tone: "error",
+        badge: "Invalid amounts",
+        detail: "Use dollar amounts with at most two decimals for each selected person.",
+        canSubmit: false,
+      };
+    } else if (exactRows.some((row) => row.needsAmount)) {
+      splitSummary = {
+        tone: "warning",
+        badge: "Missing amounts",
+        detail: "Every selected member needs a positive exact amount.",
+        canSubmit: false,
+      };
+    } else if (exactDifferenceCents === 0) {
+      splitSummary = {
+        tone: "matched",
+        badge: "Matched",
+        detail: "Exact shares add up perfectly to the total expense.",
+        canSubmit: true,
+      };
+    } else if ((exactDifferenceCents ?? 0) < 0) {
+      splitSummary = {
+        tone: "warning",
+        badge: "Under assigned",
+        detail: `${formatMoneyFromCents(
+          Math.abs(exactDifferenceCents ?? 0),
+          data.groupCurrency,
+        )} still needs to be assigned.`,
+        canSubmit: false,
+      };
+    } else {
+      splitSummary = {
+        tone: "error",
+        badge: "Over assigned",
+        detail: `${formatMoneyFromCents(
+          exactDifferenceCents ?? 0,
+          data.groupCurrency,
+        )} must be removed from the exact split.`,
+        canSubmit: false,
+      };
+    }
+  } else if (splitType === "shares") {
+    if (hasInvalidAmount) {
+      splitSummary = {
+        tone: "error",
+        badge: "Invalid total",
+        detail: "Enter a valid total before share amounts can be calculated.",
+        canSubmit: false,
+      };
+    } else if (orderedSelectedParticipantIds.length === 0) {
+      splitSummary = {
+        tone: "error",
+        badge: "No participants",
+        detail: "Select at least one group member and assign share amounts.",
+        canSubmit: false,
+      };
+    } else if (shareRows.some((row) => row.isInvalid)) {
+      splitSummary = {
+        tone: "error",
+        badge: "Invalid shares",
+        detail: "Use positive numbers for each selected person's share.",
+        canSubmit: false,
+      };
+    } else if (shareRows.some((row) => row.needsAmount)) {
+      splitSummary = {
+        tone: "warning",
+        badge: "Missing shares",
+        detail: "Every selected member needs a positive share amount.",
+        canSubmit: false,
+      };
+    } else {
+      splitSummary = {
+        tone: "matched",
+        badge: "Ready",
+        detail: `Shares will be distributed proportionally (${totalShares} total shares).`,
+        canSubmit: true,
+      };
+    }
   } else {
     splitSummary = {
       tone: "error",
-      badge: "Over assigned",
-      detail: `${formatMoneyFromCents(
-        exactDifferenceCents ?? 0,
-        data.groupCurrency,
-      )} must be removed from the exact split.`,
+      badge: "Unknown split type",
+      detail: "This split type is not supported.",
       canSubmit: false,
     };
   }
@@ -707,13 +831,14 @@ function ExpenseComposerScene({
     !isSaving &&
     !isDeleting &&
     data.members.length > 0 &&
-    (splitType === "equal" || splitSummary.canSubmit);
+    splitSummary.canSubmit;
 
   function clearSplitErrors() {
     setFieldErrors((current) => ({
       ...current,
       participants: undefined,
       exactShares: undefined,
+      shares: undefined,
     }));
   }
 
@@ -730,6 +855,17 @@ function ExpenseComposerScene({
     }
 
     setExactShareInputs(nextInputs);
+  }
+
+  function seedShareAmounts(nextSelectedIds: string[]) {
+    const nextInputs: Record<string, string> = {};
+
+    for (const member of data.members) {
+      // Default to 1 share for each selected member
+      nextInputs[member.id] = nextSelectedIds.includes(member.id) ? "1" : "";
+    }
+
+    setShareInputs(nextInputs);
   }
 
   function toggleParticipant(memberId: string) {
@@ -763,6 +899,24 @@ function ExpenseComposerScene({
               (seededPreview.get(memberId) ?? 0) > 0
                 ? formatCentsForInput(seededPreview.get(memberId) ?? 0)
                 : "",
+          }));
+        }
+      }
+
+      if (splitType === "shares" && isSelected) {
+        setShareInputs((currentInputs) => ({
+          ...currentInputs,
+          [memberId]: "",
+        }));
+      }
+
+      if (splitType === "shares" && !isSelected) {
+        const currentInput = shareInputs[memberId] ?? "";
+
+        if (!currentInput.trim()) {
+          setShareInputs((currentInputs) => ({
+            ...currentInputs,
+            [memberId]: "1",
           }));
         }
       }
@@ -837,6 +991,16 @@ function ExpenseComposerScene({
       }
     }
 
+    if (splitType === "shares") {
+      if (shareRows.some((row) => row.isInvalid)) {
+        nextErrors.shares = "Fix invalid share amounts before saving.";
+      } else if (shareRows.some((row) => row.needsAmount)) {
+        nextErrors.shares = "Every selected member needs a positive share amount.";
+      } else if (shareShareRows.length === 0) {
+        nextErrors.shares = "Add at least one share amount.";
+      }
+    }
+
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
       setFormError(null);
@@ -856,8 +1020,11 @@ function ExpenseComposerScene({
         participantIds:
           splitType === "equal"
             ? normalizedParticipantIds
-            : exactShareRows.map((share) => share.userId),
+            : splitType === "exact"
+              ? exactShareRows.map((share) => share.userId)
+              : shareShareRows.map((share) => share.userId),
         exactShares: splitType === "exact" ? exactShareRows : undefined,
+        shares: splitType === "shares" ? shareShareRows : undefined,
         expenseAt: timestamp ?? 0,
         notes: notes.trim() || undefined,
       });
@@ -1141,7 +1308,7 @@ function ExpenseComposerScene({
                     Split With
                   </p>
                   <h2 className="mt-2 font-headline text-2xl font-bold tracking-tight text-on-surface">
-                    {splitType === "equal" ? "Split equally" : "Split by amount"}
+                    {splitType === "equal" ? "Split equally" : splitType === "exact" ? "Split by amount" : "Split by shares"}
                   </h2>
                 </div>
                 <div className="inline-flex rounded-[1rem] bg-surface-container-low p-1">
@@ -1149,7 +1316,7 @@ function ExpenseComposerScene({
                     type="button"
                     onClick={() => {
                       setSplitType("equal");
-                      setFieldErrors((current) => ({ ...current, exactShares: undefined }));
+                      setFieldErrors((current) => ({ ...current, exactShares: undefined, shares: undefined }));
                       setFormError(null);
                     }}
                     className={cn(
@@ -1174,6 +1341,7 @@ function ExpenseComposerScene({
                         ...current,
                         participants: undefined,
                         exactShares: undefined,
+                        shares: undefined,
                       }));
                       setFormError(null);
                     }}
@@ -1185,6 +1353,32 @@ function ExpenseComposerScene({
                     )}
                   >
                     By Amount
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSplitType("shares");
+
+                      if (existingExpense?.splitType !== "shares" && shareShareRows.length === 0) {
+                        seedShareAmounts(orderedSelectedParticipantIds);
+                      }
+
+                      setFieldErrors((current) => ({
+                        ...current,
+                        participants: undefined,
+                        exactShares: undefined,
+                        shares: undefined,
+                      }));
+                      setFormError(null);
+                    }}
+                    className={cn(
+                      "rounded-[0.85rem] px-4 py-2 text-xs font-headline font-semibold uppercase tracking-[0.18em] transition",
+                      splitType === "shares"
+                        ? "bg-surface-container-high text-primary shadow-sm"
+                        : "text-on-surface-variant hover:text-on-surface",
+                    )}
+                  >
+                    By Shares
                   </button>
                 </div>
               </div>
@@ -1220,6 +1414,22 @@ function ExpenseComposerScene({
                       });
                     }
 
+                    if (splitType === "shares") {
+                      setShareInputs((current) => {
+                        const nextInputs = { ...current };
+
+                        for (const member of data.members) {
+                          if ((nextInputs[member.id] ?? "").trim()) {
+                            continue;
+                          }
+
+                          nextInputs[member.id] = "1";
+                        }
+
+                        return nextInputs;
+                      });
+                    }
+
                     clearSplitErrors();
                     setFormError(null);
                   }}
@@ -1246,13 +1456,17 @@ function ExpenseComposerScene({
                     onClick={() => {
                       const allMemberIds = data.members.map((member) => member.id);
                       setSelectedParticipantIds(allMemberIds);
-                      seedExactAmounts(allMemberIds);
+                      if (splitType === "exact") {
+                        seedExactAmounts(allMemberIds);
+                      } else if (splitType === "shares") {
+                        seedShareAmounts(allMemberIds);
+                      }
                       clearSplitErrors();
                       setFormError(null);
                     }}
                     className="rounded-full bg-surface-container-low px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-secondary transition hover:text-secondary"
                   >
-                    Reset amounts
+                    {splitType === "shares" ? "Reset shares" : "Reset amounts"}
                   </button>
                 )}
 
@@ -1338,7 +1552,8 @@ function ExpenseComposerScene({
                         </div>
                       );
                     })
-                  : exactRows.map((row) => (
+                  : splitType === "exact"
+                  ? exactRows.map((row) => (
                       <div
                         key={row.member.id}
                         className={cn(
@@ -1422,14 +1637,107 @@ function ExpenseComposerScene({
                           />
                         </label>
                       </div>
+                    ))
+                  : shareRows.map((row) => (
+                      <div
+                        key={row.member.id}
+                        className={cn(
+                          "flex items-center justify-between gap-4 rounded-[1.5rem] px-4 py-4 transition",
+                          row.isSelected
+                            ? "bg-surface-container-low"
+                            : "bg-surface-container-lowest/80",
+                        )}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toggleParticipant(row.member.id);
+                          }}
+                          className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                        >
+                          <div
+                            className={cn(
+                              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl font-headline text-sm font-bold",
+                              row.isSelected
+                                ? "bg-[linear-gradient(135deg,rgba(78,222,163,0.42),rgba(16,185,129,0.95))] text-on-primary"
+                                : "bg-surface-container-high text-on-surface-variant",
+                            )}
+                          >
+                            {getInitials(row.member.name)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-headline text-base font-semibold text-on-surface">
+                              {row.member.isCurrentUser ? "You" : row.member.name}
+                            </p>
+                            <p className="truncate text-[0.7rem] uppercase tracking-[0.18em] text-on-surface-variant">
+                              {row.isSelected ? "Selected" : "Tap to include"}
+                            </p>
+                          </div>
+                        </button>
+
+                        <label
+                          className={cn(
+                            "flex shrink-0 items-center gap-2 rounded-[1rem] border px-4 py-2 transition focus-within:border-primary/40",
+                            row.isSelected
+                              ? "bg-surface-container-high"
+                              : "bg-surface-container-high/55 opacity-70",
+                            row.isInvalid || (row.isSelected && row.needsAmount)
+                              ? "border-secondary/40"
+                              : "border-white/8",
+                          )}
+                        >
+                          <span className="text-sm font-medium text-on-surface-variant">
+                            Shares
+                          </span>
+                          <input
+                            value={row.input}
+                            onFocus={() => {
+                              if (!row.isSelected) {
+                                setSelectedParticipantIds((current) => [...current, row.member.id]);
+                              }
+                            }}
+                            onChange={(event) => {
+                              const nextValue = event.target.value;
+                              setShareInputs((current) => ({
+                                ...current,
+                                [row.member.id]: nextValue,
+                              }));
+
+                              if (!row.isSelected) {
+                                setSelectedParticipantIds((current) => [...current, row.member.id]);
+                              }
+
+                              clearSplitErrors();
+                              setFormError(null);
+                            }}
+                            placeholder="1"
+                            inputMode="decimal"
+                            disabled={!row.isSelected}
+                            className="w-20 border-none bg-transparent p-0 text-right font-headline text-lg font-bold text-on-surface placeholder:text-on-surface-variant/38 focus:outline-none disabled:cursor-not-allowed"
+                            aria-invalid={
+                              row.isInvalid || (row.isSelected && row.needsAmount)
+                                ? "true"
+                                : undefined
+                            }
+                          />
+                        </label>
+                      </div>
                     ))}
               </div>
 
+              {splitType === "shares" ? (
+                <p className="mt-3 text-sm text-on-surface-variant">
+                  Enter share ratios for each person. The final split is calculated proportionally from the numbers you enter.
+                </p>
+              ) : null}
               {fieldErrors.participants ? (
                 <p className="mt-3 text-sm text-secondary">{fieldErrors.participants}</p>
               ) : null}
               {fieldErrors.exactShares ? (
                 <p className="mt-3 text-sm text-secondary">{fieldErrors.exactShares}</p>
+              ) : null}
+              {fieldErrors.shares ? (
+                <p className="mt-3 text-sm text-secondary">{fieldErrors.shares}</p>
               ) : null}
             </SurfaceCard>
 
@@ -1450,7 +1758,7 @@ function ExpenseComposerScene({
                 </div>
                 <div className="text-right">
                   <p className="text-[0.7rem] uppercase tracking-[0.2em] text-on-surface-variant">
-                    {splitType === "exact" ? "Total assigned" : "Per person"}
+                    {splitType === "exact" ? "Total assigned" : splitType === "shares" ? "Total shares" : "Per person"}
                   </p>
                   <p
                     className={cn(
@@ -1461,14 +1769,18 @@ function ExpenseComposerScene({
                           : splitSummary.tone === "warning"
                             ? "text-amber-200"
                             : "text-secondary"
-                        : "text-secondary",
+                        : splitType === "shares"
+                          ? "text-primary"
+                          : "text-secondary",
                     )}
                   >
                     {splitType === "exact"
                       ? formatMoneyFromCents(exactAssignedCents, data.groupCurrency)
-                      : orderedSelectedParticipantIds.length === 0 || hasInvalidAmount
-                        ? "--"
-                        : formatMoneyFromCents(perPersonCents, data.groupCurrency)}
+                      : splitType === "shares"
+                        ? `${totalShares} shares`
+                        : orderedSelectedParticipantIds.length === 0 || hasInvalidAmount
+                          ? "--"
+                          : formatMoneyFromCents(perPersonCents, data.groupCurrency)}
                   </p>
                 </div>
               </div>
@@ -1516,7 +1828,7 @@ function ExpenseComposerScene({
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span>
-                    {splitType === "exact" ? "Difference" : "Assigned total"}
+                    {splitType === "exact" ? "Difference" : splitType === "shares" ? "Will assign" : "Assigned total"}
                   </span>
                   <span
                     className={cn(
@@ -1534,7 +1846,11 @@ function ExpenseComposerScene({
                       ? hasInvalidAmount || exactDifferenceCents === null
                         ? "--"
                         : formatMoneyFromCents(exactDifferenceCents, data.groupCurrency)
-                      : moneyLabel}
+                      : splitType === "shares"
+                        ? hasInvalidAmount
+                          ? "--"
+                          : moneyLabel
+                        : moneyLabel}
                   </span>
                 </div>
               </div>

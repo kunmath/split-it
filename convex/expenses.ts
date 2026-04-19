@@ -17,6 +17,11 @@ const exactShareValidator = v.object({
   shareCents: v.number(),
 });
 
+const shareValidator = v.object({
+  userId: v.id("users"),
+  share: v.number(),
+});
+
 type ShareRow = {
   userId: Id<"users">;
   shareCents: number;
@@ -124,6 +129,30 @@ function normalizeExactShares(shares: ShareRow[]) {
   return normalized;
 }
 
+function normalizeShares(shares: { userId: Id<"users">; share: number }[]) {
+  const normalized: { userId: Id<"users">; share: number }[] = [];
+  const seen = new Set<Id<"users">>();
+
+  for (const share of shares) {
+    if (seen.has(share.userId)) {
+      continue;
+    }
+
+    if (!Number.isFinite(share.share) || share.share <= 0) {
+      throw new ConvexError("Share amounts must be positive numbers");
+    }
+
+    seen.add(share.userId);
+    normalized.push(share);
+  }
+
+  if (normalized.length === 0) {
+    throw new ConvexError("Add at least one share amount");
+  }
+
+  return normalized;
+}
+
 async function getActiveMemberProfiles(
   ctx: Parameters<typeof requireGroupMember>[0],
   groupId: Id<"groups">,
@@ -209,7 +238,7 @@ function validateActiveGroupMemberIds(
 function assertShareTotalMatchesAmount(
   shareRows: ShareRow[],
   amountCents: number,
-  splitType: "equal" | "exact",
+  splitType: "equal" | "exact" | "shares",
 ) {
   const shareTotal = shareRows.reduce((sum, share) => sum + share.shareCents, 0);
 
@@ -217,7 +246,9 @@ function assertShareTotalMatchesAmount(
     throw new ConvexError(
       splitType === "equal"
         ? "Equal split shares must sum exactly to the expense amount"
-        : "Exact split shares must sum exactly to the expense amount",
+        : splitType === "exact"
+          ? "Exact split shares must sum exactly to the expense amount"
+          : "Share-based split shares must sum exactly to the expense amount",
     );
   }
 }
@@ -227,9 +258,10 @@ async function buildValidatedShareRows(
   groupId: Id<"groups">,
   payerId: Id<"users">,
   amountCents: number,
-  splitType: "equal" | "exact",
+  splitType: "equal" | "exact" | "shares",
   participantIds: Id<"users">[] | undefined,
   exactShares: ShareRow[] | undefined,
+  shares: { userId: Id<"users">; share: number }[] | undefined,
 ) {
   const activeMembers = await getActiveMemberProfiles(ctx, groupId);
   const activeUserIds = new Set(activeMembers.map((member) => member.user._id));
@@ -252,15 +284,62 @@ async function buildValidatedShareRows(
     return shareRows;
   }
 
-  const normalizedExactShares = normalizeExactShares(exactShares ?? []);
+  if (splitType === "exact") {
+    const normalizedExactShares = normalizeExactShares(exactShares ?? []);
+    validateActiveGroupMemberIds(
+      activeUserIds,
+      payerId,
+      normalizedExactShares.map((share) => share.userId),
+    );
+    assertShareTotalMatchesAmount(normalizedExactShares, amountCents, "exact");
+
+    return normalizedExactShares;
+  }
+
+  // Handle "shares" split type
+  const normalizedShares = normalizeShares(shares ?? []);
   validateActiveGroupMemberIds(
     activeUserIds,
     payerId,
-    normalizedExactShares.map((share) => share.userId),
+    normalizedShares.map((share) => share.userId),
   );
-  assertShareTotalMatchesAmount(normalizedExactShares, amountCents, "exact");
 
-  return normalizedExactShares;
+  // Calculate total shares
+  const totalShares = normalizedShares.reduce((sum, share) => sum + share.share, 0);
+
+  // Calculate exact amounts and fractional parts
+  const exactAmounts = normalizedShares.map((share) => ({
+    userId: share.userId,
+    exact: (amountCents * share.share) / totalShares,
+  }));
+
+  // Floor all amounts
+  const flooredAmounts = exactAmounts.map((item) => ({
+    userId: item.userId,
+    shareCents: Math.floor(item.exact),
+    fraction: item.exact - Math.floor(item.exact),
+  }));
+
+  // Calculate total floored
+  const totalFloored = flooredAmounts.reduce((sum, item) => sum + item.shareCents, 0);
+  const remainder = amountCents - totalFloored;
+
+  // Sort by fractional part descending to distribute remainder
+  const sortedByFraction = [...flooredAmounts].sort((a, b) => b.fraction - a.fraction);
+
+  // Distribute remainder to top fractional parts
+  for (let i = 0; i < remainder; i++) {
+    sortedByFraction[i]!.shareCents += 1;
+  }
+
+  // Create share rows
+  const shareRows: ShareRow[] = flooredAmounts.map((item) => ({
+    userId: item.userId,
+    shareCents: item.shareCents,
+  }));
+
+  assertShareTotalMatchesAmount(shareRows, amountCents, "shares");
+  return shareRows;
 }
 
 async function replaceExpenseShares(
@@ -443,9 +522,10 @@ export const createExpense = mutation({
     description: v.string(),
     amountCents: v.number(),
     paidBy: v.id("users"),
-    splitType: v.union(v.literal("equal"), v.literal("exact")),
+    splitType: v.union(v.literal("equal"), v.literal("exact"), v.literal("shares")),
     participantIds: v.optional(v.array(v.id("users"))),
     exactShares: v.optional(v.array(exactShareValidator)),
+    shares: v.optional(v.array(shareValidator)),
     expenseAt: v.number(),
     notes: v.optional(v.string()),
   },
@@ -464,6 +544,7 @@ export const createExpense = mutation({
       args.splitType,
       args.participantIds,
       args.exactShares,
+      args.shares,
     );
 
     const expenseId = await ctx.db.insert("expenses", {
@@ -489,9 +570,10 @@ export const updateExpense = mutation({
     description: v.string(),
     amountCents: v.number(),
     paidBy: v.id("users"),
-    splitType: v.union(v.literal("equal"), v.literal("exact")),
+    splitType: v.union(v.literal("equal"), v.literal("exact"), v.literal("shares")),
     participantIds: v.optional(v.array(v.id("users"))),
     exactShares: v.optional(v.array(exactShareValidator)),
+    shares: v.optional(v.array(shareValidator)),
     expenseAt: v.number(),
     notes: v.optional(v.string()),
   },
@@ -517,6 +599,7 @@ export const updateExpense = mutation({
       args.splitType,
       args.participantIds,
       args.exactShares,
+      args.shares,
     );
 
     await ctx.db.replace(args.expenseId, {
