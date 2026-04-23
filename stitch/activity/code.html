@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Activity Feed</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#00422b",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed": "#ffdbd0",
+                        "surface-tint": "#4edea3",
+                        "secondary-fixed-dim": "#ffb59e",
+                        "tertiary-container": "#3eb686",
+                        "secondary": "#ffb59e",
+                        "on-secondary-fixed": "#3a0b00",
+                        "on-background": "#e5e2e1",
+                        "on-secondary": "#5e1700",
+                        "on-surface": "#e5e2e1",
+                        "error-container": "#93000a",
+                        "tertiary": "#68dba9",
+                        "on-primary-fixed-variant": "#005236",
+                        "surface-container": "#201f1f",
+                        "surface-bright": "#393939",
+                        "surface": "#131313",
+                        "outline": "#86948a",
+                        "inverse-surface": "#e5e2e1",
+                        "surface-container-high": "#2a2a2a",
+                        "tertiary-fixed": "#85f8c4",
+                        "on-surface-variant": "#bbcabf",
+                        "on-primary-fixed": "#002113",
+                        "on-tertiary-fixed-variant": "#005137",
+                        "surface-variant": "#353534",
+                        "inverse-primary": "#006c49",
+                        "error": "#ffb4ab",
+                        "on-secondary-container": "#ff9b7c",
+                        "surface-dim": "#131313",
+                        "tertiary-fixed-dim": "#68dba9",
+                        "on-tertiary-container": "#00422c",
+                        "on-secondary-fixed-variant": "#7f2a0d",
+                        "primary-fixed": "#6ffbbe",
+                        "primary-fixed-dim": "#4edea3",
+                        "background": "#131313",
+                        "surface-container-lowest": "#0e0e0e",
+                        "primary": "#4edea3",
+                        "on-tertiary": "#003825",
+                        "outline-variant": "#3c4a42",
+                        "secondary-container": "#7f2a0d",
+                        "primary-container": "#10b981",
+                        "on-error": "#690005",
+                        "surface-container-highest": "#353534",
+                        "on-tertiary-fixed": "#002114",
+                        "surface-container-low": "#1c1b1b",
+                        "on-primary": "#003824",
+                        "inverse-on-surface": "#313030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope", "sans-serif"],
+                        "display": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-body antialiased min-h-screen flex flex-col pb-24 md:pb-0">
+<!-- TopAppBar Mobile -->
+<header class="md:hidden fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl no-border flex justify-between items-center px-6 py-4 max-w-full">
+<div class="flex items-center gap-3 hover:bg-surface-bright/50 transition-colors rounded-full p-1 cursor-pointer active:scale-95 duration-200">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden flex items-center justify-center">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="Portrait of a young woman with natural makeup looking directly at camera, soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAq2IpKxqOAoh3OwIxGbvf2QuvmdUxtQrj0Ba25FBbgIyI-NuYRO8D8OgKexPLmCrEJst9im6xLEKH18iOfVeBhCZDzPbxg0RsqjFicNPx3_wh_K7tSWCIgQQpCBEIOl2t0vyTXIkgiLsMfGEJMbjlRF0clQi4Uf1aetTv4xjdWohTBLIob8KZsBo-oqBY1vhW_4BqDhr9HnUN6-BaCKoshtLfapG_XWZDuftrLduxnUscbfdy_ib_ac16tN3j_JQUyhHpUw1eFBNU"/>
+</div>
+</div>
+<h1 class="font-headline font-semibold text-2xl tracking-tight text-on-surface">Ledger</h1>
+<button class="w-10 h-10 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-bright/50 transition-colors active:scale-95 duration-200">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex w-full">
+<!-- NavigationDrawer (Hidden on Mobile) -->
+<nav class="hidden md:flex flex-col h-full py-8 gap-2 bg-surface border-r outline-variant w-64 fixed left-0 top-0">
+<div class="px-6 mb-8">
+<h2 class="font-headline font-extrabold text-xl text-primary tracking-tighter">Ledger</h2>
+</div>
+<div class="flex flex-col gap-1 px-2">
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-bright/30 transition-all px-4 py-3 mx-2 rounded-xl cursor-pointer active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label text-sm tracking-wide">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 bg-surface-bright text-primary font-semibold rounded-xl px-4 py-3 mx-2 cursor-pointer active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics" data-weight="fill" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-label text-sm tracking-wide">Activity Feed</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-bright/30 transition-all px-4 py-3 mx-2 rounded-xl cursor-pointer active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-label text-sm tracking-wide">Settlements</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-bright/30 transition-all px-4 py-3 mx-2 rounded-xl cursor-pointer active:translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label text-sm tracking-wide">Settings</span>
+</a>
+</div>
+<div class="mt-auto px-6 flex items-center gap-3 pt-6 border-t outline-variant/20">
+<img alt="User Avatar" class="w-10 h-10 rounded-full object-cover" data-alt="Portrait of a young woman with natural makeup looking directly at camera, soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDV9ppkOy5CBCsJ236cETWDEZ1UTI14SRXShBNFNDRrdLeRZRq6K_ayXZ2dlGPtL1FRx1jOgfs8GtKzMVStUZbzJaTEdQuXjpYqrX-K5C8DLK-7x8oh-G539x7JOi3bcnkeOXtHeRew_Arcg2-4_8AsHw3p5FSWNvvcpnJGxTPm3xRHnzFIfDXWD5C71id9JG9LWO6m4gRKySitRzK9Z3RW-RzYyEYdWTPczTvmnrVqzZwfFvjR72fG9CNqNYU-QQXIjyGev1anLKo"/>
+<div class="flex flex-col">
+<span class="font-body text-sm font-semibold text-on-surface">Editorial Ledger</span>
+<span class="font-label text-xs text-on-surface-variant">Premium Account</span>
+</div>
+</div>
+</nav>
+<!-- Canvas -->
+<div class="w-full md:pl-64 pt-20 md:pt-8 px-6 md:px-12 max-w-5xl mx-auto">
+<div class="mb-12">
+<h2 class="font-headline text-3xl font-bold text-on-surface mb-2">Activity</h2>
+<p class="font-body text-on-surface-variant text-sm">Recent transactions across all groups</p>
+</div>
+<!-- Transaction List -->
+<div class="flex flex-col gap-3">
+<!-- Date Group -->
+<div class="mb-2">
+<span class="font-label text-xs font-semibold text-on-surface-variant uppercase tracking-widest">Oct 24</span>
+</div>
+<!-- Transaction Row -->
+<div class="flex items-start gap-4 p-4 rounded-xl bg-surface-container-low transition-colors hover:bg-surface-container-high cursor-pointer">
+<div class="flex-shrink-0 w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="flight">flight</span>
+</div>
+<div class="flex-1 flex flex-col justify-center min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-headline font-semibold text-base text-on-surface truncate pr-2">Reykjavik Flights</span>
+<div class="flex flex-col items-end shrink-0">
+<span class="font-headline font-bold text-lg text-primary leading-tight">$413.33</span>
+<span class="font-body text-[10px] text-on-surface-variant">Total: $1,240.00</span>
+</div>
+</div>
+<div class="flex justify-between items-center"><div class="flex items-center gap-1.5 font-body text-xs text-on-surface-variant truncate pr-2"><span>Sarah</span><span class="opacity-40">•</span><span class="text-on-surface/60 truncate">Iceland Expedition</span></div></div>
+</div>
+</div>
+<!-- Transaction Row -->
+<div class="flex items-start gap-4 p-4 rounded-xl bg-surface-container-low transition-colors hover:bg-surface-container-high cursor-pointer">
+<div class="flex-shrink-0 w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" data-icon="restaurant">restaurant</span>
+</div>
+<div class="flex-1 flex flex-col justify-center min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-headline font-semibold text-base text-on-surface truncate pr-2">Dinner at Grillmarkaðurinn</span>
+<div class="flex flex-col items-end shrink-0">
+<span class="font-headline font-bold text-lg text-secondary leading-tight">$106.83</span>
+<span class="font-body text-[10px] text-on-surface-variant">Total: $320.50</span>
+</div>
+</div>
+<div class="flex justify-between items-center"><div class="flex items-center gap-1.5 font-body text-xs text-on-surface-variant truncate pr-2"><span>Marcus</span><span class="opacity-40">•</span><span class="text-on-surface/60 truncate">Iceland Expedition</span></div></div>
+</div>
+</div>
+<!-- Date Group -->
+<div class="mt-6 mb-2">
+<span class="font-label text-xs font-semibold text-on-surface-variant uppercase tracking-widest">Oct 22</span>
+</div>
+<!-- Transaction Row -->
+<div class="flex items-start gap-4 p-4 rounded-xl bg-surface-container-low transition-colors hover:bg-surface-container-high cursor-pointer">
+<div class="flex-shrink-0 w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="directions_car">directions_car</span>
+</div>
+<div class="flex-1 flex flex-col justify-center min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-headline font-semibold text-base text-on-surface truncate pr-2">Rental Car Deposit</span>
+<div class="flex flex-col items-end shrink-0">
+<span class="font-headline font-bold text-lg text-on-surface leading-tight">$166.66</span>
+<span class="font-body text-[10px] text-on-surface-variant">Total: $500.00</span>
+</div>
+</div>
+<div class="flex justify-between items-center"><div class="flex items-center gap-1.5 font-body text-xs text-on-surface-variant truncate pr-2"><span>You</span><span class="opacity-40">•</span><span class="text-on-surface/60 truncate">Iceland Expedition</span></div></div>
+</div>
+</div>
+<!-- Transaction Row -->
+<div class="flex items-start gap-4 p-4 rounded-xl bg-surface-container-low transition-colors hover:bg-surface-container-high cursor-pointer">
+<div class="flex-shrink-0 w-12 h-12 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+</div>
+<div class="flex-1 flex flex-col justify-center min-w-0">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-headline font-semibold text-base text-on-surface truncate pr-2">Groceries for Cabin</span>
+<div class="flex flex-col items-end shrink-0">
+<span class="font-headline font-bold text-lg text-primary leading-tight">$46.30</span>
+<span class="font-body text-[10px] text-on-surface-variant">Total: $185.20</span>
+</div>
+</div>
+<div class="flex justify-between items-center"><div class="flex items-center gap-1.5 font-body text-xs text-on-surface-variant truncate pr-2"><span>Elena</span><span class="opacity-40">•</span><span class="text-on-surface/60 truncate">Weekend Getaway</span></div></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar Mobile -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center pt-3 pb-6 px-4 bg-surface/80 backdrop-blur-xl rounded-t-3xl shadow-[0px_-10px_40px_rgba(255,255,255,0.03)] z-50">
+<a class="flex flex-col items-center gap-1 text-primary font-bold hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long" data-weight="fill" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="font-label font-medium text-[10px] uppercase tracking-widest">Activity</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label font-medium text-[10px] uppercase tracking-widest">Groups</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label font-medium text-[10px] uppercase tracking-widest">Friends</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-label font-medium text-[10px] uppercase tracking-widest">Account</span>
+</a>
+</nav>
+<!-- FAB (Suppressed based on context, but if needed, here is the structure) -->
+<!-- 
+    <button class="fixed bottom-24 right-6 md:bottom-8 md:right-12 w-14 h-14 bg-gradient-to-br from-primary to-primary-container rounded-full flex items-center justify-center text-on-primary shadow-[0_10px_40px_rgba(78,222,163,0.15)] hover:scale-105 active:scale-95 transition-all duration-200 z-40 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-[1px] bg-white/10"></div>
+        <span class="material-symbols-outlined" data-icon="add">add</span>
+    </button>
+    -->
+</body></html>

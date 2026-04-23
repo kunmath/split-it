@@ -43,13 +43,15 @@ docker compose exec convex-dev sh /workspace/scripts/seed-demo.sh <synced-owner-
 - Archived groups disappear from active dashboard and group queries.
 - Archived-group invite links no longer succeed during acceptance.
 - Dashboard, group detail, expense composer, group settings, and invite acceptance all show polished loading, syncing, unavailable, or error states instead of raw failures.
-- `/friends`, `/activity`, and `/account` remain reachable and render intentional lightweight placeholders.
+- `/activity` shows the latest 20 expenses and settlements the signed-in user was part of across active groups.
+- `/friends` and `/account` remain reachable and render intentional lightweight placeholders.
 
 ## Responsive Regression
 
 Check each route at roughly `390px` and `1440px` widths:
 
 - `/dashboard`
+- `/activity`
 - `/groups/<groupId>`
 - `/groups/<groupId>/expenses/new`
 - `/groups/<groupId>/expenses/<expenseId>/edit`

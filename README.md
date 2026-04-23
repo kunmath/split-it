@@ -5,11 +5,12 @@ Split-It is a responsive shared-expense MVP built with Next.js, Convex, and Cler
 ## App Overview
 
 - Shared group dashboard with create-group flow
+- Responsive cross-group activity feed for the latest expenses and settlements you were part of
 - Secure single-use invite links with acceptance flow
 - Group detail screen with balances, recent expenses, and insights
 - Expense composer for create, edit, and delete
 - Group settings with rename, invite management, CSV export, and soft archive
-- Lightweight Friends, Activity, and Account placeholder routes to complete the MVP shell
+- Lightweight Friends and Account placeholder routes to complete the MVP shell
 
 ## Stack
 

@@ -19,20 +19,13 @@ import {
   simplifyDebts,
   type GroupExpenseRecord,
 } from "./lib/expenseHelpers";
+import {
+  getDefaultGroupIconKey,
+  groupIconKeyValidator,
+  resolveGroupIconKey,
+} from "./lib/groupIcons";
 import { expirePendingGroupInvites } from "./lib/inviteHelpers";
 import { requireGroupOwner } from "./lib/permissions";
-
-const GROUP_ICON_KEYS = ["home", "plane", "utensils", "cart", "mountain", "fuel"] as const;
-const groupIconKey = v.union(
-  v.literal("home"),
-  v.literal("plane"),
-  v.literal("utensils"),
-  v.literal("cart"),
-  v.literal("mountain"),
-  v.literal("fuel"),
-);
-
-type GroupIconKey = (typeof GROUP_ICON_KEYS)[number];
 type GroupDashboardRecord = {
   group: Doc<"groups">;
   membership: Doc<"groupMembers">;
@@ -53,19 +46,6 @@ type GroupSettingsBalanceMember = {
   balanceCents: number;
 };
 type GroupsCtx = QueryCtx | MutationCtx;
-
-function isGroupIconKey(value: string | undefined): value is GroupIconKey {
-  return value !== undefined && GROUP_ICON_KEYS.includes(value as GroupIconKey);
-}
-
-function getDefaultIconKey(seed: string) {
-  const total = Array.from(seed).reduce((sum, character) => sum + character.charCodeAt(0), 0);
-  return GROUP_ICON_KEYS[total % GROUP_ICON_KEYS.length] ?? "home";
-}
-
-function resolveGroupIconKey(group: Doc<"groups">) {
-  return isGroupIconKey(group.iconKey) ? group.iconKey : getDefaultIconKey(group.name);
-}
 
 function sanitizeGroupName(value: string) {
   const name = value.trim();
@@ -183,7 +163,7 @@ export const create = mutation({
     name: v.string(),
     description: v.optional(v.string()),
     currency: v.optional(v.string()),
-    iconKey: v.optional(groupIconKey),
+    iconKey: v.optional(groupIconKeyValidator),
   },
   handler: async (ctx, args) => {
     const user = await ensureUser(ctx);
@@ -191,7 +171,7 @@ export const create = mutation({
     const name = sanitizeGroupName(args.name);
     const description = sanitizeGroupDescription(args.description);
     const currency = sanitizeCurrency(args.currency);
-    const iconKey = args.iconKey ?? getDefaultIconKey(name);
+    const iconKey = args.iconKey ?? getDefaultGroupIconKey(name);
 
     const groupId = await ctx.db.insert("groups", {
       name,

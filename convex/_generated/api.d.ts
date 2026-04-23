@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as activity from "../activity.js";
 import type * as demo from "../demo.js";
 import type * as expenses from "../expenses.js";
 import type * as exports from "../exports.js";
@@ -16,6 +17,7 @@ import type * as http from "../http.js";
 import type * as invites from "../invites.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_expenseHelpers from "../lib/expenseHelpers.js";
+import type * as lib_groupIcons from "../lib/groupIcons.js";
 import type * as lib_inviteEmail from "../lib/inviteEmail.js";
 import type * as lib_inviteHelpers from "../lib/inviteHelpers.js";
 import type * as lib_money from "../lib/money.js";
@@ -30,6 +32,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  activity: typeof activity;
   demo: typeof demo;
   expenses: typeof expenses;
   exports: typeof exports;
@@ -38,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   invites: typeof invites;
   "lib/auth": typeof lib_auth;
   "lib/expenseHelpers": typeof lib_expenseHelpers;
+  "lib/groupIcons": typeof lib_groupIcons;
   "lib/inviteEmail": typeof lib_inviteEmail;
   "lib/inviteHelpers": typeof lib_inviteHelpers;
   "lib/money": typeof lib_money;

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Activity Feed - Editorial Ledger</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-container": "#00422b",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed": "#ffdbd0",
+                        "surface-tint": "#4edea3",
+                        "secondary-fixed-dim": "#ffb59e",
+                        "tertiary-container": "#3eb686",
+                        "secondary": "#ffb59e",
+                        "on-secondary-fixed": "#3a0b00",
+                        "on-background": "#e5e2e1",
+                        "on-secondary": "#5e1700",
+                        "on-surface": "#e5e2e1",
+                        "error-container": "#93000a",
+                        "tertiary": "#68dba9",
+                        "on-primary-fixed-variant": "#005236",
+                        "surface-container": "#201f1f",
+                        "surface-bright": "#393939",
+                        "surface": "#131313",
+                        "outline": "#86948a",
+                        "inverse-surface": "#e5e2e1",
+                        "surface-container-high": "#2a2a2a",
+                        "tertiary-fixed": "#85f8c4",
+                        "on-surface-variant": "#bbcabf",
+                        "on-primary-fixed": "#002113",
+                        "on-tertiary-fixed-variant": "#005137",
+                        "surface-variant": "#353534",
+                        "inverse-primary": "#006c49",
+                        "error": "#ffb4ab",
+                        "on-secondary-container": "#ff9b7c",
+                        "surface-dim": "#131313",
+                        "tertiary-fixed-dim": "#68dba9",
+                        "on-tertiary-container": "#00422c",
+                        "on-secondary-fixed-variant": "#7f2a0d",
+                        "primary-fixed": "#6ffbbe",
+                        "primary-fixed-dim": "#4edea3",
+                        "background": "#131313",
+                        "surface-container-lowest": "#0e0e0e",
+                        "primary": "#4edea3",
+                        "on-tertiary": "#003825",
+                        "outline-variant": "#3c4a42",
+                        "secondary-container": "#7f2a0d",
+                        "primary-container": "#10b981",
+                        "on-error": "#690005",
+                        "surface-container-highest": "#353534",
+                        "on-tertiary-fixed": "#002114",
+                        "surface-container-low": "#1c1b1b",
+                        "on-primary": "#003824",
+                        "inverse-on-surface": "#313030"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope", "sans-serif"],
+                        "display": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body antialiased min-h-screen flex selection:bg-primary/20 selection:text-primary relative overflow-x-hidden">
+<!-- Navigation Drawer (Sidebar) -->
+<nav class="h-full w-64 fixed left-0 top-0 flex flex-col py-8 gap-2 bg-zinc-900 border-r border-zinc-800/50 z-50">
+<!-- Header: Profile -->
+<div class="px-6 mb-8">
+<h1 class="font-['Manrope'] font-extrabold text-xl text-emerald-400 mb-8">Editorial Ledger</h1>
+<div class="flex items-center gap-3"><div class="flex flex-col items-end"><span class="text-primary text-lg font-headline font-semibold">+$45.00</span><span class="text-[10px] text-on-surface-variant/60 uppercase tracking-wider font-medium">Total: $180.00</span></div></div>
+</div>
+<!-- Navigation Links -->
+<a class="font-['Inter'] text-sm tracking-wide text-zinc-500 hover:text-zinc-200 px-4 py-3 mx-2 hover:bg-zinc-800/30 transition-all cursor-pointer active:translate-x-1 duration-200 flex items-center gap-3 rounded-xl" href="#">
+<span class="material-symbols-outlined text-xl">dashboard</span>
+            Dashboard
+        </a>
+<!-- Active Link -->
+<a class="font-['Inter'] text-sm tracking-wide bg-zinc-800 text-emerald-400 font-semibold rounded-xl px-4 py-3 mx-2 cursor-pointer active:translate-x-1 duration-200 flex items-center gap-3" href="#">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">analytics</span>
+            Activity Feed
+        </a>
+<a class="font-['Inter'] text-sm tracking-wide text-zinc-500 hover:text-zinc-200 px-4 py-3 mx-2 hover:bg-zinc-800/30 transition-all cursor-pointer active:translate-x-1 duration-200 flex items-center gap-3 rounded-xl" href="#">
+<span class="material-symbols-outlined text-xl">payments</span>
+            Settlements
+        </a>
+<a class="font-['Inter'] text-sm tracking-wide text-zinc-500 hover:text-zinc-200 px-4 py-3 mx-2 hover:bg-zinc-800/30 transition-all cursor-pointer active:translate-x-1 duration-200 flex items-center gap-3 rounded-xl mt-auto" href="#">
+<span class="material-symbols-outlined text-xl">settings</span>
+            Settings
+        </a>
+</nav>
+<!-- Main Content Canvas -->
+<main class="ml-64 flex-1 p-10 lg:p-16 relative z-10 min-h-screen">
+<!-- Ambient Depth Lights -->
+<div class="fixed top-[-20%] right-[-10%] w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-[-20%] left-[20%] w-[600px] h-[600px] bg-secondary/5 rounded-full blur-[120px] pointer-events-none"></div>
+<!-- Header Area -->
+<header class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+<div class="max-w-2xl">
+<h2 class="font-display text-4xl lg:text-5xl font-semibold text-on-surface tracking-tight mb-3">Activity Feed</h2>
+<p class="font-body text-sm text-on-surface-variant leading-relaxed">
+                    A comprehensive ledger of your shared expenses, settlements, and group activities.
+                </p>
+</div>
+<!-- Contextual Action -->
+<button class="bg-surface-container-high hover:bg-surface-bright text-on-surface border border-outline-variant/20 px-5 py-2.5 rounded-xl font-label text-sm font-medium transition-colors flex items-center gap-2 shrink-0 shadow-sm backdrop-blur-md">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                Filter Ledger
+            </button>
+</header>
+<!-- Ledger Table Area (Bento Grid / Card Style) -->
+<div class="bg-surface-container-low/80 backdrop-blur-2xl rounded-[2rem] p-6 shadow-[0_30px_60px_rgba(0,0,0,0.4)] border border-white/[0.03]">
+<!-- Table Header Row -->
+<div class="grid grid-cols-[80px_2fr_1.5fr_1.5fr_120px] gap-6 px-6 pb-4 mb-2 text-[11px] font-medium text-on-surface-variant uppercase tracking-[0.2em] font-label border-b border-white/[0.02]">
+<div>Date</div>
+<div>Description</div>
+<div>Group</div>
+<div>Added By</div>
+<div class="text-right">Amount</div>
+</div>
+<!-- Transaction List -->
+<div class="flex flex-col gap-2">
+<!-- Transaction Item: Positive (Owed to you) -->
+<div class="grid grid-cols-[80px_2fr_3fr_120px] gap-6 items-center bg-surface-container-high rounded-2xl p-4 px-6 hover:bg-surface-bright/80 transition-colors group cursor-default">
+<div class="text-sm font-body text-on-surface-variant group-hover:text-on-surface transition-colors">Oct 24</div>
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center text-primary border border-outline-variant/10 shadow-inner">
+<span class="material-symbols-outlined text-[20px]">restaurant</span>
+</div>
+<span class="font-medium text-on-surface font-body text-[15px]">Sushi with Team</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="bg-surface-container-lowest text-on-surface-variant text-[10px] px-2.5 py-1 rounded-full border border-white/[0.04] font-medium uppercase">Dinner Party</span>
+<span class="text-on-surface-variant/30 text-xs">•</span>
+<div class="flex items-center gap-2">
+<img class="w-6 h-6 rounded-full object-cover border border-outline-variant/20" data-alt="Portrait of a smiling young man in a casual outdoor setting with soft daylight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvmLZDDm4LyViayREv7Dhtz0S9SqIFE2JbTzW405_l1u4qQHVHfOHxHo8UpMwe38FM_xrNILxTXIiphK_aslBAugA1wCDMDl9m3uMPfBk2YISfAxHKHxlsDKilOCwlCvfF9VEpYqJmWaXr0wBm15HPRSSrbkfYAMRXas2wBBhw-IYaUn2TVPNxVKWMSYYfxIMvJ1G0VR1AEM4JJxt7GTXSuVWxy4xpZ84-zCXMGs5xzfA5Z2IHa7VN8MY7A7pWmFCHwTPMx5MSkFo"/>
+<span class="text-sm text-on-surface-variant font-body">David M.</span>
+</div>
+</div>
+<div class="text-right font-headline font-semibold text-primary text-lg tracking-tight"><div class="flex flex-col items-end"><span class="text-primary text-lg font-headline font-semibold">+$45.00</span><span class="text-[10px] text-on-surface-variant/60 uppercase tracking-wider font-medium">Total: $180.00</span></div></div>
+</div>
+<!-- Transaction Item: Negative (You owe) -->
+<div class="grid grid-cols-[80px_2fr_3fr_120px] gap-6 items-center bg-surface-container-high rounded-2xl p-4 px-6 hover:bg-surface-bright/80 transition-colors group cursor-default">
+<div class="text-sm font-body text-on-surface-variant group-hover:text-on-surface transition-colors">Oct 22</div>
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center text-secondary border border-outline-variant/10 shadow-inner">
+<span class="material-symbols-outlined text-[20px]">directions_car</span>
+</div>
+<span class="font-medium text-on-surface font-body text-[15px]">Uber to Airport</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="bg-surface-container-lowest text-on-surface-variant text-[10px] px-2.5 py-1 rounded-full border border-white/[0.04] font-medium uppercase">Miami Trip</span>
+<span class="text-on-surface-variant/30 text-xs">•</span>
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container-lowest flex items-center justify-center border border-outline-variant/20">
+<span class="text-[8px] font-bold text-on-surface">YOU</span>
+</div>
+<span class="text-sm text-on-surface-variant font-body">You</span>
+</div>
+</div>
+<div class="text-right font-headline font-semibold text-secondary text-lg tracking-tight"><div class="flex flex-col items-end"><span class="text-secondary text-lg font-headline font-semibold">-$120.50</span><span class="text-[10px] text-on-surface-variant/60 uppercase tracking-wider font-medium">Total: $241.00</span></div></div>
+</div>
+<!-- Transaction Item: Settlement -->
+<div class="grid grid-cols-[80px_2fr_3fr_120px] gap-6 items-center bg-surface-container-high rounded-2xl p-4 px-6 hover:bg-surface-bright/80 transition-colors group cursor-default relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-tertiary/20"></div>
+<div class="text-sm font-body text-on-surface-variant group-hover:text-on-surface transition-colors">Oct 20</div>
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center text-tertiary border border-outline-variant/10 shadow-inner">
+<span class="material-symbols-outlined text-[20px]">account_balance</span>
+</div>
+<span class="font-medium text-on-surface font-body text-[15px]">Settled Balances</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="bg-surface-container-lowest text-on-surface-variant text-[10px] px-2.5 py-1 rounded-full border border-white/[0.04] font-medium uppercase">Apartment</span>
+<span class="text-on-surface-variant/30 text-xs">•</span>
+<div class="flex items-center gap-2">
+<img class="w-6 h-6 rounded-full object-cover border border-outline-variant/20" data-alt="Portrait of a cheerful woman with dark hair in a bright outdoor environment" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDy7m3CThYCpcSXlo45VtHLYJcR5VFFmMTTrMqO8G4re1ZCOQtKEqmVSjZZB39n7HuHwPGMrE_SbYM-cm6Iv-kygAOghPlP-nJFrD7Ug2fGl5J7FavVY-m3kmwPI1M-ioLEdwAsBrGzx7Aiif9GrlETV15nx6CNI3WTaOHsFM0P1yHkmfdZgRYmYv-BerEc41EEaFU9QYIUwAYOfB_3LZJGBfRjwGSI9rbJ-9ousK9mKFM0LhPXqmQVzJkLc5feF1sEbhTaI-hg_Y"/>
+<span class="text-sm text-on-surface-variant font-body">Elena R.</span>
+</div>
+</div>
+<div class="text-right font-headline font-semibold text-on-surface text-lg tracking-tight"><div class="flex flex-col items-end"><span class="text-on-surface text-lg font-headline font-semibold">$350.00</span><span class="text-[10px] text-on-surface-variant/60 uppercase tracking-wider font-medium">Total: $350.00</span></div></div>
+</div>
+<!-- Transaction Item: Neutral / Small -->
+<div class="grid grid-cols-[80px_2fr_3fr_120px] gap-6 items-center bg-surface-container-high rounded-2xl p-4 px-6 hover:bg-surface-bright/80 transition-colors group cursor-default">
+<div class="text-sm font-body text-on-surface-variant group-hover:text-on-surface transition-colors">Oct 18</div>
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-surface-container-lowest flex items-center justify-center text-primary border border-outline-variant/10 shadow-inner">
+<span class="material-symbols-outlined text-[20px]">shopping_cart</span>
+</div>
+<span class="font-medium text-on-surface font-body text-[15px]">Groceries</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="bg-surface-container-lowest text-on-surface-variant text-[10px] px-2.5 py-1 rounded-full border border-white/[0.04] font-medium uppercase">Apartment</span>
+<span class="text-on-surface-variant/30 text-xs">•</span>
+<div class="flex items-center gap-2">
+<img class="w-6 h-6 rounded-full object-cover border border-outline-variant/20" data-alt="Close up portrait of a confident young professional woman with natural lighting and a neutral studio background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8OVFAqIkENG9h2jbLgoRmPKrilRbShIIxTMqsZDkUTeUWmTYv77wP8RWeOvdCWl5GYcogvT2DkWsYjpTe9XIRsx4AxUxHJgy2XN0XyG0XYDipDxHEqlxC6X1zVBI4F-avQtNP1pPjDzQms4z7KCke7decVcHlTsDWY2SJV80Yd6SkYv4zD5GTCoUzycbmnWBNisiKa13tKdk_jtf0lHqhCH49JvNv8_Tz-E_rBWB-p3uRLEzc7KPI8ZbZW0jPG5emaYL1N5BQaGM"/>
+<span class="text-sm text-on-surface-variant font-body">You</span>
+</div>
+</div>
+<div class="text-right font-headline font-semibold text-primary text-lg tracking-tight"><div class="flex flex-col items-end"><span class="text-primary text-lg font-headline font-semibold">+$85.25</span><span class="text-[10px] text-on-surface-variant/60 uppercase tracking-wider font-medium">Total: $170.50</span></div></div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

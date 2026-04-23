@@ -33,6 +33,24 @@ export type ExpensePlaceholder = {
   icon: IconKey;
 };
 
+export type ActivityPlaceholder = {
+  id: string;
+  groupId: string;
+  groupName: string;
+  groupCurrency: string;
+  groupIconKey: IconKey;
+  description: string;
+  amountCents: number;
+  expenseAt: number;
+  kind: "expense" | "settlement";
+  paidByName: string;
+  paidByCurrentUser: boolean;
+  currentUserNetCents: number;
+  participantCount: number;
+  counterpartyName: string | null;
+  counterpartyIsCurrentUser: boolean;
+};
+
 export type MemberBalance = {
   name: string;
   note: string;
@@ -148,6 +166,111 @@ export const groupExpenses: ExpensePlaceholder[] = [
     signedBalance: -38,
     tone: "negative",
     icon: "cart",
+  },
+];
+
+export const activityFeed: ActivityPlaceholder[] = [
+  {
+    id: "activity-reykjavik-flights",
+    groupId: "iceland-expedition",
+    groupName: "Iceland Expedition",
+    groupCurrency: "USD",
+    groupIconKey: "plane",
+    description: "Reykjavik Flights",
+    amountCents: 124_000,
+    expenseAt: new Date("2024-10-24T09:00:00.000Z").getTime(),
+    kind: "expense",
+    paidByName: "Sarah Jenkins",
+    paidByCurrentUser: false,
+    currentUserNetCents: -41_333,
+    participantCount: 3,
+    counterpartyName: null,
+    counterpartyIsCurrentUser: false,
+  },
+  {
+    id: "activity-dinner-grillmarkadurinn",
+    groupId: "iceland-expedition",
+    groupName: "Iceland Expedition",
+    groupCurrency: "USD",
+    groupIconKey: "utensils",
+    description: "Dinner at Grillmarkaðurinn",
+    amountCents: 32_050,
+    expenseAt: new Date("2024-10-24T07:30:00.000Z").getTime(),
+    kind: "expense",
+    paidByName: "Marcus Vale",
+    paidByCurrentUser: false,
+    currentUserNetCents: -10_683,
+    participantCount: 3,
+    counterpartyName: null,
+    counterpartyIsCurrentUser: false,
+  },
+  {
+    id: "activity-rental-car-deposit",
+    groupId: "iceland-expedition",
+    groupName: "Iceland Expedition",
+    groupCurrency: "USD",
+    groupIconKey: "mountain",
+    description: "Rental Car Deposit",
+    amountCents: 50_000,
+    expenseAt: new Date("2024-10-22T12:00:00.000Z").getTime(),
+    kind: "expense",
+    paidByName: "You",
+    paidByCurrentUser: true,
+    currentUserNetCents: 16_666,
+    participantCount: 3,
+    counterpartyName: null,
+    counterpartyIsCurrentUser: false,
+  },
+  {
+    id: "activity-groceries-cabin",
+    groupId: "weekend-getaway",
+    groupName: "Weekend Getaway",
+    groupCurrency: "USD",
+    groupIconKey: "cart",
+    description: "Groceries for Cabin",
+    amountCents: 18_520,
+    expenseAt: new Date("2024-10-22T08:30:00.000Z").getTime(),
+    kind: "expense",
+    paidByName: "Elena Rodriguez",
+    paidByCurrentUser: false,
+    currentUserNetCents: -4_630,
+    participantCount: 4,
+    counterpartyName: null,
+    counterpartyIsCurrentUser: false,
+  },
+  {
+    id: "activity-settlement-elena",
+    groupId: "modern-loft-4b",
+    groupName: "Modern Loft 4B",
+    groupCurrency: "USD",
+    groupIconKey: "home",
+    description: "Settlement",
+    amountCents: 35_000,
+    expenseAt: new Date("2024-10-20T16:00:00.000Z").getTime(),
+    kind: "settlement",
+    paidByName: "You",
+    paidByCurrentUser: true,
+    currentUserNetCents: 35_000,
+    participantCount: 1,
+    counterpartyName: "Elena Rodriguez",
+    counterpartyIsCurrentUser: false,
+  },
+  {
+    id: "activity-sushi-team",
+    groupId: "friday-dinners",
+    groupName: "Friday Dinners",
+    groupCurrency: "USD",
+    groupIconKey: "utensils",
+    description: "Sushi with Team",
+    amountCents: 18_000,
+    expenseAt: new Date("2024-10-18T18:30:00.000Z").getTime(),
+    kind: "expense",
+    paidByName: "You",
+    paidByCurrentUser: true,
+    currentUserNetCents: 4_500,
+    participantCount: 4,
+    counterpartyName: null,
+    counterpartyIsCurrentUser: false,
   },
 ];
 
