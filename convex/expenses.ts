@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
+import { logExpenseEvent } from "./lib/activityEvents";
 import { applyExpenseToAggregates } from "./lib/balances";
 import {
   getCurrentUserExpenseNetCents,
@@ -545,6 +546,18 @@ export const createExpense = mutation({
       shares: shareRows,
       direction: 1,
     });
+    await logExpenseEvent(ctx, "created", {
+      actorUserId: access.user._id,
+      expense: {
+        _id: expenseId,
+        groupId: args.groupId,
+        description,
+        amountCents,
+        paidBy: args.paidBy,
+        kind: "expense",
+      },
+      shares: shareRows,
+    });
 
     return expenseId;
   },
@@ -626,6 +639,20 @@ export const updateExpense = mutation({
       shares: shareRows,
       direction: 1,
     });
+    await logExpenseEvent(ctx, "updated", {
+      actorUserId: access.user._id,
+      expense: {
+        _id: args.expenseId,
+        groupId: access.expense.groupId,
+        description,
+        amountCents,
+        paidBy: args.paidBy,
+        kind: "expense",
+      },
+      shares: shareRows,
+      previousDescription: access.expense.description,
+      previousAmountCents: access.expense.amountCents,
+    });
 
     return args.expenseId;
   },
@@ -660,6 +687,19 @@ export const deleteExpense = mutation({
       paidBy: access.expense.paidBy,
       shares: existingShares,
       direction: -1,
+    });
+    // No expenseId on the event: the row is gone, and the feed uses its
+    // absence to avoid linking to a deleted expense.
+    await logExpenseEvent(ctx, "deleted", {
+      actorUserId: access.user._id,
+      expense: {
+        groupId: access.expense.groupId,
+        description: access.expense.description,
+        amountCents: access.expense.amountCents,
+        paidBy: access.expense.paidBy,
+        kind: access.expense.kind,
+      },
+      shares: existingShares,
     });
 
     return {

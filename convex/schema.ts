@@ -2,6 +2,16 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 const groupMemberRole = v.union(v.literal("owner"), v.literal("member"));
+const activityEventType = v.union(
+  v.literal("expense.created"),
+  v.literal("expense.updated"),
+  v.literal("expense.deleted"),
+  v.literal("settlement.recorded"),
+  v.literal("settlement.deleted"),
+  v.literal("member.joined"),
+  v.literal("member.left"),
+  v.literal("member.removed"),
+);
 const groupMemberStatus = v.union(v.literal("active"), v.literal("invited"));
 const inviteStatus = v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired"));
 const expenseKind = v.union(v.literal("expense"), v.literal("settlement"));
@@ -100,4 +110,32 @@ export default defineSchema({
     spendCount: v.number(),
     totalSpendCents: v.number(),
   }).index("by_group", ["groupId"]),
+
+  // Append-only audit trail. Events snapshot everything the feed needs, so
+  // history survives expense edits and deletes and never requires scanning
+  // the expenses table.
+  activityEvents: defineTable({
+    groupId: v.id("groups"),
+    actorUserId: v.id("users"),
+    type: activityEventType,
+    createdAt: v.number(),
+    expenseId: v.optional(v.id("expenses")),
+    description: v.optional(v.string()),
+    amountCents: v.optional(v.number()),
+    previousDescription: v.optional(v.string()),
+    previousAmountCents: v.optional(v.number()),
+    paidBy: v.optional(v.id("users")),
+    counterpartyUserId: v.optional(v.id("users")),
+    shares: v.optional(
+      v.array(
+        v.object({
+          userId: v.id("users"),
+          shareCents: v.number(),
+        }),
+      ),
+    ),
+    memberUserId: v.optional(v.id("users")),
+  })
+    .index("by_group_time", ["groupId", "createdAt"])
+    .index("by_expense", ["expenseId"]),
 });

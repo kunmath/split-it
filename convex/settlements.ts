@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 
 import type { Doc } from "./_generated/dataModel";
 import { mutation } from "./_generated/server";
+import { logExpenseEvent } from "./lib/activityEvents";
 import { applyExpenseToAggregates } from "./lib/balances";
 import { requireGroupMember } from "./lib/permissions";
 
@@ -93,6 +94,18 @@ export const create = mutation({
       paidBy: access.user._id,
       shares: [{ userId: args.toUserId, shareCents: amountCents }],
       direction: 1,
+    });
+    await logExpenseEvent(ctx, "created", {
+      actorUserId: access.user._id,
+      expense: {
+        _id: expenseId,
+        groupId: args.groupId,
+        description: "Settlement",
+        amountCents,
+        paidBy: access.user._id,
+        kind: "settlement",
+      },
+      shares: [{ userId: args.toUserId, shareCents: amountCents }],
     });
 
     return expenseId;

@@ -1,5 +1,6 @@
 import type { Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
+import { logExpenseEvent } from "./lib/activityEvents";
 import { getGroupExpenseRecords } from "./lib/expenseHelpers";
 
 // One-off backfill for the memberBalances / groupStats aggregates. Safe to
@@ -79,5 +80,48 @@ export const backfillAggregates = internalMutation({
     }
 
     return { groupsProcessed: groups.length };
+  },
+});
+
+// Creates "created" activity events for expenses that predate the audit
+// trail. Safe to re-run: expenses that already have an event are skipped.
+// Run with: npx convex run migrations:backfillActivityEvents
+export const backfillActivityEvents = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const groups = await ctx.db.query("groups").collect();
+    let eventsCreated = 0;
+
+    for (const group of groups) {
+      const records = await getGroupExpenseRecords(ctx, group._id);
+
+      for (const record of records) {
+        const existingEvent = await ctx.db
+          .query("activityEvents")
+          .withIndex("by_expense", (q) => q.eq("expenseId", record.expense._id))
+          .first();
+
+        if (existingEvent !== null) {
+          continue;
+        }
+
+        await logExpenseEvent(ctx, "created", {
+          actorUserId: record.expense.createdBy,
+          expense: {
+            _id: record.expense._id,
+            groupId: record.expense.groupId,
+            description: record.expense.description,
+            amountCents: record.expense.amountCents,
+            paidBy: record.expense.paidBy,
+            kind: record.expense.kind,
+          },
+          shares: record.shares,
+          createdAt: record.expense.expenseAt,
+        });
+        eventsCreated += 1;
+      }
+    }
+
+    return { groupsProcessed: groups.length, eventsCreated };
   },
 });

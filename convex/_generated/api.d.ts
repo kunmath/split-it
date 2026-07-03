@@ -15,6 +15,7 @@ import type * as exports from "../exports.js";
 import type * as groups from "../groups.js";
 import type * as http from "../http.js";
 import type * as invites from "../invites.js";
+import type * as lib_activityEvents from "../lib/activityEvents.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_balances from "../lib/balances.js";
 import type * as lib_expenseHelpers from "../lib/expenseHelpers.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   groups: typeof groups;
   http: typeof http;
   invites: typeof invites;
+  "lib/activityEvents": typeof lib_activityEvents;
   "lib/auth": typeof lib_auth;
   "lib/balances": typeof lib_balances;
   "lib/expenseHelpers": typeof lib_expenseHelpers;

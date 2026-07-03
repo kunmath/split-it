@@ -7,6 +7,7 @@ import {
   mutation,
   query,
 } from "./_generated/server";
+import { logMemberEvent } from "./lib/activityEvents";
 import { getCurrentUser, requireUser } from "./lib/auth";
 import { buildInviteUrl, isInviteEmailEnabled, requireInviteEmailConfig } from "./lib/inviteEmail";
 import {
@@ -429,6 +430,11 @@ export const accept = mutation({
     await ctx.db.patch(invite._id, {
       acceptedBy: user._id,
       status: "accepted",
+    });
+    await logMemberEvent(ctx, "member.joined", {
+      groupId: group._id,
+      actorUserId: user._id,
+      memberUserId: user._id,
     });
 
     return {
