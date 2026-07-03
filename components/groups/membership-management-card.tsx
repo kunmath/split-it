@@ -60,6 +60,10 @@ export function MembershipManagementCard({
   };
 
   const handleLeave = async () => {
+    if (isPending) {
+      return;
+    }
+
     setIsPending(true);
     setError(null);
 
@@ -73,6 +77,10 @@ export function MembershipManagementCard({
   };
 
   const handleRemove = async (member: MemberEntry) => {
+    if (isPending) {
+      return;
+    }
+
     setIsPending(true);
     setError(null);
 

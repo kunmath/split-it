@@ -4,8 +4,15 @@ import { requireUser } from "./lib/auth";
 import { resolveGroupIconKey } from "./lib/groupIcons";
 
 const FEED_LIMIT = 20;
-// Read a bounded window per group; involvement filtering happens in memory.
+// Initial read window per group; involvement filtering happens in memory, and
+// the window grows geometrically until FEED_LIMIT matches are found, the group
+// is exhausted, or the scan cap is hit. Cursor paging is not an option here:
+// Convex queries allow a single paginate() call, and a range cursor on
+// createdAt would drop ties (backfilled events share timestamps).
 const EVENTS_PER_GROUP = 40;
+// Per-group ceiling so one busy group cannot blow the query's transaction
+// read budget; past it the feed accepts missing older items.
+const MAX_EVENTS_SCANNED_PER_GROUP = 400;
 
 type MoneyEventAction = "created" | "updated" | "deleted";
 
@@ -52,18 +59,31 @@ export const listForCurrentUser = query({
           return [];
         }
 
-        const events = await ctx.db
-          .query("activityEvents")
-          .withIndex("by_group_time", (q) => q.eq("groupId", group._id))
-          .order("desc")
-          .take(EVENTS_PER_GROUP);
+        // Widen the scan until enough matching events are found: a fixed
+        // window could hide valid feed items behind runs of member.* rows or
+        // money events that don't involve the user.
+        for (let scanLimit = EVENTS_PER_GROUP; ; ) {
+          const events = await ctx.db
+            .query("activityEvents")
+            .withIndex("by_group_time", (q) => q.eq("groupId", group._id))
+            .order("desc")
+            .take(scanLimit);
 
-        return events
-          .filter(
+          const matching = events.filter(
             (event) =>
               moneyEventAction(event.type) !== null && involvesUser(event, user._id),
-          )
-          .map((event) => ({ event, group }));
+          );
+
+          if (
+            matching.length >= FEED_LIMIT ||
+            events.length < scanLimit ||
+            scanLimit >= MAX_EVENTS_SCANNED_PER_GROUP
+          ) {
+            return matching.slice(0, FEED_LIMIT).map((event) => ({ event, group }));
+          }
+
+          scanLimit = Math.min(scanLimit * 4, MAX_EVENTS_SCANNED_PER_GROUP);
+        }
       }),
     );
 

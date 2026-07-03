@@ -5,6 +5,7 @@ import { api, internal } from "../convex/_generated/api";
 import type { Id } from "../convex/_generated/dataModel";
 import schema from "../convex/schema";
 import { modules } from "./convex-modules";
+import { runMigrationToCompletion } from "./migration-runner";
 
 async function setUpGroupWithTwoMembers() {
   const t = convexTest(schema, modules);
@@ -233,7 +234,7 @@ describe("balance aggregates", () => {
       ]);
     });
 
-    await t.mutation(internal.migrations.backfillAggregates, {});
+    await runMigrationToCompletion(t, internal.migrations.backfillAggregates);
     await expectAggregatesMatchRawRows(t, groupId);
   });
 });

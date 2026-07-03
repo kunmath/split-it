@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../convex/_generated/api";
 import schema from "../convex/schema";
 import { modules } from "./convex-modules";
+import { runMigrationToCompletion } from "./migration-runner";
 
 async function setUpGroupWithTwoMembers() {
   const t = convexTest(schema, modules);
@@ -159,11 +160,17 @@ describe("activity audit trail", () => {
       await Promise.all(events.map((event) => ctx.db.delete(event._id)));
     });
 
-    const firstRun = await t.mutation(internal.migrations.backfillActivityEvents, {});
-    expect(firstRun.eventsCreated).toBe(1);
+    const createdEventCount = () =>
+      t.run(async (ctx) => {
+        const events = await ctx.db.query("activityEvents").collect();
+        return events.filter((event) => event.type === "expense.created").length;
+      });
 
-    const secondRun = await t.mutation(internal.migrations.backfillActivityEvents, {});
-    expect(secondRun.eventsCreated).toBe(0);
+    await runMigrationToCompletion(t, internal.migrations.backfillActivityEvents);
+    expect(await createdEventCount()).toBe(1);
+
+    await runMigrationToCompletion(t, internal.migrations.backfillActivityEvents);
+    expect(await createdEventCount()).toBe(1);
   });
 
   it("backfills the created event even when a post-deploy edit already logged an update", async () => {
@@ -195,8 +202,7 @@ describe("activity audit trail", () => {
       expenseAt: Date.now(),
     });
 
-    const run = await t.mutation(internal.migrations.backfillActivityEvents, {});
-    expect(run.eventsCreated).toBe(1);
+    await runMigrationToCompletion(t, internal.migrations.backfillActivityEvents);
 
     const events = await t.run(async (ctx) =>
       ctx.db

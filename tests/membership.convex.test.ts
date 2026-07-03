@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../convex/_generated/api";
 import schema from "../convex/schema";
 import { modules } from "./convex-modules";
+import { runMigrationToCompletion } from "./migration-runner";
 
 async function setUpGroupWithTwoMembers() {
   const t = convexTest(schema, modules);
@@ -147,7 +148,7 @@ describe("membership lifecycle", () => {
 
     await expect(asBob.mutation(api.groups.leaveGroup, { groupId })).rejects.toThrow();
 
-    await t.mutation(internal.migrations.backfillAggregates, {});
+    await runMigrationToCompletion(t, internal.migrations.backfillAggregates);
     await asBob.mutation(api.settlements.create, {
       groupId,
       toUserId: aliceId,

@@ -397,14 +397,29 @@ export const getDetail = query({
       expense,
       shares: recentShares[index] ?? [],
     }));
-    const largestExpenseDoc =
-      (
-        await ctx.db
-          .query("expenses")
-          .withIndex("by_group_amount", (q) => q.eq("groupId", args.groupId))
-          .order("desc")
-          .take(50)
-      ).find((expense) => expense.kind !== "settlement") ?? null;
+    // Widen the scan until a non-settlement expense turns up: a fixed window
+    // could miss it behind a long run of large settlements. Capped so a
+    // settlement-heavy group cannot blow the read budget; a range cursor on
+    // amountCents would drop ties, and Convex queries allow one paginate().
+    const MAX_LARGEST_EXPENSE_SCAN = 800;
+    let largestExpenseDoc: Doc<"expenses"> | null = null;
+    for (let scanLimit = 50; ; ) {
+      const candidates = await ctx.db
+        .query("expenses")
+        .withIndex("by_group_amount", (q) => q.eq("groupId", args.groupId))
+        .order("desc")
+        .take(scanLimit);
+      largestExpenseDoc =
+        candidates.find((expense) => expense.kind !== "settlement") ?? null;
+      if (
+        largestExpenseDoc !== null ||
+        candidates.length < scanLimit ||
+        scanLimit >= MAX_LARGEST_EXPENSE_SCAN
+      ) {
+        break;
+      }
+      scanLimit = Math.min(scanLimit * 4, MAX_LARGEST_EXPENSE_SCAN);
+    }
 
     const totalSpendCents = groupStats.totalSpendCents;
     const currentUserStanding = memberBalanceSnapshots.get(user._id) ?? createBalanceSnapshot(0, 0);
