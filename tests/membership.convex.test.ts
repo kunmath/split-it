@@ -1,7 +1,7 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
 
-import { api } from "../convex/_generated/api";
+import { api, internal } from "../convex/_generated/api";
 import schema from "../convex/schema";
 import { modules } from "./convex-modules";
 
@@ -124,6 +124,89 @@ describe("membership lifecycle", () => {
         .collect(),
     );
     expect(memberships).toHaveLength(2);
+  });
+
+  it("blocks leaving when aggregates are missing but raw history shows debt", async () => {
+    const { t, asAlice, asBob, groupId, aliceId, bobId } = await setUpGroupWithTwoMembers();
+
+    await asAlice.mutation(api.expenses.createExpense, {
+      groupId,
+      description: "Dinner",
+      amountCents: 1000,
+      paidBy: aliceId,
+      splitType: "equal",
+      participantIds: [aliceId, bobId],
+      expenseAt: Date.now(),
+    });
+
+    // Simulate a legacy deployment where backfillAggregates never ran.
+    await t.run(async (ctx) => {
+      const rows = await ctx.db.query("memberBalances").collect();
+      await Promise.all(rows.map((row) => ctx.db.delete(row._id)));
+    });
+
+    await expect(asBob.mutation(api.groups.leaveGroup, { groupId })).rejects.toThrow();
+
+    await t.mutation(internal.migrations.backfillAggregates, {});
+    await asBob.mutation(api.settlements.create, {
+      groupId,
+      toUserId: aliceId,
+      amountCents: 500,
+    });
+    await asBob.mutation(api.groups.leaveGroup, { groupId });
+  });
+
+  it("locks historical records involving departed members against edits and deletes", async () => {
+    const { asAlice, asBob, groupId, aliceId, bobId } = await setUpGroupWithTwoMembers();
+
+    const expenseId = await asAlice.mutation(api.expenses.createExpense, {
+      groupId,
+      description: "Dinner",
+      amountCents: 1000,
+      paidBy: aliceId,
+      splitType: "equal",
+      participantIds: [aliceId, bobId],
+      expenseAt: Date.now(),
+    });
+    const settlementId = await asBob.mutation(api.settlements.create, {
+      groupId,
+      toUserId: aliceId,
+      amountCents: 500,
+    });
+
+    await asBob.mutation(api.groups.leaveGroup, { groupId });
+
+    // Editing or deleting Bob's history would push his settled balance away
+    // from zero with no way for him to settle again.
+    await expect(
+      asAlice.mutation(api.expenses.deleteExpense, { expenseId }),
+    ).rejects.toThrow();
+    await expect(
+      asAlice.mutation(api.expenses.updateExpense, {
+        expenseId,
+        description: "Dinner (rewritten)",
+        amountCents: 800,
+        paidBy: aliceId,
+        splitType: "equal",
+        participantIds: [aliceId],
+        expenseAt: Date.now(),
+      }),
+    ).rejects.toThrow();
+    await expect(
+      asAlice.mutation(api.expenses.deleteExpense, { expenseId: settlementId }),
+    ).rejects.toThrow();
+
+    // Records involving only active members stay editable.
+    const soloExpenseId = await asAlice.mutation(api.expenses.createExpense, {
+      groupId,
+      description: "Solo snack",
+      amountCents: 300,
+      paidBy: aliceId,
+      splitType: "equal",
+      participantIds: [aliceId],
+      expenseAt: Date.now(),
+    });
+    await asAlice.mutation(api.expenses.deleteExpense, { expenseId: soloExpenseId });
   });
 
   it("departed members cannot record expenses or settlements", async () => {

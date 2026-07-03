@@ -165,4 +165,48 @@ describe("activity audit trail", () => {
     const secondRun = await t.mutation(internal.migrations.backfillActivityEvents, {});
     expect(secondRun.eventsCreated).toBe(0);
   });
+
+  it("backfills the created event even when a post-deploy edit already logged an update", async () => {
+    const { t, asAlice, groupId, aliceId, bobId } = await setUpGroupWithTwoMembers();
+
+    const expenseId = await asAlice.mutation(api.expenses.createExpense, {
+      groupId,
+      description: "Hotel",
+      amountCents: 1000,
+      paidBy: aliceId,
+      splitType: "equal",
+      participantIds: [aliceId, bobId],
+      expenseAt: Date.now(),
+    });
+
+    // Simulate a pre-audit-trail expense, then an edit made after deploy but
+    // before the backfill migration ran: only an "updated" event exists.
+    await t.run(async (ctx) => {
+      const events = await ctx.db.query("activityEvents").collect();
+      await Promise.all(events.map((event) => ctx.db.delete(event._id)));
+    });
+    await asAlice.mutation(api.expenses.updateExpense, {
+      expenseId,
+      description: "Hotel (fixed)",
+      amountCents: 1200,
+      paidBy: aliceId,
+      splitType: "equal",
+      participantIds: [aliceId, bobId],
+      expenseAt: Date.now(),
+    });
+
+    const run = await t.mutation(internal.migrations.backfillActivityEvents, {});
+    expect(run.eventsCreated).toBe(1);
+
+    const events = await t.run(async (ctx) =>
+      ctx.db
+        .query("activityEvents")
+        .withIndex("by_group_time", (q) => q.eq("groupId", groupId))
+        .collect(),
+    );
+    expect(events.map((event) => event.type).sort()).toEqual([
+      "expense.created",
+      "expense.updated",
+    ]);
+  });
 });

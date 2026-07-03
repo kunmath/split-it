@@ -13,6 +13,7 @@ import {
   getGroupBalanceSnapshots,
   getGroupStatsSnapshot,
   getMemberBalanceSnapshot,
+  getVerifiedMemberBalanceCents,
 } from "./lib/balances";
 import {
   createBalanceSnapshot,
@@ -251,9 +252,9 @@ export const leaveGroup = mutation({
       throw new ConvexError("Owners cannot leave their group; archive it instead");
     }
 
-    const balance = await getMemberBalanceSnapshot(ctx, args.groupId, access.user._id);
+    const balanceCents = await getVerifiedMemberBalanceCents(ctx, args.groupId, access.user._id);
 
-    if (balance.balanceCents !== 0) {
+    if (balanceCents !== 0) {
       throw new ConvexError(
         "Settle your balance before leaving the group so history stays consistent",
       );
@@ -295,9 +296,9 @@ export const removeMember = mutation({
       throw new ConvexError("That person is not an active member of this group");
     }
 
-    const balance = await getMemberBalanceSnapshot(ctx, args.groupId, args.memberUserId);
+    const balanceCents = await getVerifiedMemberBalanceCents(ctx, args.groupId, args.memberUserId);
 
-    if (balance.balanceCents !== 0) {
+    if (balanceCents !== 0) {
       throw new ConvexError(
         "Members can only be removed once their balance is settled to zero",
       );

@@ -302,6 +302,35 @@ async function buildValidatedShareRows(
   return shareRows;
 }
 
+// Records whose payer or participants have left the group are locked:
+// reversing or rewriting them would push a departed member's settled balance
+// away from zero with no way for them to ever settle it again.
+async function assertParticipantsStillActive(
+  ctx: MutationCtx,
+  expense: Doc<"expenses">,
+  shares: Array<{ userId: Id<"users"> }>,
+) {
+  const involvedUserIds = new Set<Id<"users">>([expense.paidBy]);
+  for (const share of shares) {
+    involvedUserIds.add(share.userId);
+  }
+
+  for (const userId of involvedUserIds) {
+    const membership = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_group_user", (q) =>
+        q.eq("groupId", expense.groupId).eq("userId", userId),
+      )
+      .unique();
+
+    if (membership === null || membership.status !== "active") {
+      throw new ConvexError(
+        "This record involves someone who left the group, so it can no longer be edited or deleted",
+      );
+    }
+  }
+}
+
 async function replaceExpenseShares(
   ctx: MutationCtx,
   expenseId: Id<"expenses">,
@@ -325,8 +354,6 @@ async function replaceExpenseShares(
       }),
     ),
   );
-
-  return existingShares;
 }
 
 export const getComposerData = query({
@@ -584,6 +611,13 @@ export const updateExpense = mutation({
       throw new ConvexError("Settlements cannot be edited; delete and re-record instead");
     }
 
+    const previousShares = await ctx.db
+      .query("expenseShares")
+      .withIndex("by_expense", (q) => q.eq("expenseId", args.expenseId))
+      .collect();
+
+    await assertParticipantsStillActive(ctx, access.expense, previousShares);
+
     const description = sanitizeDescription(args.description);
     const notes = sanitizeNotes(args.notes);
     const amountCents = validateAmountCents(args.amountCents);
@@ -610,12 +644,7 @@ export const updateExpense = mutation({
       updatedAt: Date.now(),
       notes,
     });
-    const previousShares = await replaceExpenseShares(
-      ctx,
-      args.expenseId,
-      access.expense.groupId,
-      shareRows,
-    );
+    await replaceExpenseShares(ctx, args.expenseId, access.expense.groupId, shareRows);
 
     await applyExpenseToAggregates(ctx, {
       groupId: access.expense.groupId,
@@ -670,6 +699,8 @@ export const deleteExpense = mutation({
       .query("expenseShares")
       .withIndex("by_expense", (q) => q.eq("expenseId", args.expenseId))
       .collect();
+
+    await assertParticipantsStillActive(ctx, access.expense, existingShares);
 
     await Promise.all(existingShares.map((share) => ctx.db.delete(share._id)));
     await ctx.db.delete(args.expenseId);

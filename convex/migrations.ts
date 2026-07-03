@@ -84,7 +84,8 @@ export const backfillAggregates = internalMutation({
 });
 
 // Creates "created" activity events for expenses that predate the audit
-// trail. Safe to re-run: expenses that already have an event are skipped.
+// trail. Safe to re-run: expenses that already have a creation event are
+// skipped.
 // Run with: npx convex run migrations:backfillActivityEvents
 export const backfillActivityEvents = internalMutation({
   args: {},
@@ -96,12 +97,19 @@ export const backfillActivityEvents = internalMutation({
       const records = await getGroupExpenseRecords(ctx, group._id);
 
       for (const record of records) {
-        const existingEvent = await ctx.db
+        // Only a creation-type event marks the expense as already backfilled:
+        // an edit made after deploy but before this migration writes an
+        // "updated" event, and the original "created" snapshot is still owed.
+        const existingEvents = await ctx.db
           .query("activityEvents")
           .withIndex("by_expense", (q) => q.eq("expenseId", record.expense._id))
-          .first();
+          .collect();
+        const hasCreationEvent = existingEvents.some(
+          (event) =>
+            event.type === "expense.created" || event.type === "settlement.recorded",
+        );
 
-        if (existingEvent !== null) {
+        if (hasCreationEvent) {
           continue;
         }
 

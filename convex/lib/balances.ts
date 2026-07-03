@@ -154,6 +154,44 @@ export async function getMemberBalanceSnapshot(
   return row === null ? emptyMemberSnapshot() : toMemberSnapshot(row);
 }
 
+// The zero-balance guard for leaving/removing a member must not trust a
+// missing aggregate row: before the backfill migration runs, legacy groups
+// have no memberBalances rows at all, and reading that as "settled" would let
+// a member walk away from real debts. When the row is absent, verify against
+// the raw expense rows (rare path — only pre-backfill data or members with no
+// money history hit it).
+export async function getVerifiedMemberBalanceCents(
+  ctx: BalanceCtx,
+  groupId: Id<"groups">,
+  userId: Id<"users">,
+): Promise<number> {
+  const row = await ctx.db
+    .query("memberBalances")
+    .withIndex("by_group_user", (q) => q.eq("groupId", groupId).eq("userId", userId))
+    .unique();
+
+  if (row !== null) {
+    return row.paidCents - row.owedCents;
+  }
+
+  const [shares, expenses] = await Promise.all([
+    ctx.db
+      .query("expenseShares")
+      .withIndex("by_group_user", (q) => q.eq("groupId", groupId).eq("userId", userId))
+      .collect(),
+    ctx.db
+      .query("expenses")
+      .withIndex("by_group", (q) => q.eq("groupId", groupId))
+      .collect(),
+  ]);
+  const paidCents = expenses
+    .filter((expense) => expense.paidBy === userId)
+    .reduce((sum, expense) => sum + expense.amountCents, 0);
+  const owedCents = shares.reduce((sum, share) => sum + share.shareCents, 0);
+
+  return paidCents - owedCents;
+}
+
 export type GroupStatsSnapshot = {
   expenseCount: number;
   spendCount: number;
