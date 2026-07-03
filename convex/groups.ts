@@ -398,9 +398,8 @@ export const getDetail = query({
       shares: recentShares[index] ?? [],
     }));
     // Widen the scan until a non-settlement expense turns up: a fixed window
-    // could miss it behind a long run of large settlements. Capped so a
-    // settlement-heavy group cannot blow the read budget; a range cursor on
-    // amountCents would drop ties, and Convex queries allow one paginate().
+    // could miss it behind a long run of large settlements. Bounds and
+    // rationale are defined in docs/scaling-limits.md.
     const MAX_LARGEST_EXPENSE_SCAN = 800;
     let largestExpenseDoc: Doc<"expenses"> | null = null;
     for (let scanLimit = 50; ; ) {

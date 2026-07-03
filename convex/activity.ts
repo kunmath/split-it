@@ -3,15 +3,11 @@ import { query } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 import { resolveGroupIconKey } from "./lib/groupIcons";
 
+// Scan bounds for the per-group widening read; values, tradeoffs, and the
+// rationale for widening take() over cursor paging live in
+// docs/scaling-limits.md.
 const FEED_LIMIT = 20;
-// Initial read window per group; involvement filtering happens in memory, and
-// the window grows geometrically until FEED_LIMIT matches are found, the group
-// is exhausted, or the scan cap is hit. Cursor paging is not an option here:
-// Convex queries allow a single paginate() call, and a range cursor on
-// createdAt would drop ties (backfilled events share timestamps).
 const EVENTS_PER_GROUP = 40;
-// Per-group ceiling so one busy group cannot blow the query's transaction
-// read budget; past it the feed accepts missing older items.
 const MAX_EVENTS_SCANNED_PER_GROUP = 400;
 
 type MoneyEventAction = "created" | "updated" | "deleted";

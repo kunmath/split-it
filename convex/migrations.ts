@@ -5,10 +5,9 @@ import type { Id } from "./_generated/dataModel";
 import { internalMutation } from "./_generated/server";
 import { logExpenseEvent } from "./lib/activityEvents";
 
-// Expenses processed per transaction. Small enough that even with per-expense
-// share/event lookups a batch stays far below Convex's transaction limits, so
-// arbitrarily large groups are walked by chaining scheduler runs instead of
-// collecting a whole group at once.
+// Expenses processed per transaction by the per-group workers; the batching
+// design and per-batch read/write envelope are defined in
+// docs/scaling-limits.md.
 const EXPENSES_PER_BATCH = 100;
 
 // One-off backfill for the memberBalances / groupStats aggregates. Safe to
