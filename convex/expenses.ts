@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
+import { applyExpenseToAggregates } from "./lib/balances";
 import {
   getCurrentUserExpenseNetCents,
   getGroupExpenseRecords,
@@ -340,6 +341,8 @@ async function replaceExpenseShares(
       }),
     ),
   );
+
+  return existingShares;
 }
 
 export const getComposerData = query({
@@ -534,6 +537,14 @@ export const createExpense = mutation({
     });
 
     await replaceExpenseShares(ctx, expenseId, args.groupId, shareRows);
+    await applyExpenseToAggregates(ctx, {
+      groupId: args.groupId,
+      kind: "expense",
+      amountCents,
+      paidBy: args.paidBy,
+      shares: shareRows,
+      direction: 1,
+    });
 
     return expenseId;
   },
@@ -562,6 +573,10 @@ export const updateExpense = mutation({
 
     assertGroupIsAvailable(group);
 
+    if (access.expense.kind === "settlement") {
+      throw new ConvexError("Settlements cannot be edited; delete and re-record instead");
+    }
+
     const description = sanitizeDescription(args.description);
     const notes = sanitizeNotes(args.notes);
     const amountCents = validateAmountCents(args.amountCents);
@@ -588,12 +603,29 @@ export const updateExpense = mutation({
       updatedAt: Date.now(),
       notes,
     });
-    await replaceExpenseShares(
+    const previousShares = await replaceExpenseShares(
       ctx,
       args.expenseId,
       access.expense.groupId,
       shareRows,
     );
+
+    await applyExpenseToAggregates(ctx, {
+      groupId: access.expense.groupId,
+      kind: access.expense.kind ?? "expense",
+      amountCents: access.expense.amountCents,
+      paidBy: access.expense.paidBy,
+      shares: previousShares,
+      direction: -1,
+    });
+    await applyExpenseToAggregates(ctx, {
+      groupId: access.expense.groupId,
+      kind: "expense",
+      amountCents,
+      paidBy: args.paidBy,
+      shares: shareRows,
+      direction: 1,
+    });
 
     return args.expenseId;
   },
@@ -620,6 +652,15 @@ export const deleteExpense = mutation({
 
     await Promise.all(existingShares.map((share) => ctx.db.delete(share._id)));
     await ctx.db.delete(args.expenseId);
+
+    await applyExpenseToAggregates(ctx, {
+      groupId: access.expense.groupId,
+      kind: access.expense.kind ?? "expense",
+      amountCents: access.expense.amountCents,
+      paidBy: access.expense.paidBy,
+      shares: existingShares,
+      direction: -1,
+    });
 
     return {
       expenseId: args.expenseId,

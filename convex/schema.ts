@@ -68,7 +68,8 @@ export default defineSchema({
     notes: v.optional(v.string()),
   })
     .index("by_group", ["groupId"])
-    .index("by_group_date", ["groupId", "expenseAt"]),
+    .index("by_group_date", ["groupId", "expenseAt"])
+    .index("by_group_amount", ["groupId", "amountCents"]),
 
   expenseShares: defineTable({
     expenseId: v.id("expenses"),
@@ -78,4 +79,25 @@ export default defineSchema({
   })
     .index("by_expense", ["expenseId"])
     .index("by_group_user", ["groupId", "userId"]),
+
+  // Running per-member totals, updated in the same transaction as every
+  // expense/settlement write so balances never require a full expense scan.
+  memberBalances: defineTable({
+    groupId: v.id("groups"),
+    userId: v.id("users"),
+    paidCents: v.number(),
+    owedCents: v.number(),
+    // Paid excluding settlements; used for spend insights.
+    spendPaidCents: v.number(),
+  })
+    .index("by_group_user", ["groupId", "userId"])
+    .index("by_group", ["groupId"]),
+
+  groupStats: defineTable({
+    groupId: v.id("groups"),
+    expenseCount: v.number(),
+    // Counts and totals excluding settlements.
+    spendCount: v.number(),
+    totalSpendCents: v.number(),
+  }).index("by_group", ["groupId"]),
 });

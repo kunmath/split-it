@@ -10,12 +10,14 @@ import {
 } from "./_generated/server";
 import { ensureUser, getCurrentUser, requireUser } from "./lib/auth";
 import {
-  buildMemberBalanceSnapshots,
+  getGroupBalanceSnapshots,
+  getGroupStatsSnapshot,
+  getMemberBalanceSnapshot,
+} from "./lib/balances";
+import {
   createBalanceSnapshot,
-  getCurrentUserBalanceSnapshot,
   getCurrentUserExpenseNetCents,
   getExpenseIconKey,
-  getGroupExpenseRecords,
   simplifyDebts,
   type GroupExpenseRecord,
 } from "./lib/expenseHelpers";
@@ -110,22 +112,17 @@ async function getActiveGroupRecords(
         return null;
       }
 
-      const [groupMembers, groupExpenses, userShares] = await Promise.all([
+      const [groupMembers, groupStats, balanceSnapshot] = await Promise.all([
         ctx.db.query("groupMembers").withIndex("by_group", (q) => q.eq("groupId", group._id)).collect(),
-        ctx.db.query("expenses").withIndex("by_group", (q) => q.eq("groupId", group._id)).collect(),
-        ctx.db
-          .query("expenseShares")
-          .withIndex("by_group_user", (q) => q.eq("groupId", group._id).eq("userId", userId))
-          .collect(),
+        getGroupStatsSnapshot(ctx, group._id),
+        getMemberBalanceSnapshot(ctx, group._id, userId),
       ]);
-
-      const balanceSnapshot = getCurrentUserBalanceSnapshot(groupExpenses, userShares, userId);
 
       return {
         group,
         membership,
         memberCount: groupMembers.filter((member) => member.status === "active").length,
-        expenseCount: groupExpenses.length,
+        expenseCount: groupStats.expenseCount,
         balanceCents: balanceSnapshot.balanceCents,
       };
     }),
@@ -294,12 +291,11 @@ export const getDetail = query({
     const activeMemberships = (
       await ctx.db.query("groupMembers").withIndex("by_group", (q) => q.eq("groupId", args.groupId)).collect()
     ).filter((member) => member.status === "active");
-    const memberUsers = await Promise.all(activeMemberships.map((member) => ctx.db.get(member.userId)));
-    const expenseRecords = await getGroupExpenseRecords(ctx, args.groupId);
-    const memberBalanceSnapshots = buildMemberBalanceSnapshots(
-      activeMemberships.map((member) => member.userId),
-      expenseRecords,
-    );
+    const [memberUsers, memberBalanceSnapshots, groupStats] = await Promise.all([
+      Promise.all(activeMemberships.map((member) => ctx.db.get(member.userId))),
+      getGroupBalanceSnapshots(ctx, args.groupId),
+      getGroupStatsSnapshot(ctx, args.groupId),
+    ]);
     const userLookup = new Map<Id<"users">, Doc<"users">>();
 
     activeMemberships.forEach((member, index) => {
@@ -309,28 +305,35 @@ export const getDetail = query({
       }
     });
 
-    const spendOnlyRecords = expenseRecords.filter(
-      (record) => record.expense.kind !== "settlement",
+    // Recent activity and the largest expense come straight from indexes, so
+    // this query never has to scan the group's full expense history.
+    const recentExpenseDocs = await ctx.db
+      .query("expenses")
+      .withIndex("by_group_date", (q) => q.eq("groupId", args.groupId))
+      .order("desc")
+      .take(5);
+    const recentShares = await Promise.all(
+      recentExpenseDocs.map((expense) =>
+        ctx.db
+          .query("expenseShares")
+          .withIndex("by_expense", (q) => q.eq("expenseId", expense._id))
+          .collect(),
+      ),
     );
-    const totalSpendCents = spendOnlyRecords.reduce(
-      (sum, record) => sum + record.expense.amountCents,
-      0,
-    );
-    const largestExpenseRecord =
-      spendOnlyRecords.reduce<GroupExpenseRecord | null>((largest, record) => {
-        if (largest === null || record.expense.amountCents > largest.expense.amountCents) {
-          return record;
-        }
+    const recentRecords: GroupExpenseRecord[] = recentExpenseDocs.map((expense, index) => ({
+      expense,
+      shares: recentShares[index] ?? [],
+    }));
+    const largestExpenseDoc =
+      (
+        await ctx.db
+          .query("expenses")
+          .withIndex("by_group_amount", (q) => q.eq("groupId", args.groupId))
+          .order("desc")
+          .take(50)
+      ).find((expense) => expense.kind !== "settlement") ?? null;
 
-        return largest;
-      }, null) ?? null;
-    const memberSpendPaidCents = new Map<Id<"users">, number>();
-    for (const record of spendOnlyRecords) {
-      memberSpendPaidCents.set(
-        record.expense.paidBy,
-        (memberSpendPaidCents.get(record.expense.paidBy) ?? 0) + record.expense.amountCents,
-      );
-    }
+    const totalSpendCents = groupStats.totalSpendCents;
     const currentUserStanding = memberBalanceSnapshots.get(user._id) ?? createBalanceSnapshot(0, 0);
     const resolvedIconKey = resolveGroupIconKey(group);
     const allSettlementSuggestions = simplifyDebts(memberBalanceSnapshots);
@@ -403,10 +406,10 @@ export const getDetail = query({
       coverImageUrl: group.coverImageUrl,
       createdAt: group.createdAt,
       memberCount: members.length,
-      expenseCount: expenseRecords.length,
+      expenseCount: groupStats.expenseCount,
       currentStanding: currentUserStanding,
       members,
-      recentExpenses: expenseRecords.slice(0, 5).map((record) => {
+      recentExpenses: recentRecords.map((record) => {
         const settlementRecipientId =
           record.expense.kind === "settlement"
             ? (record.shares[0]?.userId as Id<"users"> | undefined) ?? null
@@ -436,16 +439,16 @@ export const getDetail = query({
       insights: {
         totalSpendCents,
         averageExpenseCents:
-          spendOnlyRecords.length === 0
+          groupStats.spendCount === 0
             ? 0
-            : Math.round(totalSpendCents / spendOnlyRecords.length),
-        largestExpenseCents: largestExpenseRecord?.expense.amountCents ?? 0,
-        largestExpenseLabel: largestExpenseRecord?.expense.description ?? null,
+            : Math.round(totalSpendCents / groupStats.spendCount),
+        largestExpenseCents: largestExpenseDoc?.amountCents ?? 0,
+        largestExpenseLabel: largestExpenseDoc?.description ?? null,
         topContributors: members
           .map((member) => ({
             id: member.id,
             name: member.name,
-            spendPaidCents: memberSpendPaidCents.get(member.id) ?? 0,
+            spendPaidCents: memberBalanceSnapshots.get(member.id)?.spendPaidCents ?? 0,
           }))
           .filter((member) => member.spendPaidCents > 0)
           .sort((left, right) => right.spendPaidCents - left.spendPaidCents)
@@ -496,14 +499,11 @@ export const getSettingsOverview = query({
         .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
         .collect()
     ).filter((member) => member.status === "active");
-    const memberUsers = await Promise.all(
-      activeMemberships.map((member) => ctx.db.get(member.userId)),
-    );
-    const expenseRecords = await getGroupExpenseRecords(ctx, args.groupId);
-    const memberBalanceSnapshots = buildMemberBalanceSnapshots(
-      activeMemberships.map((member) => member.userId),
-      expenseRecords,
-    );
+    const [memberUsers, memberBalanceSnapshots, groupStats] = await Promise.all([
+      Promise.all(activeMemberships.map((member) => ctx.db.get(member.userId))),
+      getGroupBalanceSnapshots(ctx, args.groupId),
+      getGroupStatsSnapshot(ctx, args.groupId),
+    ]);
     const userLookup = new Map<Id<"users">, Doc<"users">>();
 
     activeMemberships.forEach((member, index) => {
@@ -514,10 +514,7 @@ export const getSettingsOverview = query({
       }
     });
 
-    const totalSpendCents = expenseRecords.reduce(
-      (sum, record) => sum + record.expense.amountCents,
-      0,
-    );
+    const totalSpendCents = groupStats.totalSpendCents;
     const currentUserStanding =
       memberBalanceSnapshots.get(user._id) ?? createBalanceSnapshot(0, 0);
     const memberBalances = activeMemberships
@@ -549,7 +546,7 @@ export const getSettingsOverview = query({
       groupDescription: group.description,
       groupCurrency: group.currency,
       memberCount: activeMemberships.length,
-      expenseCount: expenseRecords.length,
+      expenseCount: groupStats.expenseCount,
       totalSpendCents,
       currentUserBalanceCents: currentUserStanding.balanceCents,
       currentUserPaidCents: currentUserStanding.paidCents,

@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 
 import type { Doc } from "./_generated/dataModel";
 import { mutation } from "./_generated/server";
+import { applyExpenseToAggregates } from "./lib/balances";
 import { requireGroupMember } from "./lib/permissions";
 
 function assertGroupIsActive(group: Doc<"groups">) {
@@ -83,6 +84,15 @@ export const create = mutation({
       groupId: args.groupId,
       userId: args.toUserId,
       shareCents: amountCents,
+    });
+
+    await applyExpenseToAggregates(ctx, {
+      groupId: args.groupId,
+      kind: "settlement",
+      amountCents,
+      paidBy: access.user._id,
+      shares: [{ userId: args.toUserId, shareCents: amountCents }],
+      direction: 1,
     });
 
     return expenseId;
