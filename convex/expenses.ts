@@ -6,7 +6,7 @@ import {
   getCurrentUserExpenseNetCents,
   getGroupExpenseRecords,
 } from "./lib/expenseHelpers";
-import { splitEvenly } from "./lib/money";
+import { splitByShares, splitEvenly } from "./lib/money";
 import {
   requireExpenseEditPermission,
   requireGroupMember,
@@ -304,38 +304,13 @@ async function buildValidatedShareRows(
     normalizedShares.map((share) => share.userId),
   );
 
-  // Calculate total shares
-  const totalShares = normalizedShares.reduce((sum, share) => sum + share.share, 0);
-
-  // Calculate exact amounts and fractional parts
-  const exactAmounts = normalizedShares.map((share) => ({
+  const shareCents = splitByShares(
+    amountCents,
+    normalizedShares.map((share) => share.share),
+  );
+  const shareRows: ShareRow[] = normalizedShares.map((share, index) => ({
     userId: share.userId,
-    exact: (amountCents * share.share) / totalShares,
-  }));
-
-  // Floor all amounts
-  const flooredAmounts = exactAmounts.map((item) => ({
-    userId: item.userId,
-    shareCents: Math.floor(item.exact),
-    fraction: item.exact - Math.floor(item.exact),
-  }));
-
-  // Calculate total floored
-  const totalFloored = flooredAmounts.reduce((sum, item) => sum + item.shareCents, 0);
-  const remainder = amountCents - totalFloored;
-
-  // Sort by fractional part descending to distribute remainder
-  const sortedByFraction = [...flooredAmounts].sort((a, b) => b.fraction - a.fraction);
-
-  // Distribute remainder to top fractional parts
-  for (let i = 0; i < remainder; i++) {
-    sortedByFraction[i]!.shareCents += 1;
-  }
-
-  // Create share rows
-  const shareRows: ShareRow[] = flooredAmounts.map((item) => ({
-    userId: item.userId,
-    shareCents: item.shareCents,
+    shareCents: shareCents[index] ?? 0,
   }));
 
   assertShareTotalMatchesAmount(shareRows, amountCents, "shares");
