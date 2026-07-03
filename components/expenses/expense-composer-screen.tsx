@@ -930,7 +930,9 @@ function ExpenseComposerScene({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!onSaveExpense) {
+    // The button disables via state, but a second submit can fire before
+    // React re-renders; this guard is what actually prevents double-saves.
+    if (!onSaveExpense || isSaving || isDeleting) {
       return;
     }
 
@@ -1040,7 +1042,7 @@ function ExpenseComposerScene({
   }
 
   async function handleDelete() {
-    if (!onDeleteExpense) {
+    if (!onDeleteExpense || isSaving || isDeleting) {
       return;
     }
 

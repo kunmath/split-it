@@ -1,28 +1,10 @@
 import { ConvexError, v } from "convex/values";
 
-import type { Doc } from "./_generated/dataModel";
 import { mutation } from "./_generated/server";
 import { logExpenseEvent } from "./lib/activityEvents";
 import { applyExpenseToAggregates } from "./lib/balances";
 import { requireGroupMember } from "./lib/permissions";
-
-function assertGroupIsActive(group: Doc<"groups">) {
-  if (group.archivedAt !== undefined) {
-    throw new ConvexError("Group is archived");
-  }
-}
-
-function validateAmountCents(value: number) {
-  if (!Number.isSafeInteger(value)) {
-    throw new ConvexError("Amount must be a safe integer number of cents");
-  }
-
-  if (value <= 0) {
-    throw new ConvexError("Amount must be greater than zero");
-  }
-
-  return value;
-}
+import { assertGroupIsActive, validateAmountCents } from "./lib/validate";
 
 function sanitizeNote(value: string | undefined) {
   const note = value?.trim();

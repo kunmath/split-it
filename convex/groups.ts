@@ -29,6 +29,7 @@ import {
 import { logMemberEvent } from "./lib/activityEvents";
 import { expirePendingGroupInvites } from "./lib/inviteHelpers";
 import { requireGroupMember, requireGroupOwner } from "./lib/permissions";
+import { assertGroupIsActive } from "./lib/validate";
 type GroupDashboardRecord = {
   group: Doc<"groups">;
   membership: Doc<"groupMembers">;
@@ -86,12 +87,6 @@ function sanitizeCurrency(value: string | undefined) {
   }
 
   return normalized;
-}
-
-function assertGroupIsActive(group: Doc<"groups">) {
-  if (group.archivedAt !== undefined) {
-    throw new ConvexError("Group is archived");
-  }
 }
 
 async function getActiveGroupRecords(

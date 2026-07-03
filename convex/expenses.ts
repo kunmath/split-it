@@ -13,6 +13,7 @@ import {
   requireExpenseEditPermission,
   requireGroupMember,
 } from "./lib/permissions";
+import { assertGroupIsActive, validateAmountCents } from "./lib/validate";
 
 const exactShareValidator = v.object({
   userId: v.id("users"),
@@ -28,12 +29,6 @@ type ShareRow = {
   userId: Id<"users">;
   shareCents: number;
 };
-
-function assertGroupIsAvailable(group: Doc<"groups">) {
-  if (group.archivedAt !== undefined) {
-    throw new ConvexError("Group is archived");
-  }
-}
 
 function sanitizeDescription(value: string) {
   const description = value.trim();
@@ -61,18 +56,6 @@ function sanitizeNotes(value: string | undefined) {
   }
 
   return notes;
-}
-
-function validateAmountCents(value: number) {
-  if (!Number.isSafeInteger(value)) {
-    throw new ConvexError("Amount must be a safe integer number of cents");
-  }
-
-  if (value <= 0) {
-    throw new ConvexError("Amount must be greater than zero");
-  }
-
-  return value;
 }
 
 function validateExpenseTimestamp(value: number) {
@@ -356,8 +339,13 @@ export const getComposerData = query({
 
     try {
       access = await requireGroupMember(ctx, args.groupId);
-    } catch {
-      return null;
+    } catch (error) {
+      // "No access" renders as an unavailable state; anything else is a real
+      // bug and must surface instead of masquerading as missing data.
+      if (error instanceof ConvexError) {
+        return null;
+      }
+      throw error;
     }
 
     if (access.group.archivedAt !== undefined) {
@@ -380,8 +368,11 @@ export const getComposerData = query({
           .query("expenseShares")
           .withIndex("by_expense", (q) => q.eq("expenseId", args.expenseId!))
           .collect();
-      } catch {
-        return null;
+      } catch (error) {
+        if (error instanceof ConvexError) {
+          return null;
+        }
+        throw error;
       }
     }
 
@@ -433,8 +424,11 @@ export const listForGroup = query({
 
     try {
       access = await requireGroupMember(ctx, args.groupId);
-    } catch {
-      return null;
+    } catch (error) {
+      if (error instanceof ConvexError) {
+        return null;
+      }
+      throw error;
     }
 
     if (access.group.archivedAt !== undefined) {
@@ -510,7 +504,7 @@ export const createExpense = mutation({
   },
   handler: async (ctx, args) => {
     const access = await requireGroupMember(ctx, args.groupId);
-    assertGroupIsAvailable(access.group);
+    assertGroupIsActive(access.group);
     const description = sanitizeDescription(args.description);
     const notes = sanitizeNotes(args.notes);
     const amountCents = validateAmountCents(args.amountCents);
@@ -584,7 +578,7 @@ export const updateExpense = mutation({
       throw new ConvexError("Group not found");
     }
 
-    assertGroupIsAvailable(group);
+    assertGroupIsActive(group);
 
     if (access.expense.kind === "settlement") {
       throw new ConvexError("Settlements cannot be edited; delete and re-record instead");
@@ -670,7 +664,7 @@ export const deleteExpense = mutation({
       throw new ConvexError("Group not found");
     }
 
-    assertGroupIsAvailable(group);
+    assertGroupIsActive(group);
 
     const existingShares = await ctx.db
       .query("expenseShares")

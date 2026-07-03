@@ -1,6 +1,5 @@
 import { ConvexError, v } from "convex/values";
 
-import type { Doc } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import {
   internalAction,
@@ -19,12 +18,7 @@ import {
   rotatePendingInviteForGroup,
 } from "./lib/inviteHelpers";
 import { requireGroupOwner } from "./lib/permissions";
-
-function assertGroupIsActive(group: Doc<"groups">) {
-  if (group.archivedAt !== undefined) {
-    throw new ConvexError("Group is archived");
-  }
-}
+import { assertGroupIsActive } from "./lib/validate";
 
 function escapeHtml(value: string) {
   return value
