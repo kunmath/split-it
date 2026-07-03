@@ -26,8 +26,9 @@ import {
   groupIconKeyValidator,
   resolveGroupIconKey,
 } from "./lib/groupIcons";
+import { logMemberEvent } from "./lib/activityEvents";
 import { expirePendingGroupInvites } from "./lib/inviteHelpers";
-import { requireGroupOwner } from "./lib/permissions";
+import { requireGroupMember, requireGroupOwner } from "./lib/permissions";
 type GroupDashboardRecord = {
   group: Doc<"groups">;
   membership: Doc<"groupMembers">;
@@ -239,6 +240,82 @@ export const archive = mutation({
       groupName: group.name,
       archivedAt,
     };
+  },
+});
+
+export const leaveGroup = mutation({
+  args: {
+    groupId: v.id("groups"),
+  },
+  handler: async (ctx, args) => {
+    const access = await requireGroupMember(ctx, args.groupId);
+
+    assertGroupIsActive(access.group);
+
+    if (access.membership.role === "owner") {
+      throw new ConvexError("Owners cannot leave their group; archive it instead");
+    }
+
+    const balance = await getMemberBalanceSnapshot(ctx, args.groupId, access.user._id);
+
+    if (balance.balanceCents !== 0) {
+      throw new ConvexError(
+        "Settle your balance before leaving the group so history stays consistent",
+      );
+    }
+
+    await ctx.db.patch(access.membership._id, { status: "left" });
+    await logMemberEvent(ctx, "member.left", {
+      groupId: args.groupId,
+      actorUserId: access.user._id,
+      memberUserId: access.user._id,
+    });
+
+    return { groupId: args.groupId };
+  },
+});
+
+export const removeMember = mutation({
+  args: {
+    groupId: v.id("groups"),
+    memberUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const access = await requireGroupOwner(ctx, args.groupId);
+
+    assertGroupIsActive(access.group);
+
+    if (args.memberUserId === access.user._id) {
+      throw new ConvexError("Owners cannot remove themselves; archive the group instead");
+    }
+
+    const membership = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_group_user", (q) =>
+        q.eq("groupId", args.groupId).eq("userId", args.memberUserId),
+      )
+      .unique();
+
+    if (membership === null || membership.status !== "active") {
+      throw new ConvexError("That person is not an active member of this group");
+    }
+
+    const balance = await getMemberBalanceSnapshot(ctx, args.groupId, args.memberUserId);
+
+    if (balance.balanceCents !== 0) {
+      throw new ConvexError(
+        "Members can only be removed once their balance is settled to zero",
+      );
+    }
+
+    await ctx.db.patch(membership._id, { status: "left" });
+    await logMemberEvent(ctx, "member.removed", {
+      groupId: args.groupId,
+      actorUserId: access.user._id,
+      memberUserId: args.memberUserId,
+    });
+
+    return { groupId: args.groupId, memberUserId: args.memberUserId };
   },
 });
 

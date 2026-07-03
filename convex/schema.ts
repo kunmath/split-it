@@ -12,7 +12,13 @@ const activityEventType = v.union(
   v.literal("member.left"),
   v.literal("member.removed"),
 );
-const groupMemberStatus = v.union(v.literal("active"), v.literal("invited"));
+const groupMemberStatus = v.union(
+  v.literal("active"),
+  v.literal("invited"),
+  // Departed members keep their membership row (and their expense history);
+  // accepting a fresh invite re-activates it.
+  v.literal("left"),
+);
 const inviteStatus = v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired"));
 const expenseKind = v.union(v.literal("expense"), v.literal("settlement"));
 const expenseSplitType = v.union(v.literal("equal"), v.literal("exact"), v.literal("shares"));
