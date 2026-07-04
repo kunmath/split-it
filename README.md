@@ -3,6 +3,7 @@
 **Free, open source expense splitting you can host yourself.**
 
 [![CI](https://github.com/kunmath/split-it/actions/workflows/ci.yml/badge.svg)](https://github.com/kunmath/split-it/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Split-It is a self-hostable alternative to Splitwise. Create groups, log shared expenses, see who owes whom in real time, and record settle-ups made outside the app (cash, UPI, Venmo, bank transfer). Your instance, your data.
 
@@ -76,4 +77,4 @@ Bug reports, feature ideas, and pull requests are welcome — see [CONTRIBUTING.
 
 ## License
 
-Split-It does not yet declare a license. Until one is added, default copyright applies — if you want to redistribute or build on it, please open an issue.
+[MIT](LICENSE)
