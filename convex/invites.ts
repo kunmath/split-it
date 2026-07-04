@@ -1,12 +1,12 @@
 import { ConvexError, v } from "convex/values";
 
-import type { Doc } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import {
   internalAction,
   mutation,
   query,
 } from "./_generated/server";
+import { logMemberEvent } from "./lib/activityEvents";
 import { getCurrentUser, requireUser } from "./lib/auth";
 import { buildInviteUrl, isInviteEmailEnabled, requireInviteEmailConfig } from "./lib/inviteEmail";
 import {
@@ -18,12 +18,7 @@ import {
   rotatePendingInviteForGroup,
 } from "./lib/inviteHelpers";
 import { requireGroupOwner } from "./lib/permissions";
-
-function assertGroupIsActive(group: Doc<"groups">) {
-  if (group.archivedAt !== undefined) {
-    throw new ConvexError("Group is archived");
-  }
-}
+import { assertGroupIsActive } from "./lib/validate";
 
 function escapeHtml(value: string) {
   return value
@@ -429,6 +424,11 @@ export const accept = mutation({
     await ctx.db.patch(invite._id, {
       acceptedBy: user._id,
       status: "accepted",
+    });
+    await logMemberEvent(ctx, "member.joined", {
+      groupId: group._id,
+      actorUserId: user._id,
+      memberUserId: user._id,
     });
 
     return {

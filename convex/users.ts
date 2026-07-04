@@ -1,18 +1,13 @@
 import { ConvexError, v } from "convex/values";
 
-import type { Doc } from "./_generated/dataModel";
-import { internalMutation, mutation, query, type MutationCtx } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import {
-  buildUserFieldsFromIdentity,
   getCurrentUser,
   getUserByClerkUserId,
-  getUserByEmail,
-  normalizeEmail,
   requireUser,
+  syncUser,
 } from "./lib/auth";
 import { getAvatarOption, isAvatarKey } from "../lib/avatar-options";
-
-type StoredUserFields = Pick<Doc<"users">, "name" | "email" | "clerkUserId" | "imageUrl">;
 
 function sanitizeDisplayName(value: string) {
   const normalized = value.trim().replace(/\s+/g, " ");
@@ -26,39 +21,6 @@ function sanitizeDisplayName(value: string) {
   }
 
   return normalized;
-}
-
-async function patchStoredUserIdentity(
-  ctx: MutationCtx,
-  user: Doc<"users">,
-  userFields: StoredUserFields,
-) {
-  const patch: Partial<Pick<Doc<"users">, "clerkUserId" | "email">> = {};
-
-  if (user.clerkUserId !== userFields.clerkUserId) {
-    patch.clerkUserId = userFields.clerkUserId;
-  }
-
-  if (user.email !== userFields.email) {
-    patch.email = userFields.email;
-  }
-
-  if (Object.keys(patch).length > 0) {
-    await ctx.db.patch(user._id, patch);
-  }
-}
-
-async function upsertUser(ctx: MutationCtx, userFields: StoredUserFields) {
-  const existingUser =
-    await getUserByEmail(ctx, userFields.email)
-    ?? await getUserByClerkUserId(ctx, userFields.clerkUserId);
-
-  if (existingUser !== null) {
-    await patchStoredUserIdentity(ctx, existingUser, userFields);
-    return existingUser._id;
-  }
-
-  return ctx.db.insert("users", userFields);
 }
 
 export const current = query({
@@ -80,37 +42,27 @@ export const storeCurrentUser = mutation({
       throw new ConvexError("Called storeCurrentUser without authentication");
     }
 
-    const existingUserByClerkUserId = await getUserByClerkUserId(ctx, identity.subject);
-    if (existingUserByClerkUserId !== null) {
-      if (identity.email?.trim()) {
-        const userFields = buildUserFieldsFromIdentity(identity);
-        await patchStoredUserIdentity(ctx, existingUserByClerkUserId, userFields);
+    const verifiedEmail = identity.email?.trim();
+    const email = verifiedEmail || args.email?.trim();
+
+    if (!email) {
+      const existingUser = await getUserByClerkUserId(ctx, identity.subject);
+      if (existingUser !== null) {
+        return existingUser._id;
       }
 
-      return existingUserByClerkUserId._id;
-    }
-
-    const email = identity.email?.trim() || args.email?.trim();
-    if (!email) {
       throw new ConvexError("Current user sync is missing an email address.");
     }
 
-    const userFields = buildUserFieldsFromIdentity({
+    const user = await syncUser(ctx, {
+      clerkUserId: identity.subject,
       email,
+      emailIsVerified: Boolean(verifiedEmail),
       name: identity.name ?? args.name,
-      pictureUrl: identity.pictureUrl ?? args.imageUrl,
-      subject: identity.subject,
+      imageUrl: identity.pictureUrl ?? args.imageUrl,
     });
-    const existingUser =
-      await getUserByEmail(ctx, userFields.email)
-      ?? existingUserByClerkUserId;
 
-    if (existingUser !== null) {
-      await patchStoredUserIdentity(ctx, existingUser, userFields);
-      return existingUser._id;
-    }
-
-    return upsertUser(ctx, userFields);
+    return user._id;
   },
 });
 
@@ -148,14 +100,14 @@ export const upsertFromClerk = internalMutation({
     name: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    return upsertUser(
-      ctx,
-      buildUserFieldsFromIdentity({
-        email: normalizeEmail(args.email),
-        name: args.name,
-        pictureUrl: args.imageUrl,
-        subject: args.clerkUserId,
-      }),
-    );
+    const user = await syncUser(ctx, {
+      clerkUserId: args.clerkUserId,
+      email: args.email,
+      emailIsVerified: true,
+      name: args.name,
+      imageUrl: args.imageUrl,
+    });
+
+    return user._id;
   },
 });

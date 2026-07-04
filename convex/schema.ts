@@ -2,7 +2,23 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 const groupMemberRole = v.union(v.literal("owner"), v.literal("member"));
-const groupMemberStatus = v.union(v.literal("active"), v.literal("invited"));
+const activityEventType = v.union(
+  v.literal("expense.created"),
+  v.literal("expense.updated"),
+  v.literal("expense.deleted"),
+  v.literal("settlement.recorded"),
+  v.literal("settlement.deleted"),
+  v.literal("member.joined"),
+  v.literal("member.left"),
+  v.literal("member.removed"),
+);
+const groupMemberStatus = v.union(
+  v.literal("active"),
+  v.literal("invited"),
+  // Departed members keep their membership row (and their expense history);
+  // accepting a fresh invite re-activates it.
+  v.literal("left"),
+);
 const inviteStatus = v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired"));
 const expenseKind = v.union(v.literal("expense"), v.literal("settlement"));
 const expenseSplitType = v.union(v.literal("equal"), v.literal("exact"), v.literal("shares"));
@@ -68,7 +84,8 @@ export default defineSchema({
     notes: v.optional(v.string()),
   })
     .index("by_group", ["groupId"])
-    .index("by_group_date", ["groupId", "expenseAt"]),
+    .index("by_group_date", ["groupId", "expenseAt"])
+    .index("by_group_amount", ["groupId", "amountCents"]),
 
   expenseShares: defineTable({
     expenseId: v.id("expenses"),
@@ -78,4 +95,53 @@ export default defineSchema({
   })
     .index("by_expense", ["expenseId"])
     .index("by_group_user", ["groupId", "userId"]),
+
+  // Running per-member totals, updated in the same transaction as every
+  // expense/settlement write so balances never require a full expense scan.
+  memberBalances: defineTable({
+    groupId: v.id("groups"),
+    userId: v.id("users"),
+    paidCents: v.number(),
+    owedCents: v.number(),
+    // Paid excluding settlements; used for spend insights.
+    spendPaidCents: v.number(),
+  })
+    .index("by_group_user", ["groupId", "userId"])
+    .index("by_group", ["groupId"]),
+
+  groupStats: defineTable({
+    groupId: v.id("groups"),
+    expenseCount: v.number(),
+    // Counts and totals excluding settlements.
+    spendCount: v.number(),
+    totalSpendCents: v.number(),
+  }).index("by_group", ["groupId"]),
+
+  // Append-only audit trail. Events snapshot everything the feed needs, so
+  // history survives expense edits and deletes and never requires scanning
+  // the expenses table.
+  activityEvents: defineTable({
+    groupId: v.id("groups"),
+    actorUserId: v.id("users"),
+    type: activityEventType,
+    createdAt: v.number(),
+    expenseId: v.optional(v.id("expenses")),
+    description: v.optional(v.string()),
+    amountCents: v.optional(v.number()),
+    previousDescription: v.optional(v.string()),
+    previousAmountCents: v.optional(v.number()),
+    paidBy: v.optional(v.id("users")),
+    counterpartyUserId: v.optional(v.id("users")),
+    shares: v.optional(
+      v.array(
+        v.object({
+          userId: v.id("users"),
+          shareCents: v.number(),
+        }),
+      ),
+    ),
+    memberUserId: v.optional(v.id("users")),
+  })
+    .index("by_group_time", ["groupId", "createdAt"])
+    .index("by_expense", ["expenseId"]),
 });

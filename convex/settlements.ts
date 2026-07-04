@@ -1,26 +1,10 @@
 import { ConvexError, v } from "convex/values";
 
-import type { Doc } from "./_generated/dataModel";
 import { mutation } from "./_generated/server";
+import { logExpenseEvent } from "./lib/activityEvents";
+import { applyExpenseToAggregates } from "./lib/balances";
 import { requireGroupMember } from "./lib/permissions";
-
-function assertGroupIsActive(group: Doc<"groups">) {
-  if (group.archivedAt !== undefined) {
-    throw new ConvexError("Group is archived");
-  }
-}
-
-function validateAmountCents(value: number) {
-  if (!Number.isSafeInteger(value)) {
-    throw new ConvexError("Amount must be a safe integer number of cents");
-  }
-
-  if (value <= 0) {
-    throw new ConvexError("Amount must be greater than zero");
-  }
-
-  return value;
-}
+import { assertGroupIsActive, validateAmountCents } from "./lib/validate";
 
 function sanitizeNote(value: string | undefined) {
   const note = value?.trim();
@@ -83,6 +67,27 @@ export const create = mutation({
       groupId: args.groupId,
       userId: args.toUserId,
       shareCents: amountCents,
+    });
+
+    await applyExpenseToAggregates(ctx, {
+      groupId: args.groupId,
+      kind: "settlement",
+      amountCents,
+      paidBy: access.user._id,
+      shares: [{ userId: args.toUserId, shareCents: amountCents }],
+      direction: 1,
+    });
+    await logExpenseEvent(ctx, "created", {
+      actorUserId: access.user._id,
+      expense: {
+        _id: expenseId,
+        groupId: args.groupId,
+        description: "Settlement",
+        amountCents,
+        paidBy: access.user._id,
+        kind: "settlement",
+      },
+      shares: [{ userId: args.toUserId, shareCents: amountCents }],
     });
 
     return expenseId;

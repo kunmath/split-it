@@ -16,7 +16,14 @@ import { iconMap } from "@/lib/icon-map";
 import { activityFeed, type ActivityPlaceholder } from "@/lib/placeholder-data";
 import { cn } from "@/lib/utils";
 
-type ActivityItem = ActivityPlaceholder;
+type ActivityItem = ActivityPlaceholder & {
+  action?: "created" | "updated" | "deleted";
+  expenseId?: string | null;
+  actorName?: string;
+  actorIsCurrentUser?: boolean;
+  previousDescription?: string | null;
+  previousAmountCents?: number | null;
+};
 
 type ActivityDayGroup = {
   key: string;
@@ -70,11 +77,37 @@ function groupActivitiesByDay(activities: ActivityItem[]): ActivityDayGroup[] {
 }
 
 function buildActivityHref(activity: ActivityItem) {
-  if (activity.kind === "settlement") {
+  const expenseId = activity.expenseId ?? activity.id;
+
+  if (activity.kind === "settlement" || activity.action === "deleted" || !expenseId) {
     return `/groups/${activity.groupId}`;
   }
 
-  return `/groups/${activity.groupId}/expenses/${activity.id}/edit`;
+  return `/groups/${activity.groupId}/expenses/${expenseId}/edit`;
+}
+
+function buildActionSuffix(activity: ActivityItem) {
+  if (activity.action === "updated") {
+    return " (edited)";
+  }
+
+  if (activity.action === "deleted") {
+    return " (deleted)";
+  }
+
+  return "";
+}
+
+function buildActionByline(activity: ActivityItem) {
+  if (activity.action !== "updated" && activity.action !== "deleted") {
+    return null;
+  }
+
+  const actorLabel = activity.actorIsCurrentUser ? "you" : activity.actorName ?? "a member";
+
+  return activity.action === "updated"
+    ? `Edited by ${actorLabel}`
+    : `Deleted by ${actorLabel}`;
 }
 
 function buildSettlementTitle(activity: ActivityItem) {
@@ -92,6 +125,12 @@ function buildSettlementTitle(activity: ActivityItem) {
 }
 
 function buildMobileMeta(activity: ActivityItem) {
+  const byline = buildActionByline(activity);
+
+  if (byline !== null) {
+    return `${byline} • ${activity.groupName}`;
+  }
+
   if (activity.kind === "settlement") {
     if (activity.paidByCurrentUser) {
       return `Settlement recorded • ${activity.groupName}`;
@@ -108,6 +147,12 @@ function buildMobileMeta(activity: ActivityItem) {
 }
 
 function buildDesktopDetail(activity: ActivityItem) {
+  const byline = buildActionByline(activity);
+
+  if (byline !== null) {
+    return byline;
+  }
+
   if (activity.kind === "settlement") {
     if (activity.paidByCurrentUser) {
       return "Settlement recorded";
@@ -298,6 +343,7 @@ function MobileActivityRow({ activity }: { activity: ActivityItem }) {
             <div className="min-w-0">
               <p className="truncate font-headline text-base font-bold tracking-tight text-on-surface">
                 {isSettlement ? buildSettlementTitle(activity) : activity.description}
+                {buildActionSuffix(activity)}
               </p>
               <p className="mt-1 truncate text-xs text-on-surface-variant">
                 {buildMobileMeta(activity)}
@@ -378,6 +424,7 @@ function DesktopActivityRow({ activity }: { activity: ActivityItem }) {
               <div className="flex flex-wrap items-center gap-4.5">
                 <p className="truncate text-[1rem] font-semibold text-on-surface">
                   {isSettlement ? buildSettlementTitle(activity) : activity.description}
+                  {buildActionSuffix(activity)}
                 </p>
                 <span className="inline-flex max-w-full truncate rounded-full border border-white/[0.04] bg-white/[0.03] px-3 py-1 text-[0.64rem] font-medium uppercase tracking-[0.16em] text-on-surface-variant/80">
                   {activity.groupName}

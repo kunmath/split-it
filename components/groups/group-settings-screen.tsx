@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useState } from "react";
 
+import { MembershipManagementCard } from "@/components/groups/membership-management-card";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { PageContainer } from "@/components/shell/page-container";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -399,12 +400,26 @@ function LiveGroupSettingsScreen({ groupId }: GroupSettingsScreenProps) {
         })),
       }}
       actions={
-        <LiveSettingsActionsCard
-          groupCurrency={settingsOverview.groupCurrency}
-          groupId={String(settingsOverview.groupId)}
-          groupName={settingsOverview.groupName}
-          viewerRole={settingsOverview.viewerRole}
-        />
+        <div className="space-y-6">
+          <LiveSettingsActionsCard
+            groupCurrency={settingsOverview.groupCurrency}
+            groupId={String(settingsOverview.groupId)}
+            groupName={settingsOverview.groupName}
+            viewerRole={settingsOverview.viewerRole}
+          />
+          <MembershipManagementCard
+            currency={settingsOverview.groupCurrency}
+            currentUserBalanceCents={settingsOverview.currentUserBalanceCents}
+            groupId={settingsOverview.groupId}
+            groupName={settingsOverview.groupName}
+            viewerRole={settingsOverview.viewerRole}
+            members={settingsOverview.memberBalances.map((member) => ({
+              id: member.id,
+              name: member.name,
+              balanceCents: member.balanceCents,
+            }))}
+          />
+        </div>
       }
     />
   );

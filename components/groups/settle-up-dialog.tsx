@@ -109,6 +109,9 @@ export function SettleUpDialog({
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) {
+      return;
+    }
     if (isMock) {
       setError("Settle Up requires a live Convex connection.");
       return;

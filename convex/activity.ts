@@ -1,37 +1,38 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import { requireUser } from "./lib/auth";
-import {
-  getCurrentUserExpenseNetCents,
-  getGroupExpenseRecords,
-} from "./lib/expenseHelpers";
 import { resolveGroupIconKey } from "./lib/groupIcons";
 
-async function getActiveMemberLookup(
-  ctx: Parameters<typeof requireUser>[0],
-  groupId: Id<"groups">,
-) {
-  const memberships = await ctx.db
-    .query("groupMembers")
-    .withIndex("by_group", (q) => q.eq("groupId", groupId))
-    .collect();
-  const activeMemberships = memberships.filter(
-    (membership) => membership.status === "active",
+// Scan bounds for the per-group widening read; values, tradeoffs, and the
+// rationale for widening take() over cursor paging live in
+// docs/scaling-limits.md.
+const FEED_LIMIT = 20;
+const EVENTS_PER_GROUP = 40;
+const MAX_EVENTS_SCANNED_PER_GROUP = 400;
+
+type MoneyEventAction = "created" | "updated" | "deleted";
+
+function moneyEventAction(type: Doc<"activityEvents">["type"]): MoneyEventAction | null {
+  switch (type) {
+    case "expense.created":
+    case "settlement.recorded":
+      return "created";
+    case "expense.updated":
+      return "updated";
+    case "expense.deleted":
+    case "settlement.deleted":
+      return "deleted";
+    default:
+      return null;
+  }
+}
+
+function involvesUser(event: Doc<"activityEvents">, userId: Id<"users">) {
+  return (
+    event.paidBy === userId ||
+    event.counterpartyUserId === userId ||
+    (event.shares ?? []).some((share) => share.userId === userId)
   );
-  const users = await Promise.all(
-    activeMemberships.map((membership) => ctx.db.get(membership.userId)),
-  );
-  const userLookup = new Map<Id<"users">, Doc<"users">>();
-
-  activeMemberships.forEach((membership, index) => {
-    const user = users[index];
-
-    if (user !== null) {
-      userLookup.set(membership.userId, user);
-    }
-  });
-
-  return userLookup;
 }
 
 export const listForCurrentUser = query({
@@ -46,7 +47,7 @@ export const listForCurrentUser = query({
       (membership) => membership.status === "active",
     );
 
-    const activityGroups = await Promise.all(
+    const eventGroups = await Promise.all(
       activeMemberships.map(async (membership) => {
         const group = await ctx.db.get(membership.groupId);
 
@@ -54,82 +55,95 @@ export const listForCurrentUser = query({
           return [];
         }
 
-        const [userLookup, expenseRecords] = await Promise.all([
-          getActiveMemberLookup(ctx, group._id),
-          getGroupExpenseRecords(ctx, group._id),
-        ]);
-        const groupIconKey = resolveGroupIconKey(group);
+        // Widen the scan until enough matching events are found: a fixed
+        // window could hide valid feed items behind runs of member.* rows or
+        // money events that don't involve the user.
+        for (let scanLimit = EVENTS_PER_GROUP; ; ) {
+          const events = await ctx.db
+            .query("activityEvents")
+            .withIndex("by_group_time", (q) => q.eq("groupId", group._id))
+            .order("desc")
+            .take(scanLimit);
 
-        return expenseRecords
-          .filter(
-            (record) =>
-              record.expense.paidBy === user._id ||
-              record.shares.some((share) => share.userId === user._id),
-          )
-          .map((record) => {
-            const settlementRecipientId =
-              record.expense.kind === "settlement"
-                ? (record.shares[0]?.userId as Id<"users"> | undefined) ?? null
-                : null;
+          const matching = events.filter(
+            (event) =>
+              moneyEventAction(event.type) !== null && involvesUser(event, user._id),
+          );
 
-            return {
-              id: record.expense._id,
-              groupId: group._id,
-              groupName: group.name,
-              groupCurrency: group.currency,
-              groupIconKey,
-              description: record.expense.description,
-              amountCents: record.expense.amountCents,
-              expenseAt: record.expense.expenseAt,
-              kind: record.expense.kind ?? ("expense" as const),
-              paidByName:
-                userLookup.get(record.expense.paidBy)?.name ?? "Group member",
-              paidByCurrentUser: record.expense.paidBy === user._id,
-              currentUserNetCents: getCurrentUserExpenseNetCents(
-                record,
-                user._id,
-              ),
-              participantCount: record.shares.length,
-              counterpartyName:
-                settlementRecipientId === null
-                  ? null
-                  : userLookup.get(settlementRecipientId)?.name ??
-                    "Group member",
-              counterpartyIsCurrentUser:
-                settlementRecipientId !== null &&
-                settlementRecipientId === user._id,
-              _creationTime: record.expense._creationTime,
-            };
-          });
+          if (
+            matching.length >= FEED_LIMIT ||
+            events.length < scanLimit ||
+            scanLimit >= MAX_EVENTS_SCANNED_PER_GROUP
+          ) {
+            return matching.slice(0, FEED_LIMIT).map((event) => ({ event, group }));
+          }
+
+          scanLimit = Math.min(scanLimit * 4, MAX_EVENTS_SCANNED_PER_GROUP);
+        }
       }),
     );
 
-    return activityGroups
+    const selected = eventGroups
       .flat()
-      .sort((left, right) => {
-        if (left.expenseAt !== right.expenseAt) {
-          return right.expenseAt - left.expenseAt;
-        }
+      .sort((left, right) => right.event.createdAt - left.event.createdAt)
+      .slice(0, FEED_LIMIT);
 
-        return right._creationTime - left._creationTime;
-      })
-      .slice(0, 20)
-      .map((activity) => ({
-        id: activity.id,
-        groupId: activity.groupId,
-        groupName: activity.groupName,
-        groupCurrency: activity.groupCurrency,
-        groupIconKey: activity.groupIconKey,
-        description: activity.description,
-        amountCents: activity.amountCents,
-        expenseAt: activity.expenseAt,
-        kind: activity.kind,
-        paidByName: activity.paidByName,
-        paidByCurrentUser: activity.paidByCurrentUser,
-        currentUserNetCents: activity.currentUserNetCents,
-        participantCount: activity.participantCount,
-        counterpartyName: activity.counterpartyName,
-        counterpartyIsCurrentUser: activity.counterpartyIsCurrentUser,
-      }));
+    const userIds = new Set<Id<"users">>();
+    for (const { event } of selected) {
+      if (event.paidBy !== undefined) {
+        userIds.add(event.paidBy);
+      }
+      if (event.counterpartyUserId !== undefined) {
+        userIds.add(event.counterpartyUserId);
+      }
+      userIds.add(event.actorUserId);
+    }
+
+    const userDocs = await Promise.all([...userIds].map((userId) => ctx.db.get(userId)));
+    const userLookup = new Map<Id<"users">, Doc<"users">>();
+    for (const userDoc of userDocs) {
+      if (userDoc !== null) {
+        userLookup.set(userDoc._id, userDoc);
+      }
+    }
+    const nameFor = (userId: Id<"users"> | undefined) =>
+      userId === undefined ? "Group member" : userLookup.get(userId)?.name ?? "Group member";
+
+    return selected.map(({ event, group }) => {
+      const action = moneyEventAction(event.type)!;
+      const isSettlement =
+        event.type === "settlement.recorded" || event.type === "settlement.deleted";
+      const shares = event.shares ?? [];
+      const userShareCents =
+        shares.find((share) => share.userId === user._id)?.shareCents ?? 0;
+      const amountCents = event.amountCents ?? 0;
+      const currentUserNetCents =
+        (event.paidBy === user._id ? amountCents : 0) - userShareCents;
+
+      return {
+        id: event._id,
+        expenseId: event.expenseId ?? null,
+        action,
+        groupId: group._id,
+        groupName: group.name,
+        groupCurrency: group.currency,
+        groupIconKey: resolveGroupIconKey(group),
+        description: event.description ?? (isSettlement ? "Settlement" : "Expense"),
+        amountCents,
+        previousDescription: event.previousDescription ?? null,
+        previousAmountCents: event.previousAmountCents ?? null,
+        expenseAt: event.createdAt,
+        kind: isSettlement ? ("settlement" as const) : ("expense" as const),
+        paidByName: nameFor(event.paidBy),
+        paidByCurrentUser: event.paidBy === user._id,
+        currentUserNetCents,
+        participantCount: shares.length,
+        counterpartyName:
+          event.counterpartyUserId === undefined ? null : nameFor(event.counterpartyUserId),
+        counterpartyIsCurrentUser: event.counterpartyUserId === user._id,
+        actorName: nameFor(event.actorUserId),
+        actorIsCurrentUser: event.actorUserId === user._id,
+      };
+    });
   },
 });

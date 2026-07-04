@@ -26,6 +26,16 @@ export default function proxy(req: NextRequest, event: NextFetchEvent) {
   const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL?.trim();
 
   if (!clerkPublishableKey || !clerkSecretKey || !clerkJwtIssuerDomain || !convexUrl) {
+    // Mock/preview mode is only acceptable outside production. In production a
+    // missing env var must fail loudly instead of silently serving protected
+    // routes without page-level auth.
+    if (process.env.NODE_ENV === "production" && isProtectedRoute(req)) {
+      console.error(
+        "Auth middleware is not configured (missing Clerk/Convex env vars); refusing to serve a protected route.",
+      );
+      return new NextResponse("Authentication is not configured", { status: 503 });
+    }
+
     return NextResponse.next();
   }
 

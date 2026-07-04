@@ -2,15 +2,18 @@ import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import { mutation, query, type MutationCtx } from "./_generated/server";
+import { logExpenseEvent } from "./lib/activityEvents";
+import { applyExpenseToAggregates } from "./lib/balances";
 import {
   getCurrentUserExpenseNetCents,
   getGroupExpenseRecords,
 } from "./lib/expenseHelpers";
-import { splitEvenly } from "./lib/money";
+import { splitByShares, splitEvenly } from "./lib/money";
 import {
   requireExpenseEditPermission,
   requireGroupMember,
 } from "./lib/permissions";
+import { assertGroupIsActive, validateAmountCents } from "./lib/validate";
 
 const exactShareValidator = v.object({
   userId: v.id("users"),
@@ -26,12 +29,6 @@ type ShareRow = {
   userId: Id<"users">;
   shareCents: number;
 };
-
-function assertGroupIsAvailable(group: Doc<"groups">) {
-  if (group.archivedAt !== undefined) {
-    throw new ConvexError("Group is archived");
-  }
-}
 
 function sanitizeDescription(value: string) {
   const description = value.trim();
@@ -59,18 +56,6 @@ function sanitizeNotes(value: string | undefined) {
   }
 
   return notes;
-}
-
-function validateAmountCents(value: number) {
-  if (!Number.isSafeInteger(value)) {
-    throw new ConvexError("Amount must be a safe integer number of cents");
-  }
-
-  if (value <= 0) {
-    throw new ConvexError("Amount must be greater than zero");
-  }
-
-  return value;
 }
 
 function validateExpenseTimestamp(value: number) {
@@ -304,42 +289,46 @@ async function buildValidatedShareRows(
     normalizedShares.map((share) => share.userId),
   );
 
-  // Calculate total shares
-  const totalShares = normalizedShares.reduce((sum, share) => sum + share.share, 0);
-
-  // Calculate exact amounts and fractional parts
-  const exactAmounts = normalizedShares.map((share) => ({
+  const shareCents = splitByShares(
+    amountCents,
+    normalizedShares.map((share) => share.share),
+  );
+  const shareRows: ShareRow[] = normalizedShares.map((share, index) => ({
     userId: share.userId,
-    exact: (amountCents * share.share) / totalShares,
-  }));
-
-  // Floor all amounts
-  const flooredAmounts = exactAmounts.map((item) => ({
-    userId: item.userId,
-    shareCents: Math.floor(item.exact),
-    fraction: item.exact - Math.floor(item.exact),
-  }));
-
-  // Calculate total floored
-  const totalFloored = flooredAmounts.reduce((sum, item) => sum + item.shareCents, 0);
-  const remainder = amountCents - totalFloored;
-
-  // Sort by fractional part descending to distribute remainder
-  const sortedByFraction = [...flooredAmounts].sort((a, b) => b.fraction - a.fraction);
-
-  // Distribute remainder to top fractional parts
-  for (let i = 0; i < remainder; i++) {
-    sortedByFraction[i]!.shareCents += 1;
-  }
-
-  // Create share rows
-  const shareRows: ShareRow[] = flooredAmounts.map((item) => ({
-    userId: item.userId,
-    shareCents: item.shareCents,
+    shareCents: shareCents[index] ?? 0,
   }));
 
   assertShareTotalMatchesAmount(shareRows, amountCents, "shares");
   return shareRows;
+}
+
+// Records whose payer or participants have left the group are locked:
+// reversing or rewriting them would push a departed member's settled balance
+// away from zero with no way for them to ever settle it again.
+async function assertParticipantsStillActive(
+  ctx: MutationCtx,
+  expense: Doc<"expenses">,
+  shares: Array<{ userId: Id<"users"> }>,
+) {
+  const involvedUserIds = new Set<Id<"users">>([expense.paidBy]);
+  for (const share of shares) {
+    involvedUserIds.add(share.userId);
+  }
+
+  for (const userId of involvedUserIds) {
+    const membership = await ctx.db
+      .query("groupMembers")
+      .withIndex("by_group_user", (q) =>
+        q.eq("groupId", expense.groupId).eq("userId", userId),
+      )
+      .unique();
+
+    if (membership === null || membership.status !== "active") {
+      throw new ConvexError(
+        "This record involves someone who left the group, so it can no longer be edited or deleted",
+      );
+    }
+  }
 }
 
 async function replaceExpenseShares(
@@ -377,8 +366,13 @@ export const getComposerData = query({
 
     try {
       access = await requireGroupMember(ctx, args.groupId);
-    } catch {
-      return null;
+    } catch (error) {
+      // "No access" renders as an unavailable state; anything else is a real
+      // bug and must surface instead of masquerading as missing data.
+      if (error instanceof ConvexError) {
+        return null;
+      }
+      throw error;
     }
 
     if (access.group.archivedAt !== undefined) {
@@ -401,8 +395,11 @@ export const getComposerData = query({
           .query("expenseShares")
           .withIndex("by_expense", (q) => q.eq("expenseId", args.expenseId!))
           .collect();
-      } catch {
-        return null;
+      } catch (error) {
+        if (error instanceof ConvexError) {
+          return null;
+        }
+        throw error;
       }
     }
 
@@ -454,8 +451,11 @@ export const listForGroup = query({
 
     try {
       access = await requireGroupMember(ctx, args.groupId);
-    } catch {
-      return null;
+    } catch (error) {
+      if (error instanceof ConvexError) {
+        return null;
+      }
+      throw error;
     }
 
     if (access.group.archivedAt !== undefined) {
@@ -531,7 +531,7 @@ export const createExpense = mutation({
   },
   handler: async (ctx, args) => {
     const access = await requireGroupMember(ctx, args.groupId);
-    assertGroupIsAvailable(access.group);
+    assertGroupIsActive(access.group);
     const description = sanitizeDescription(args.description);
     const notes = sanitizeNotes(args.notes);
     const amountCents = validateAmountCents(args.amountCents);
@@ -559,6 +559,26 @@ export const createExpense = mutation({
     });
 
     await replaceExpenseShares(ctx, expenseId, args.groupId, shareRows);
+    await applyExpenseToAggregates(ctx, {
+      groupId: args.groupId,
+      kind: "expense",
+      amountCents,
+      paidBy: args.paidBy,
+      shares: shareRows,
+      direction: 1,
+    });
+    await logExpenseEvent(ctx, "created", {
+      actorUserId: access.user._id,
+      expense: {
+        _id: expenseId,
+        groupId: args.groupId,
+        description,
+        amountCents,
+        paidBy: args.paidBy,
+        kind: "expense",
+      },
+      shares: shareRows,
+    });
 
     return expenseId;
   },
@@ -585,7 +605,18 @@ export const updateExpense = mutation({
       throw new ConvexError("Group not found");
     }
 
-    assertGroupIsAvailable(group);
+    assertGroupIsActive(group);
+
+    if (access.expense.kind === "settlement") {
+      throw new ConvexError("Settlements cannot be edited; delete and re-record instead");
+    }
+
+    const previousShares = await ctx.db
+      .query("expenseShares")
+      .withIndex("by_expense", (q) => q.eq("expenseId", args.expenseId))
+      .collect();
+
+    await assertParticipantsStillActive(ctx, access.expense, previousShares);
 
     const description = sanitizeDescription(args.description);
     const notes = sanitizeNotes(args.notes);
@@ -613,12 +644,38 @@ export const updateExpense = mutation({
       updatedAt: Date.now(),
       notes,
     });
-    await replaceExpenseShares(
-      ctx,
-      args.expenseId,
-      access.expense.groupId,
-      shareRows,
-    );
+    await replaceExpenseShares(ctx, args.expenseId, access.expense.groupId, shareRows);
+
+    await applyExpenseToAggregates(ctx, {
+      groupId: access.expense.groupId,
+      kind: access.expense.kind ?? "expense",
+      amountCents: access.expense.amountCents,
+      paidBy: access.expense.paidBy,
+      shares: previousShares,
+      direction: -1,
+    });
+    await applyExpenseToAggregates(ctx, {
+      groupId: access.expense.groupId,
+      kind: "expense",
+      amountCents,
+      paidBy: args.paidBy,
+      shares: shareRows,
+      direction: 1,
+    });
+    await logExpenseEvent(ctx, "updated", {
+      actorUserId: access.user._id,
+      expense: {
+        _id: args.expenseId,
+        groupId: access.expense.groupId,
+        description,
+        amountCents,
+        paidBy: args.paidBy,
+        kind: "expense",
+      },
+      shares: shareRows,
+      previousDescription: access.expense.description,
+      previousAmountCents: access.expense.amountCents,
+    });
 
     return args.expenseId;
   },
@@ -636,15 +693,39 @@ export const deleteExpense = mutation({
       throw new ConvexError("Group not found");
     }
 
-    assertGroupIsAvailable(group);
+    assertGroupIsActive(group);
 
     const existingShares = await ctx.db
       .query("expenseShares")
       .withIndex("by_expense", (q) => q.eq("expenseId", args.expenseId))
       .collect();
 
+    await assertParticipantsStillActive(ctx, access.expense, existingShares);
+
     await Promise.all(existingShares.map((share) => ctx.db.delete(share._id)));
     await ctx.db.delete(args.expenseId);
+
+    await applyExpenseToAggregates(ctx, {
+      groupId: access.expense.groupId,
+      kind: access.expense.kind ?? "expense",
+      amountCents: access.expense.amountCents,
+      paidBy: access.expense.paidBy,
+      shares: existingShares,
+      direction: -1,
+    });
+    // No expenseId on the event: the row is gone, and the feed uses its
+    // absence to avoid linking to a deleted expense.
+    await logExpenseEvent(ctx, "deleted", {
+      actorUserId: access.user._id,
+      expense: {
+        groupId: access.expense.groupId,
+        description: access.expense.description,
+        amountCents: access.expense.amountCents,
+        paidBy: access.expense.paidBy,
+        kind: access.expense.kind,
+      },
+      shares: existingShares,
+    });
 
     return {
       expenseId: args.expenseId,

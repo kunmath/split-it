@@ -2,6 +2,8 @@ import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, type MutationCtx } from "./_generated/server";
+import { logExpenseEvent } from "./lib/activityEvents";
+import { applyExpenseToAggregates } from "./lib/balances";
 import { expirePendingGroupInvites } from "./lib/inviteHelpers";
 
 const DEMO_GROUP_NAME = "Iceland Expedition";
@@ -121,6 +123,28 @@ async function insertExpense(
       shareCents: share.shareCents,
     });
   }
+
+  await applyExpenseToAggregates(ctx, {
+    groupId: args.groupId,
+    kind: "expense",
+    amountCents: args.amountCents,
+    paidBy: args.paidBy,
+    shares: args.shares,
+    direction: 1,
+  });
+  await logExpenseEvent(ctx, "created", {
+    actorUserId: args.createdBy,
+    expense: {
+      _id: expenseId,
+      groupId: args.groupId,
+      description: args.description,
+      amountCents: args.amountCents,
+      paidBy: args.paidBy,
+      kind: "expense",
+    },
+    shares: args.shares,
+    createdAt: args.expenseAt,
+  });
 
   return expenseId;
 }

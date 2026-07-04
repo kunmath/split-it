@@ -39,27 +39,47 @@ export function getCurrentUserBalanceSnapshot(
   return createBalanceSnapshot(paidCents, owedCents);
 }
 
+export async function getGroupShareLookup(
+  ctx: ExpenseCtx,
+  groupId: Id<"groups">,
+): Promise<Map<Id<"expenses">, Doc<"expenseShares">[]>> {
+  // The by_group_user index is prefixed by groupId, so this reads every share
+  // in the group with a single indexed query instead of one query per expense.
+  const shares = await ctx.db
+    .query("expenseShares")
+    .withIndex("by_group_user", (q) => q.eq("groupId", groupId))
+    .collect();
+  const sharesByExpense = new Map<Id<"expenses">, Doc<"expenseShares">[]>();
+
+  for (const share of shares) {
+    const existing = sharesByExpense.get(share.expenseId);
+
+    if (existing === undefined) {
+      sharesByExpense.set(share.expenseId, [share]);
+    } else {
+      existing.push(share);
+    }
+  }
+
+  return sharesByExpense;
+}
+
 export async function getGroupExpenseRecords(
   ctx: ExpenseCtx,
   groupId: Id<"groups">,
 ): Promise<GroupExpenseRecord[]> {
-  const expenses = await ctx.db
-    .query("expenses")
-    .withIndex("by_group", (q) => q.eq("groupId", groupId))
-    .collect();
-  const sortedExpenses = expenses.sort((left, right) => right.expenseAt - left.expenseAt);
-  const shares = await Promise.all(
-    sortedExpenses.map((expense) => {
-      return ctx.db
-        .query("expenseShares")
-        .withIndex("by_expense", (q) => q.eq("expenseId", expense._id))
-        .collect();
-    }),
-  );
+  const [expenses, sharesByExpense] = await Promise.all([
+    ctx.db
+      .query("expenses")
+      .withIndex("by_group_date", (q) => q.eq("groupId", groupId))
+      .order("desc")
+      .collect(),
+    getGroupShareLookup(ctx, groupId),
+  ]);
 
-  return sortedExpenses.map((expense, index) => ({
+  return expenses.map((expense) => ({
     expense,
-    shares: shares[index] ?? [],
+    shares: sharesByExpense.get(expense._id) ?? [],
   }));
 }
 
