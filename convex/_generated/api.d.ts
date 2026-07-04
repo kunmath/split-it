@@ -24,6 +24,7 @@ import type * as lib_inviteEmail from "../lib/inviteEmail.js";
 import type * as lib_inviteHelpers from "../lib/inviteHelpers.js";
 import type * as lib_money from "../lib/money.js";
 import type * as lib_permissions from "../lib/permissions.js";
+import type * as lib_validate from "../lib/validate.js";
 import type * as migrations from "../migrations.js";
 import type * as settlements from "../settlements.js";
 import type * as users from "../users.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   "lib/inviteHelpers": typeof lib_inviteHelpers;
   "lib/money": typeof lib_money;
   "lib/permissions": typeof lib_permissions;
+  "lib/validate": typeof lib_validate;
   migrations: typeof migrations;
   settlements: typeof settlements;
   users: typeof users;
