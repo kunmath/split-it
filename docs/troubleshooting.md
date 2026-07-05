@@ -2,7 +2,7 @@
 
 ## The app shows demo data / no sign-in screen
 
-You're in **placeholder mode**: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, or `NEXT_PUBLIC_CONVEX_URL` is blank where the Next.js app runs. `NEXT_PUBLIC_*` values are baked in at **build time** — on hosts like Vercel you must redeploy after changing them. Locally, restart the `web` container after editing `.env.local`.
+You're in **placeholder mode**: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_JWT_ISSUER_DOMAIN`, or `NEXT_PUBLIC_CONVEX_URL` is blank where the Next.js app runs (all four must be set — see [`lib/env.ts`](../lib/env.ts)). `NEXT_PUBLIC_*` values are baked in at **build time** — on hosts like Vercel you must redeploy after changing them. Locally, restart the `web` container after editing `.env.local`.
 
 ## Sign-in works, but every screen says unavailable / data never loads
 

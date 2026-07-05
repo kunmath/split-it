@@ -65,7 +65,7 @@ Creates one demo group owned by that user with synthetic members and seeded expe
 
 ## Project layout
 
-```
+```text
 app/            Next.js App Router routes
   (public)/     sign-in, sign-up, onboarding, invite acceptance
   (app)/        authenticated shell: dashboard, groups, activity, friends, account

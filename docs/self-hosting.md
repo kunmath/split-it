@@ -6,7 +6,7 @@ This guide takes you from a clone of the repo to a production instance you and y
 
 Split-It is not a single container. A production instance is three cooperating pieces:
 
-```
+```text
 Browser ──► Next.js app (your host) ──► Convex deployment (backend + database)
    │                                          ▲
    └────────► Clerk (sign-in) ── webhook ─────┘
@@ -92,7 +92,7 @@ npx convex env set INVITE_EMAIL_FROM "Split-It <invites@example.com>"
 
 ## Step 6 — Verify the instance
 
-1. Open your app URL → you should land on sign-in (not the placeholder demo screens; if you see demo data, the Clerk publishable key isn't reaching the build — see [Troubleshooting](troubleshooting.md)).
+1. Open your app URL → you should land on sign-in (not the placeholder demo screens; if you see demo data, one of the Clerk or Convex environment variables isn't reaching the build — verify all of the variables from Step 4, and see [Troubleshooting](troubleshooting.md)).
 2. Sign up → check the Convex dashboard's `users` table for your row.
 3. Create a group, add an expense → the balance card should update instantly.
 4. Generate an invite link from group settings → open it in a private window, sign up as a second user, accept.

@@ -2,7 +2,7 @@
 
 ## System shape
 
-```
+```text
 Browser ── React (Next.js App Router)
    │            │
    │            ├─ useQuery/useMutation ──► Convex deployment
