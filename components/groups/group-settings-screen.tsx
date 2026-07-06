@@ -165,7 +165,7 @@ function getGroupSupportText(
     return trimmedDescription;
   }
 
-  return `${memberCount} members and ${expenseCount} tracked expense${expenseCount === 1 ? "" : "s"} in the ledger.`;
+  return `${memberCount} member${memberCount === 1 ? "" : "s"} and ${expenseCount} entr${expenseCount === 1 ? "y" : "ies"} in the ledger.`;
 }
 
 function buildAvatarStyle(imageUrl: string | undefined): CSSProperties | undefined {

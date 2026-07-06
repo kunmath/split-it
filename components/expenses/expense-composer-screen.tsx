@@ -5,8 +5,6 @@ import {
   AlertTriangle,
   CalendarDays,
   Check,
-  CircleDollarSign,
-  ImagePlus,
   NotebookPen,
   Trash2,
   Users,
@@ -719,7 +717,7 @@ function ExpenseComposerScene({
       splitSummary = {
         tone: "matched",
         badge: "Matched",
-        detail: "Equal split auto-rounds in cents so assigned shares always match the total.",
+        detail: "Equal split auto-rounds in minor units so assigned shares always match the total.",
         canSubmit: true,
       };
     }
@@ -1142,7 +1140,7 @@ function ExpenseComposerScene({
                 />
               </div>
               <p className={cn("text-sm text-on-surface-variant", fieldErrors.amount && "text-secondary")}>
-                {fieldErrors.amount ?? `Stored exactly as cents in ${data.groupCurrency}.`}
+                {fieldErrors.amount ?? `Stored exactly in ${data.groupCurrency} minor units — no rounding drift.`}
               </p>
             </section>
 
@@ -1264,40 +1262,21 @@ function ExpenseComposerScene({
             </SurfaceCard>
 
             <SurfaceCard variant="low" className="rounded-[2rem] p-5 sm:p-6">
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(240px,0.8fr)]">
-                <div className="space-y-3">
-                  <p className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-on-surface-variant">
-                    <NotebookPen className="h-3.5 w-3.5 text-primary" />
-                    Notes
-                  </p>
-                  <textarea
-                    value={notes}
-                    onChange={(event) => {
-                      setNotes(event.target.value);
-                      setFormError(null);
-                    }}
-                    rows={6}
-                    placeholder="Optional context for the group. Keep it short."
-                    className="w-full resize-none rounded-[1.5rem] border border-white/6 bg-surface-container-lowest px-4 py-4 text-sm text-on-surface placeholder:text-on-surface-variant/38 focus:outline-none focus:ring-2 focus:ring-primary/25"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <p className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-on-surface-variant">
-                    <ImagePlus className="h-3.5 w-3.5 text-primary" />
-                    Receipt
-                  </p>
-                  <div className="flex h-full min-h-44 items-center justify-center rounded-[1.5rem] border border-dashed border-white/12 bg-surface-container-lowest px-4 text-center">
-                    <div className="space-y-2">
-                      <p className="font-headline text-lg font-semibold text-on-surface">
-                        Receipt upload placeholder
-                      </p>
-                      <p className="text-sm leading-6 text-on-surface-variant">
-                        The desktop receipt panel stays in place for layout parity. Real uploads land in a later phase.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              <div className="space-y-3">
+                <p className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-on-surface-variant">
+                  <NotebookPen className="h-3.5 w-3.5 text-primary" />
+                  Notes
+                </p>
+                <textarea
+                  value={notes}
+                  onChange={(event) => {
+                    setNotes(event.target.value);
+                    setFormError(null);
+                  }}
+                  rows={6}
+                  placeholder="Optional context for the group. Keep it short."
+                  className="w-full resize-none rounded-[1.5rem] border border-white/6 bg-surface-container-lowest px-4 py-4 text-sm text-on-surface placeholder:text-on-surface-variant/38 focus:outline-none focus:ring-2 focus:ring-primary/25"
+                />
               </div>
             </SurfaceCard>
           </section>
@@ -1880,7 +1859,7 @@ function ExpenseComposerScene({
                 </div>
                 <span className="text-xs uppercase tracking-[0.18em] text-on-surface-variant">
                   {splitType === "equal"
-                    ? "Auto-rounded in cents"
+                    ? "Auto-rounded in minor units"
                     : splitSummary.tone === "matched"
                       ? "Ready to save"
                       : "Needs attention"}
@@ -1952,25 +1931,6 @@ function ExpenseComposerScene({
                   </button>
                 )
               ) : null}
-            </SurfaceCard>
-
-            <SurfaceCard variant="low" className="rounded-[1.8rem] p-5 sm:p-6">
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/12 text-primary">
-                  <CircleDollarSign className="h-4.5 w-4.5" />
-                </div>
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">
-                    Composer Notes
-                  </p>
-                  <p className="mt-2 font-headline text-lg font-semibold text-on-surface">
-                    One responsive composer handles create and edit
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-on-surface-variant">
-                    Equal split behavior stays intact. Exact split uses the same layout with a matched or error state and a total-assigned summary.
-                  </p>
-                </div>
-              </div>
             </SurfaceCard>
           </aside>
         </div>

@@ -320,7 +320,7 @@ function MobileActivityRow({ activity }: { activity: ActivityItem }) {
   const Icon = isSettlement
     ? HandCoins
     : iconMap[getExpenseIconKey(activity.description, activity.groupIconKey)];
-  const amountTone = getAmountTone(activity.currentUserNetCents);
+  const amountTone = isSettlement ? "positive" : getAmountTone(activity.currentUserNetCents);
   const detailLabel = isSettlement ? "Payment" : "Total";
 
   return (
@@ -359,10 +359,12 @@ function MobileActivityRow({ activity }: { activity: ActivityItem }) {
                   amountTone === "neutral" && "text-on-surface",
                 )}
               >
-                {formatSignedMoneyFromCents(
-                  activity.currentUserNetCents,
-                  activity.groupCurrency,
-                )}
+                {isSettlement
+                  ? formatMoneyFromCents(activity.amountCents, activity.groupCurrency)
+                  : formatSignedMoneyFromCents(
+                      activity.currentUserNetCents,
+                      activity.groupCurrency,
+                    )}
               </p>
               <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
                 {detailLabel}:{" "}
@@ -398,7 +400,7 @@ function DesktopActivityRow({ activity }: { activity: ActivityItem }) {
   const Icon = isSettlement
     ? HandCoins
     : iconMap[getExpenseIconKey(activity.description, activity.groupIconKey)];
-  const amountTone = getAmountTone(activity.currentUserNetCents);
+  const amountTone = isSettlement ? "positive" : getAmountTone(activity.currentUserNetCents);
   const detailLabel = isSettlement ? "Payment" : "Total";
 
   return (
@@ -445,10 +447,12 @@ function DesktopActivityRow({ activity }: { activity: ActivityItem }) {
                     amountTone === "neutral" && "text-on-surface",
                   )}
                 >
-                  {formatSignedMoneyFromCents(
-                    activity.currentUserNetCents,
-                    activity.groupCurrency,
-                  )}
+                  {isSettlement
+                    ? formatMoneyFromCents(activity.amountCents, activity.groupCurrency)
+                    : formatSignedMoneyFromCents(
+                        activity.currentUserNetCents,
+                        activity.groupCurrency,
+                      )}
                 </p>
                 <p className="text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
                   {detailLabel}:{" "}

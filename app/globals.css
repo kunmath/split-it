@@ -62,6 +62,10 @@
     color: var(--on-surface);
     font-family: var(--font-body), sans-serif;
     text-rendering: optimizeLegibility;
+    /* Decorative .page-glow pseudo-elements intentionally bleed past their
+       container edges; clip them at the viewport so they never create a
+       horizontal scrollbar. */
+    overflow-x: clip;
   }
 
   ::selection {

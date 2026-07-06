@@ -28,7 +28,7 @@ import {
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { looksLikeConvexId } from "@/lib/convex-ids";
-import { formatMoneyFromCents, formatSignedMoneyFromCents } from "@/lib/format";
+import { formatMoneyFromCents } from "@/lib/format";
 import { iconMap } from "@/lib/icon-map";
 import {
   getGroupDetail,
@@ -167,7 +167,7 @@ function getExpenseNetDescriptor(balanceCents: number, currency: string) {
     return {
       label: "You are owed",
       tone: "positive" as const,
-      valueLabel: formatSignedMoneyFromCents(balanceCents, currency),
+      valueLabel: formatMoneyFromCents(balanceCents, currency),
     };
   }
 
@@ -175,7 +175,7 @@ function getExpenseNetDescriptor(balanceCents: number, currency: string) {
     return {
       label: "You owe",
       tone: "negative" as const,
-      valueLabel: formatSignedMoneyFromCents(balanceCents, currency),
+      valueLabel: formatMoneyFromCents(Math.abs(balanceCents), currency),
     };
   }
 
@@ -817,7 +817,7 @@ function RecentExpensesCard({ group }: { group: GroupSceneData }) {
           <p className="text-sm text-on-surface-variant">
             {group.expenseCount === 0
               ? "No shared spend has been recorded yet."
-              : `${group.expenseCount} tracked expense${group.expenseCount === 1 ? "" : "s"} in this group.`}
+              : `${group.expenseCount} ledger entr${group.expenseCount === 1 ? "y" : "ies"} in this group.`}
           </p>
         </div>
 
@@ -956,7 +956,7 @@ function ExpenseRow({
                 Paid by {expense.paidByName}
                 <span className="hidden md:inline">
                   {" "}
-                  · {expense.participantCount} participants
+                  · {expense.participantCount} participant{expense.participantCount === 1 ? "" : "s"}
                 </span>
               </>
             )}
