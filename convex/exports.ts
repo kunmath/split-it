@@ -56,13 +56,19 @@ export const getGroupExpenseExport = query({
         const participants = record.shares.map(
           (share) => userLookup.get(share.userId) ?? "Group member",
         );
+        const kind = record.expense.kind ?? "expense";
+        const payerName = userLookup.get(record.expense.paidBy) ?? "Group member";
+        const description =
+          kind === "settlement"
+            ? `Settlement: ${payerName} paid ${participants.join("; ") || "a member"}`
+            : record.expense.description;
 
         return {
           group_name: access.group.name,
           currency: access.group.currency,
           expense_date: formatExportDate(record.expense.expenseAt),
-          kind: record.expense.kind ?? "expense",
-          description: record.expense.description,
+          kind,
+          description,
           amount: formatExportAmount(record.expense.amountCents),
           paid_by: userLookup.get(record.expense.paidBy) ?? "Group member",
           split_type: record.expense.splitType,
