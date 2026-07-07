@@ -1,6 +1,6 @@
 "use client";
 
-import { BellDot, Search, Sparkles } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -51,7 +51,6 @@ export function TopUtilityBar({
           <Search className="h-4.5 w-4.5 text-on-surface-variant" />
           <span className="truncate text-sm text-on-surface-variant">{meta.searchPlaceholder}</span>
         </div>
-        <div className="text-right text-xs italic text-on-surface-variant">{meta.updatedLabel}</div>
       </div>
 
       <div className="flex items-center gap-3">
@@ -64,27 +63,14 @@ export function TopUtilityBar({
             </span>
           </div>
         ) : null}
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant transition hover:text-on-surface"
-        >
-          <BellDot className="h-5 w-5" />
-        </button>
-        {meta.topActionLabel ? (
-          settleUpHref ? (
-            <Link
-              href={settleUpHref}
-              scroll={false}
-              className={cn(buttonVariants({ variant: "ghost" }), "px-5")}
-            >
-              {meta.topActionLabel}
-            </Link>
-          ) : (
-            <button type="button" className={cn(buttonVariants({ variant: "ghost" }), "px-5")}>
-              {meta.topActionLabel}
-            </button>
-          )
+        {settleUpHref ? (
+          <Link
+            href={settleUpHref}
+            scroll={false}
+            className={cn(buttonVariants({ variant: "ghost" }), "px-5")}
+          >
+            {meta.topActionLabel}
+          </Link>
         ) : null}
         <ShellSessionAvatar />
       </div>

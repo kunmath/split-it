@@ -1,9 +1,10 @@
-import { UserPlus } from "lucide-react";
+import { Users } from "lucide-react";
+import Link from "next/link";
 
 import { PageContainer } from "@/components/shell/page-container";
-import { AvatarBadge } from "@/components/ui/avatar-badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { SurfaceCard } from "@/components/ui/surface-card";
+import { cn } from "@/lib/utils";
 
 export default function FriendsPage() {
   return (
@@ -11,32 +12,25 @@ export default function FriendsPage() {
       <div className="space-y-3">
         <p className="text-xs uppercase tracking-[0.24em] text-primary">Friends</p>
         <h1 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
-          Shared contacts, later
+          Friends are coming soon
         </h1>
         <p className="max-w-2xl text-sm leading-8 text-on-surface-variant sm:text-base">
-          The MVP keeps friends lightweight. This route stays available so the authenticated shell has a coherent destination while direct person-to-person ledgers wait for a later iteration.
+          Person-to-person ledgers and saved contacts are not available yet. For now, everyone
+          you split with lives inside your groups.
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <SurfaceCard variant="hero" className="lg:col-span-2 rounded-[2.25rem] p-7">
-          <p className="text-xs uppercase tracking-[0.24em] text-primary">Planned Surface</p>
-          <p className="mt-4 max-w-2xl text-sm leading-8 text-on-surface-variant">
-            A fuller friends model can land here later with bilateral balances, recent settlements, and faster group composition from saved contacts.
-          </p>
-        </SurfaceCard>
-        <SurfaceCard variant="low" className="rounded-[2.25rem] p-7">
-          <Button variant="secondary" size="lg" fullWidth>
-            <UserPlus className="h-4.5 w-4.5" />
-            Invite Friend
-          </Button>
-        </SurfaceCard>
-      </div>
-
-      <SurfaceCard variant="high" className="space-y-4 rounded-[2.25rem] p-7">
-        <AvatarBadge name="Sarah Jenkins" note="Saved contact concept" tone="positive" />
-        <AvatarBadge name="James Chen" note="Shared group collaborator concept" tone="negative" />
-        <AvatarBadge name="Elena Rodriguez" note="Quick-add roster concept" tone="neutral" />
+      <SurfaceCard variant="hero" className="space-y-5 rounded-[2.25rem] p-7">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+          <Users className="h-5 w-5" />
+        </div>
+        <p className="max-w-2xl text-sm leading-8 text-on-surface-variant">
+          Want to split with someone new today? Open one of your groups and share its invite
+          link — they will show up here once direct friend ledgers arrive.
+        </p>
+        <Link href="/groups" className={cn(buttonVariants({ variant: "secondary", size: "lg" }), "w-fit")}>
+          Go to your groups
+        </Link>
       </SurfaceCard>
     </PageContainer>
   );

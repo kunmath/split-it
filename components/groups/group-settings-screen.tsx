@@ -3,7 +3,6 @@
 import { useConvex, useMutation, useQuery } from "convex/react";
 import type { CSSProperties, FormEvent, ReactNode } from "react";
 import {
-  ArrowRight,
   ChevronRight,
   Copy,
   Download,
@@ -73,18 +72,20 @@ type ExpenseExportRow = {
   description: string;
   expense_date: string;
   group_name: string;
+  kind: "expense" | "settlement";
   notes: string;
   paid_by: string;
   participant_count: number;
   participants: string;
   split_summary: string;
-  split_type: "equal" | "exact";
+  split_type: "equal" | "exact" | "shares";
 };
 
 const CSV_COLUMNS = [
   "group_name",
   "currency",
   "expense_date",
+  "kind",
   "description",
   "amount",
   "paid_by",
@@ -165,7 +166,7 @@ function getGroupSupportText(
     return trimmedDescription;
   }
 
-  return `${memberCount} members and ${expenseCount} tracked expense${expenseCount === 1 ? "" : "s"} in the ledger.`;
+  return `${memberCount} member${memberCount === 1 ? "" : "s"} and ${expenseCount} entr${expenseCount === 1 ? "y" : "ies"} in the ledger.`;
 }
 
 function buildAvatarStyle(imageUrl: string | undefined): CSSProperties | undefined {
@@ -696,30 +697,9 @@ function MemberBalancesCard({
           ))
         ) : (
           <div className="rounded-[1.65rem] bg-surface-container-high px-5 py-5 text-sm leading-7 text-on-surface-variant">
-            No other member balances are visible yet. Add the first shared expense to start the totals table.
+            No other member balances are visible yet. Balances appear here once more members join the group.
           </div>
         )}
-      </div>
-
-      <div className="hidden border-t border-white/6 px-6 py-5 xl:block">
-        <div className="flex items-center justify-between gap-4">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 font-headline text-sm font-bold text-primary transition hover:text-on-surface"
-          >
-            View All Settlement History
-            <ArrowRight className="h-4 w-4" />
-          </button>
-          <p className="text-[0.68rem] uppercase tracking-[0.2em] text-on-surface-variant">
-            Read-only stub for next phase
-          </p>
-        </div>
-      </div>
-
-      <div className="border-t border-white/6 px-5 py-4 xl:hidden">
-        <p className="text-xs leading-6 text-on-surface-variant">
-          Settlement history stays documented as a read-only stub in this phase.
-        </p>
       </div>
     </SurfaceCard>
   );

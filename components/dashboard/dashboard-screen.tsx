@@ -7,7 +7,6 @@ import {
   ArrowUpRight,
   Coins,
   Plus,
-  Sparkles,
   TrendingDown,
   Users,
   X,
@@ -481,7 +480,7 @@ function DashboardScene({
                     Start a new shared ledger
                   </h3>
                   <p className="max-w-xl text-sm leading-7 text-on-surface-variant">
-                    Add the group basics now. Invites, acceptance, and expense entry arrive in later phases.
+                    Add the group basics now. You can invite members and log expenses right after.
                   </p>
                 </div>
 
@@ -553,20 +552,6 @@ function DashboardScene({
                       })}
                     </div>
                   </div>
-
-                  <SurfaceCard variant="low" className="rounded-[1.75rem] p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                        <Sparkles className="h-4.5 w-4.5" />
-                      </div>
-                      <div>
-                        <p className="font-headline text-base font-semibold text-on-surface">Phase 3 boundary</p>
-                        <p className="mt-1 text-sm leading-6 text-on-surface-variant">
-                          This flow creates the group and owner membership only. Invite acceptance and expenses stay out of scope here.
-                        </p>
-                      </div>
-                    </div>
-                  </SurfaceCard>
 
                   {submissionError ? (
                     <p className="rounded-[1.2rem] bg-error/8 px-4 py-3 text-sm text-error">{submissionError}</p>

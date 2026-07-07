@@ -11,7 +11,6 @@ export type AppRouteMeta = {
   railActionLabel?: string;
   railActionHref?: string;
   topActionLabel?: string;
-  updatedLabel?: string;
 };
 
 function getGroupExpenseHref(pathname: string) {
@@ -34,7 +33,6 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       railActionLabel: "New Group",
       railActionHref: "/dashboard?create=1",
       topActionLabel: "Create Group",
-      updatedLabel: "Active group directory",
     };
   }
 
@@ -50,7 +48,6 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       railActionLabel: "New Expense",
       railActionHref: getGroupExpenseHref(pathname),
       topActionLabel: "Settle Up",
-      updatedLabel: "Group snapshot",
     };
   }
 
@@ -66,7 +63,6 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       railActionLabel: "New Expense",
       railActionHref: getGroupExpenseHref(pathname),
       topActionLabel: "Preview",
-      updatedLabel: "Draft mode",
     };
   }
 
@@ -82,7 +78,6 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       railActionLabel: "New Expense",
       railActionHref: getGroupExpenseHref(pathname),
       topActionLabel: "Preview",
-      updatedLabel: "Draft mode",
     };
   }
 
@@ -98,7 +93,6 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       railActionLabel: "New Expense",
       railActionHref: getGroupExpenseHref(pathname),
       topActionLabel: "Settle Up",
-      updatedLabel: "Current standing + recent expenses",
     };
   }
 
@@ -114,7 +108,6 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       railActionLabel: "New Group",
       railActionHref: "/dashboard?create=1",
       topActionLabel: "Invite",
-      updatedLabel: "Placeholder space",
     };
   }
 
@@ -130,7 +123,6 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       railActionLabel: "New Group",
       railActionHref: "/dashboard?create=1",
       topActionLabel: "Filter",
-      updatedLabel: "Quiet feed",
     };
   }
 
@@ -146,7 +138,6 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
       railActionLabel: "New Group",
       railActionHref: "/dashboard?create=1",
       topActionLabel: "Manage",
-      updatedLabel: "Profile shell",
     };
   }
 
@@ -161,6 +152,5 @@ export function getRouteMeta(pathname: string): AppRouteMeta {
     railActionLabel: "New Group",
     railActionHref: "/dashboard?create=1",
     topActionLabel: "Settle Up",
-    updatedLabel: "Updated 2 minutes ago",
   };
 }
