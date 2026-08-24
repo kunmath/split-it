@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation } from "convex/react";
+import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { ArrowRightLeft, HandCoins } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -8,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { FilledInput } from "@/components/ui/filled-input";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
 import { formatMoneyFromCents } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +34,11 @@ type SettleUpDialogProps = {
   suggestions: SettleUpSuggestion[];
   isMock?: boolean;
 };
+
+type CreateSettlementArgs = FunctionArgs<typeof api.settlements.create>;
+type CreateSettlement = (
+  args: CreateSettlementArgs,
+) => Promise<FunctionReturnType<typeof api.settlements.create>>;
 
 const AMOUNT_PATTERN = /^\d+(?:\.\d{1,2})?$/;
 
@@ -79,12 +84,7 @@ function SettleUpDialogScene({
   isMock = false,
   createSettlement,
 }: SettleUpDialogProps & {
-  createSettlement?: (args: {
-    groupId: Id<"groups">;
-    toUserId: Id<"users">;
-    amountCents: number;
-    note?: string;
-  }) => Promise<unknown>;
+  createSettlement?: CreateSettlement;
 }) {
   const otherMembers = useMemo(
     () => members.filter((member) => !member.isCurrentUser),
@@ -153,8 +153,8 @@ function SettleUpDialogScene({
     setError(null);
     try {
       await createSettlement({
-        groupId: groupId as Id<"groups">,
-        toUserId: toUserId as Id<"users">,
+        groupId: groupId as CreateSettlementArgs["groupId"],
+        toUserId: toUserId as CreateSettlementArgs["toUserId"],
         amountCents,
         note: note.trim() || undefined,
       });
