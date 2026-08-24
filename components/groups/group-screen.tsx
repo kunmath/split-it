@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import {
   ArrowUpRight,
+  ChevronDown,
   Download,
   HandCoins,
   ReceiptText,
@@ -497,15 +498,18 @@ function GroupScene({ group, isMock = false }: GroupSceneProps) {
   };
 
   return (
-    <PageContainer className="page-glow relative space-y-6 lg:space-y-8">
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.82fr)] xl:items-start">
-        <div className="space-y-5 lg:space-y-8">
+    <PageContainer className="page-glow relative space-y-4 sm:space-y-6 lg:space-y-8">
+      <section className="grid gap-4 sm:gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.82fr)] xl:items-start">
+        <div className="space-y-4 sm:space-y-5 lg:space-y-8">
           <GroupHeroCard group={group} />
           <div className="xl:hidden">
             <CurrentStandingCard group={group} onSettleUp={openSettle} />
           </div>
           <RecentExpensesCard group={group} />
-          <div className="xl:hidden">
+          <div className="sm:hidden">
+            <GroupInsightsCard group={group} isMock={isMock} collapsible />
+          </div>
+          <div className="hidden sm:block xl:hidden">
             <GroupInsightsCard group={group} isMock={isMock} />
           </div>
         </div>
@@ -541,7 +545,7 @@ function GroupHeroCard({ group }: { group: GroupSceneData }) {
 
   return (
     <SurfaceCard className="rounded-[2rem] p-0 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
-      <div className="relative min-h-[15rem] overflow-hidden rounded-[2rem]">
+      <div className="relative min-h-[11.5rem] overflow-hidden rounded-[2rem] sm:min-h-[15rem]">
         <div
           className={cn(
             "absolute inset-0",
@@ -556,7 +560,7 @@ function GroupHeroCard({ group }: { group: GroupSceneData }) {
           </div>
         ) : null}
 
-        <div className="relative flex min-h-[15rem] flex-col justify-between p-5 sm:p-7">
+        <div className="relative flex min-h-[11.5rem] flex-col justify-between p-4 sm:min-h-[15rem] sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex flex-wrap gap-2">
               <span className="rounded-full bg-primary/18 px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-primary backdrop-blur-sm">
@@ -656,7 +660,7 @@ function CurrentStandingCard({
   );
 
   return (
-    <SurfaceCard className="rounded-[2rem] bg-[radial-gradient(circle_at_top_right,rgba(78,222,163,0.12),transparent_34%),linear-gradient(180deg,rgba(48,52,49,0.92),rgba(35,35,35,0.98))] p-6 sm:p-7">
+    <SurfaceCard className="rounded-[2rem] bg-[radial-gradient(circle_at_top_right,rgba(78,222,163,0.12),transparent_34%),linear-gradient(180deg,rgba(48,52,49,0.92),rgba(35,35,35,0.98))] p-4 sm:p-7">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-3">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-primary">Current Standing</p>
@@ -665,7 +669,7 @@ function CurrentStandingCard({
             <div className="mt-2 flex items-center gap-3">
               <h2
                 className={cn(
-                  "font-headline text-4xl font-extrabold tracking-tight",
+                  "font-headline text-3xl font-extrabold tracking-tight sm:text-4xl",
                   standing.tone === "positive" && "text-primary",
                   standing.tone === "negative" && "text-secondary",
                   standing.tone === "neutral" && "text-on-surface",
@@ -702,12 +706,12 @@ function CurrentStandingCard({
         </div>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
+      <div className="mt-4 grid gap-2.5 sm:mt-6 sm:gap-3 sm:grid-cols-2 xl:grid-cols-2">
         <MetricTile label="Paid by you" value={formatMoneyFromCents(group.currentStanding.paidCents, group.groupCurrency)} />
         <MetricTile label="Your share" value={formatMoneyFromCents(group.currentStanding.owedCents, group.groupCurrency)} />
       </div>
 
-      <div className="mt-6 xl:mt-8 xl:border-t xl:border-white/8 xl:pt-6">
+      <div className="mt-4 sm:mt-6 xl:mt-8 xl:border-t xl:border-white/8 xl:pt-6">
         <div className="hidden space-y-4 xl:block">
           {memberRows.length > 0 ? (
             memberRows.map((member) => (
@@ -726,11 +730,12 @@ function CurrentStandingCard({
           ) : null}
         </div>
 
-        <div className="mt-5 flex flex-col gap-2 xl:mt-8">
+        <div className="mt-5 flex flex-col gap-2 min-[360px]:flex-row xl:mt-8 xl:flex-col">
           <Button
             variant="primary"
             size="lg"
             fullWidth
+            className="whitespace-nowrap px-3 text-sm sm:px-6 sm:text-base"
             onClick={onSettleUp}
             disabled={group.memberCount < 2}
           >
@@ -741,7 +746,7 @@ function CurrentStandingCard({
             href={`/groups/${group.groupId}/settings`}
             className={cn(
               buttonVariants({ variant: "ghost", size: "lg" }),
-              "w-full border-white/10 bg-black/12 text-on-surface hover:bg-white/6",
+              "w-full whitespace-nowrap border-white/10 bg-black/12 px-3 text-sm text-on-surface hover:bg-white/6 sm:px-6 sm:text-base",
             )}
           >
             View Totals
@@ -923,8 +928,8 @@ function ExpenseRow({
       : "Settlement between members";
 
   const rowContent = (
-    <div className="grid gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto_auto] md:items-center">
-      <div className="flex w-10 flex-col items-center justify-center">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 md:grid-cols-[auto_minmax(0,1fr)_auto_auto]">
+      <div className="hidden w-10 flex-col items-center justify-center md:flex">
         <span className="text-[0.6rem] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
           {month}
         </span>
@@ -950,9 +955,13 @@ function ExpenseRow({
           </p>
           <p className="text-[0.68rem] uppercase tracking-[0.2em] text-on-surface-variant">
             {isSettlement ? (
-              settlementSubtitle
+              <>
+                <span className="md:hidden">{month} {day} · </span>
+                {settlementSubtitle}
+              </>
             ) : (
               <>
+                <span className="md:hidden">{month} {day} · </span>
                 Paid by {expense.paidByName}
                 <span className="hidden md:inline">
                   {" "}
@@ -1016,7 +1025,7 @@ function ExpenseRow({
 
   if (isSettlement) {
     return (
-      <div className="group block rounded-[1.6rem] border border-transparent bg-surface-container-low px-4 py-4 sm:px-5 sm:py-5">
+      <div className="group block rounded-[1.6rem] border border-transparent bg-surface-container-low px-3.5 py-3 sm:px-5 sm:py-5">
         {rowContent}
       </div>
     );
@@ -1025,7 +1034,7 @@ function ExpenseRow({
   return (
     <Link
       href={`/groups/${groupId}/expenses/${expense.id}/edit`}
-      className="group block rounded-[1.6rem] border border-transparent bg-surface-container-low px-4 py-4 transition hover:border-white/6 hover:bg-surface-container-high sm:px-5 sm:py-5"
+      className="group block rounded-[1.6rem] border border-transparent bg-surface-container-low px-3.5 py-3 transition hover:border-white/6 hover:bg-surface-container-high sm:px-5 sm:py-5"
     >
       {rowContent}
     </Link>
@@ -1035,27 +1044,37 @@ function ExpenseRow({
 function GroupInsightsCard({
   group,
   isMock,
+  collapsible = false,
 }: {
   group: GroupSceneData;
   isMock: boolean;
+  collapsible?: boolean;
 }) {
-  return (
-    <SurfaceCard variant="low" className="rounded-[2rem] p-6 sm:p-7">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h3 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Group Insights</h3>
-          <p className="mt-1 text-sm text-on-surface-variant">
-            Derived from what members have fronted so far.
-          </p>
-        </div>
-        {isMock ? (
-          <span className="rounded-full bg-white/6 px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
-            Mock
-          </span>
-        ) : null}
-      </div>
+  const mockBadge = isMock ? (
+    <span className="rounded-full bg-white/6 px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
+      Mock
+    </span>
+  ) : null;
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+  const summaryHeader = (
+    <>
+      <span className="min-w-0 flex-1">
+        <span
+          role="heading"
+          aria-level={3}
+          className="block font-headline text-xl font-bold tracking-tight text-on-surface"
+        >
+          Group Insights
+        </span>
+        <span className="mt-1 block text-sm text-on-surface-variant">Derived from what members have fronted so far.</span>
+      </span>
+      {mockBadge}
+    </>
+  );
+
+  const body = (
+    <>
+      <div className="mt-4 grid gap-2.5 sm:mt-6 sm:grid-cols-3 sm:gap-3 xl:grid-cols-1">
         <InsightStat label="Tracked total" value={formatMoneyFromCents(group.insights.totalSpendCents, group.groupCurrency)} />
         <InsightStat label="Average expense" value={formatMoneyFromCents(group.insights.averageExpenseCents, group.groupCurrency)} />
         <InsightStat
@@ -1069,7 +1088,7 @@ function GroupInsightsCard({
       </div>
 
       {group.insights.topContributors.length > 0 ? (
-        <div className="mt-6 space-y-5">
+        <div className="mt-4 space-y-4 sm:mt-6 sm:space-y-5">
           {group.insights.topContributors.map((member) => (
             <div key={member.id} className="space-y-2">
               <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
@@ -1089,17 +1108,44 @@ function GroupInsightsCard({
           ))}
         </div>
       ) : (
-        <div className="mt-6 rounded-[1.5rem] border border-dashed border-white/8 bg-white/[0.02] px-4 py-5 text-sm leading-7 text-on-surface-variant">
+        <div className="mt-4 rounded-[1.5rem] border border-dashed border-white/8 bg-white/[0.02] px-4 py-5 text-sm leading-7 text-on-surface-variant sm:mt-6">
           No contribution breakdown yet. Once the first expense is added, this panel will show who fronted the most spend.
         </div>
       )}
 
       {group.insights.largestExpenseLabel ? (
-        <p className="mt-6 text-sm text-on-surface-variant">
+        <p className="mt-4 text-sm text-on-surface-variant sm:mt-6">
           Largest line item so far:{" "}
           <span className="font-medium text-on-surface">{group.insights.largestExpenseLabel}</span>
         </p>
       ) : null}
+    </>
+  );
+
+  if (collapsible) {
+    return (
+      <SurfaceCard variant="low" className="rounded-[1.6rem] p-4 sm:rounded-[2rem] sm:p-6">
+        <details className="group/insights">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 [&::-webkit-details-marker]:hidden">
+            {summaryHeader}
+            <ChevronDown className="h-5 w-5 shrink-0 text-on-surface-variant transition-transform duration-200 group-open/insights:rotate-180" />
+          </summary>
+          {body}
+        </details>
+      </SurfaceCard>
+    );
+  }
+
+  return (
+    <SurfaceCard variant="low" className="rounded-[2rem] p-6 sm:p-7">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Group Insights</h3>
+          <p className="mt-1 text-sm text-on-surface-variant">Derived from what members have fronted so far.</p>
+        </div>
+        {mockBadge}
+      </div>
+      {body}
     </SurfaceCard>
   );
 }

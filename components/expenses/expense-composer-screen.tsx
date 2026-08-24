@@ -1061,9 +1061,9 @@ function ExpenseComposerScene({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="page-glow relative min-h-screen pb-40 lg:pb-12">
+    <form onSubmit={handleSubmit} className="page-glow relative min-h-screen pb-28 lg:pb-12">
       <header className="sticky top-0 z-30 border-b border-white/6 bg-[rgba(19,19,19,0.88)] backdrop-blur-xl">
-        <PageContainer className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-12 lg:py-5">
+        <PageContainer className="flex items-center justify-between gap-4 pb-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] lg:px-12 lg:py-5">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href={`/groups/${data.groupId}`}
@@ -1088,22 +1088,22 @@ function ExpenseComposerScene({
         </PageContainer>
       </header>
 
-      <PageContainer className="px-4 pt-6 sm:px-6 lg:px-12 lg:pt-10">
+      <PageContainer className="pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-4 sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] lg:px-12 lg:pt-10">
         {isMock ? (
           <div className="mb-6 rounded-[1.5rem] border border-primary/15 bg-primary/8 px-4 py-3 text-sm text-on-surface-variant">
             Preview mode only. The responsive composer is live, but save and delete actions require a live Clerk + Convex setup.
           </div>
         ) : null}
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] xl:items-start">
-          <section className="space-y-6 lg:space-y-8">
+        <div className="grid gap-5 xl:gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] xl:items-start">
+          <section className="space-y-5 lg:space-y-8">
             <section className="space-y-4 pt-2">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.24em] text-on-surface-variant">
                     Expense Amount
                   </p>
-                  <p className="mt-2 max-w-xl text-sm leading-7 text-on-surface-variant">
+                  <p className="mt-2 hidden max-w-xl text-sm leading-7 text-on-surface-variant sm:block">
                     {isEditMode
                       ? "Refine the existing expense without leaving the shared composer."
                       : "Add the spend details first, then decide whether the split stays equal or becomes exact."}
@@ -1116,7 +1116,7 @@ function ExpenseComposerScene({
               </div>
 
               <div className="flex items-end gap-3">
-                <span className="pb-3 font-headline text-4xl font-extrabold text-primary sm:text-5xl">
+                <span className="pb-2 font-headline text-3xl font-extrabold text-primary sm:pb-3 sm:text-5xl">
                   {getCurrencyToken(data.groupCurrency)}
                 </span>
                 <input
@@ -1133,7 +1133,7 @@ function ExpenseComposerScene({
                   placeholder="0.00"
                   inputMode="decimal"
                   className={cn(
-                    "w-full border-none bg-transparent p-0 font-headline text-6xl font-extrabold tracking-tight text-on-surface placeholder:text-surface-bright focus:outline-none sm:text-7xl",
+                    "w-full border-none bg-transparent p-0 font-headline text-4xl font-extrabold tracking-tight text-on-surface placeholder:text-surface-bright focus:outline-none sm:text-7xl",
                     fieldErrors.amount && "text-secondary placeholder:text-secondary/40",
                   )}
                   aria-invalid={fieldErrors.amount ? "true" : undefined}

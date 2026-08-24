@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Manrope } from "next/font/google";
 
 import { AppProviders } from "@/components/providers/app-providers";
@@ -21,6 +21,10 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "split-it",
   description: "Responsive shared-expense MVP with groups, invites, balances, and settings.",
+};
+
+export const viewport: Viewport = {
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

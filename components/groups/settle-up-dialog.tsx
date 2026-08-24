@@ -53,6 +53,23 @@ function parseAmountToCents(value: string) {
 }
 
 export function SettleUpDialog({
+  isMock = false,
+  ...props
+}: SettleUpDialogProps) {
+  if (isMock) {
+    return <SettleUpDialogScene {...props} isMock />;
+  }
+
+  return <LiveSettleUpDialog {...props} />;
+}
+
+function LiveSettleUpDialog(props: Omit<SettleUpDialogProps, "isMock">) {
+  const createSettlement = useMutation(api.settlements.create);
+
+  return <SettleUpDialogScene {...props} createSettlement={createSettlement} />;
+}
+
+function SettleUpDialogScene({
   open,
   onClose,
   groupId,
@@ -60,7 +77,15 @@ export function SettleUpDialog({
   members,
   suggestions,
   isMock = false,
-}: SettleUpDialogProps) {
+  createSettlement,
+}: SettleUpDialogProps & {
+  createSettlement?: (args: {
+    groupId: Id<"groups">;
+    toUserId: Id<"users">;
+    amountCents: number;
+    note?: string;
+  }) => Promise<unknown>;
+}) {
   const otherMembers = useMemo(
     () => members.filter((member) => !member.isCurrentUser),
     [members],
@@ -75,8 +100,6 @@ export function SettleUpDialog({
   const [note, setNote] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const createSettlement = useMutation(api.settlements.create);
 
   useEffect(() => {
     if (!open) {
@@ -112,7 +135,7 @@ export function SettleUpDialog({
     if (isSubmitting) {
       return;
     }
-    if (isMock) {
+    if (!createSettlement) {
       setError("Settle Up requires a live Convex connection.");
       return;
     }
