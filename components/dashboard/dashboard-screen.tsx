@@ -14,6 +14,7 @@ import {
 import { startTransition, useEffect, useState, type FormEvent } from "react";
 
 import { usePlaceholderMode } from "@/components/providers/app-providers";
+import { CompactGroupCard } from "@/components/groups/compact-group-card";
 import { PageContainer } from "@/components/shell/page-container";
 import { Button } from "@/components/ui/button";
 import { FilledInput } from "@/components/ui/filled-input";
@@ -375,24 +376,24 @@ function DashboardScene({
 
   return (
     <>
-      <PageContainer className="relative page-glow space-y-8 lg:space-y-11">
+      <PageContainer className="relative page-glow space-y-5 sm:space-y-8 lg:space-y-11">
         <section className="space-y-3 lg:space-y-4">
-          <p className="text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant">
+          <p className="hidden text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant sm:block">
             Portfolio Summary
           </p>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-4">
             <div>
-              <h1 className="max-w-[12rem] font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:max-w-none sm:text-5xl lg:text-[3.15rem]">
+              <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface sm:text-5xl lg:text-[3.15rem]">
                 Financial Footprint
               </h1>
+              <p className="mt-1 max-w-xl text-xs leading-5 text-on-surface-variant sm:mt-3 sm:text-sm sm:leading-7">
+                Shared ledgers for rent, travel, dinners, and recurring spend.
+              </p>
             </div>
-            <p className="max-w-xl text-sm leading-7 text-on-surface-variant">
-              Build shared ledgers for rent, travel, dinners, and recurring spend from one responsive dashboard.
-            </p>
           </div>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2">
+        <section className="grid gap-2.5 sm:grid-cols-2 sm:gap-4">
           {isLoading ? (
             <>
               <SummaryTileSkeleton />
@@ -403,27 +404,27 @@ function DashboardScene({
           )}
         </section>
 
-        <section className="space-y-5">
+        <section className="space-y-4 sm:space-y-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface sm:text-3xl">
+              <h2 className="font-headline text-xl font-bold tracking-tight text-on-surface sm:text-3xl">
                 Active Groups
               </h2>
-              <p className="mt-1 text-sm text-on-surface-variant">
+              <p className="mt-0.5 text-xs text-on-surface-variant sm:mt-1 sm:text-sm">
                 {isLoading ? loadingLabel : `${groups.length} active ${groups.length === 1 ? "group" : "groups"} in view`}
               </p>
             </div>
 
-            <button
-              type="button"
+            <Link
+              href="/groups"
               className="text-sm font-semibold text-primary transition hover:text-on-surface"
             >
-              <span className="sm:hidden">View Archived</span>
+              <span className="sm:hidden">View groups</span>
               <span className="hidden sm:inline">View all groups</span>
-            </button>
+            </Link>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
             {isLoading ? (
               <>
                 <GroupCardSkeleton />
@@ -460,10 +461,10 @@ function DashboardScene({
             onClick={closeComposer}
           />
 
-          <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-2xl px-3 pb-3 pt-16 lg:inset-0 lg:flex lg:items-center lg:justify-center lg:px-6 lg:pb-6 lg:pt-6">
+          <div className="absolute inset-x-0 bottom-0 mx-auto w-full max-w-2xl pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-16 lg:inset-0 lg:flex lg:items-center lg:justify-center lg:px-6 lg:pb-6 lg:pt-6">
             <SurfaceCard
               variant="hero"
-              className="relative max-h-[92vh] overflow-y-auto rounded-[2rem] p-5 sm:p-6 lg:w-full lg:rounded-[2.5rem] lg:p-8"
+              className="relative max-h-[calc(100dvh-4rem-max(0.75rem,env(safe-area-inset-bottom)))] overflow-y-auto rounded-[2rem] p-5 sm:p-6 lg:max-h-[calc(100dvh-3rem)] lg:w-full lg:rounded-[2.5rem] lg:p-8"
             >
               <button
                 type="button"
@@ -579,18 +580,21 @@ function SummaryTile({ item }: { item: DashboardSummaryItem }) {
   const Icon = item.tone === "negative" ? TrendingDown : ArrowUpRight;
 
   return (
-    <SurfaceCard variant="high" className="min-h-44 rounded-[2rem] p-5 sm:p-6 lg:min-h-48 lg:rounded-[2.2rem]">
-      <div className="flex h-full flex-col justify-between gap-8">
-        <div className="flex h-12 w-12 items-center justify-center rounded-[1rem] bg-surface-container-low text-on-surface-variant">
+    <SurfaceCard
+      variant="high"
+      className="rounded-[1.5rem] p-4 sm:min-h-44 sm:rounded-[2rem] sm:p-6 lg:min-h-48 lg:rounded-[2.2rem]"
+    >
+      <div className="flex items-center gap-4 sm:h-full sm:flex-col sm:items-stretch sm:justify-between sm:gap-8">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[0.85rem] bg-surface-container-low text-on-surface-variant sm:h-12 sm:w-12 sm:rounded-[1rem]">
           <Icon className={cn("h-5 w-5", item.tone === "negative" ? "text-secondary" : "text-primary")} />
         </div>
 
-        <div className="space-y-3">
-          <p className="text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant">{item.label}</p>
-          <div className="flex flex-wrap items-end gap-2">
+        <div className="min-w-0 flex-1 space-y-1 text-right sm:space-y-3 sm:text-left">
+          <p className="truncate text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant">{item.label}</p>
+          <div className="flex flex-wrap items-end justify-end gap-x-2 sm:justify-start">
             <p
               className={cn(
-                "font-headline text-[2.4rem] font-extrabold tracking-tight sm:text-[2.8rem]",
+                "font-headline text-[1.65rem] font-extrabold tracking-tight sm:text-[2.4rem] lg:text-[2.8rem]",
                 item.tone === "positive" && "text-primary",
                 item.tone === "negative" && "text-secondary",
                 item.tone === "neutral" && "text-on-surface",
@@ -600,7 +604,7 @@ function SummaryTile({ item }: { item: DashboardSummaryItem }) {
             </p>
             <span
               className={cn(
-                "pb-1.5 text-sm",
+                "basis-full text-xs leading-4 sm:basis-auto sm:pb-1.5 sm:text-sm sm:leading-normal",
                 item.tone === "positive" && "text-primary/70",
                 item.tone === "negative" && "text-secondary/70",
                 item.tone === "neutral" && "text-on-surface-variant",
@@ -625,82 +629,96 @@ function GroupCard({
   const Icon = iconMap[group.icon];
 
   return (
-    <Link href={group.href} className="group block">
-      <SurfaceCard
-        variant="high"
-        className={cn(
-          "min-h-[16rem] rounded-[2rem] p-5 transition duration-200 hover:bg-surface-bright sm:p-6",
-          highlighted && "ring-1 ring-primary/45 shadow-[0_22px_50px_rgba(78,222,163,0.14)]",
-        )}
-      >
-        <div className="relative flex h-full flex-col justify-between gap-8 overflow-hidden">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-surface-container-low text-on-surface-variant">
-              <Icon
-                className={cn(
-                  "h-5 w-5",
-                  group.balanceTone === "negative" ? "text-secondary" : "text-primary",
-                )}
-              />
+    <>
+      <CompactGroupCard
+        href={group.href}
+        icon={group.icon}
+        name={group.name}
+        memberLabel={group.memberLabel}
+        balanceLabel={group.balanceLabel}
+        balanceTone={group.balanceTone}
+        highlighted={highlighted}
+      />
+
+      <Link href={group.href} className="group hidden sm:block">
+        <SurfaceCard
+          variant="high"
+          className={cn(
+            "min-h-[16rem] rounded-[2rem] p-5 transition duration-200 hover:bg-surface-bright sm:p-6",
+            highlighted && "ring-1 ring-primary/45 shadow-[0_22px_50px_rgba(78,222,163,0.14)]",
+          )}
+        >
+          <div className="relative flex h-full flex-col justify-between gap-8 overflow-hidden">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-surface-container-low text-on-surface-variant">
+                <Icon
+                  className={cn(
+                    "h-5 w-5",
+                    group.balanceTone === "negative" ? "text-secondary" : "text-primary",
+                  )}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                {group.accentCount > 0 ? (
+                  <GroupAccentCluster name={group.name} accentCount={group.accentCount} />
+                ) : null}
+                {group.isOwner ? (
+                <span className="hidden rounded-full bg-white/6 px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.2em] text-on-surface-variant xl:inline-flex">
+                    Owner
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="text-right xl:hidden">
+                <p className="text-[0.62rem] uppercase tracking-[0.24em] text-on-surface-variant">Balance</p>
+                <p
+                  className={cn(
+                    "mt-1 font-headline text-xl font-bold tracking-tight",
+                    group.balanceTone === "positive" && "text-primary",
+                    group.balanceTone === "negative" && "text-secondary",
+                    group.balanceTone === "neutral" && "text-on-surface-variant",
+                  )}
+                >
+                  {group.balanceLabel}
+                </p>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              {group.accentCount > 0 ? <GroupAccentCluster name={group.name} accentCount={group.accentCount} /> : null}
-              {group.isOwner ? (
-                <span className="hidden rounded-full bg-white/6 px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.2em] text-on-surface-variant sm:inline-flex">
-                  Owner
-                </span>
-              ) : null}
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-headline text-[1.7rem] font-bold tracking-tight text-on-surface">
+                  {group.name}
+                </h3>
+                <p className="mt-1 text-sm text-on-surface-variant">{group.memberLabel}</p>
+              </div>
+              <p className="max-w-[18rem] text-sm italic text-on-surface-variant/90">{group.contextLabel}</p>
             </div>
 
-            <div className="text-right xl:hidden">
+            <div className="hidden space-y-2 xl:block">
               <p className="text-[0.62rem] uppercase tracking-[0.24em] text-on-surface-variant">Balance</p>
               <p
                 className={cn(
-                  "mt-1 font-headline text-xl font-bold tracking-tight",
+                  "font-headline text-[2rem] font-extrabold tracking-tight",
                   group.balanceTone === "positive" && "text-primary",
                   group.balanceTone === "negative" && "text-secondary",
-                  group.balanceTone === "neutral" && "text-on-surface-variant",
+                  group.balanceTone === "neutral" && "text-on-surface",
                 )}
               >
                 {group.balanceLabel}
               </p>
             </div>
-          </div>
 
-          <div className="space-y-3">
-            <div>
-              <h3 className="font-headline text-[1.7rem] font-bold tracking-tight text-on-surface">
-                {group.name}
-              </h3>
-              <p className="mt-1 text-sm text-on-surface-variant">{group.memberLabel}</p>
-            </div>
-            <p className="max-w-[18rem] text-sm italic text-on-surface-variant/90">{group.contextLabel}</p>
-          </div>
-
-          <div className="hidden space-y-2 xl:block">
-            <p className="text-[0.62rem] uppercase tracking-[0.24em] text-on-surface-variant">Balance</p>
-            <p
+            <div
               className={cn(
-                "font-headline text-[2rem] font-extrabold tracking-tight",
-                group.balanceTone === "positive" && "text-primary",
-                group.balanceTone === "negative" && "text-secondary",
-                group.balanceTone === "neutral" && "text-on-surface",
+                "pointer-events-none absolute -bottom-8 -right-8 h-28 w-28 rounded-full blur-3xl transition group-hover:opacity-100",
+                group.balanceTone === "negative" ? "bg-secondary/12" : "bg-primary/10",
               )}
-            >
-              {group.balanceLabel}
-            </p>
+            />
           </div>
-
-          <div
-            className={cn(
-              "pointer-events-none absolute -bottom-8 -right-8 h-28 w-28 rounded-full blur-3xl transition group-hover:opacity-100",
-              group.balanceTone === "negative" ? "bg-secondary/12" : "bg-primary/10",
-            )}
-          />
-        </div>
-      </SurfaceCard>
-    </Link>
+        </SurfaceCard>
+      </Link>
+    </>
   );
 }
 
@@ -710,7 +728,7 @@ function GroupAccentCluster({ name, accentCount }: { name: string; accentCount: 
   const second = initials[1] ?? first;
 
   return (
-    <div className="hidden items-center sm:flex">
+    <div className="hidden items-center xl:flex">
       <div className="flex items-center -space-x-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-full border border-surface bg-primary/18 text-[0.65rem] font-semibold text-primary">
           {first}
@@ -732,7 +750,7 @@ function EmptyGroupsState({ onCreateRequest }: { onCreateRequest: () => void }) 
   return (
     <SurfaceCard
       variant="hero"
-      className="md:col-span-2 xl:col-span-3 xl:min-h-[16rem] xl:rounded-[2rem]"
+      className="sm:col-span-2 xl:col-span-3 xl:min-h-[16rem] xl:rounded-[2rem]"
     >
       <div className="flex h-full flex-col justify-between gap-6">
         <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-primary/14 text-primary">
@@ -761,32 +779,50 @@ function EmptyGroupsState({ onCreateRequest }: { onCreateRequest: () => void }) 
 
 function InviteTile({ disabled = false }: { disabled?: boolean }) {
   return (
-    <SurfaceCard
-      variant="low"
-      className={cn(
-        "flex min-h-[16rem] flex-col items-center justify-center rounded-[2rem] border border-dashed border-outline-variant/35 bg-transparent text-center",
-        disabled && "animate-pulse",
-      )}
-    >
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-high text-on-surface-variant">
-        <Users className="h-5 w-5" />
-      </div>
-      <p className="mt-5 font-headline text-2xl font-bold text-on-surface">Invite a Friend</p>
-      <p className="mt-2 max-w-[16rem] text-sm leading-7 text-on-surface-variant">
-        Share the split-it experience.
-      </p>
-    </SurfaceCard>
+    <>
+      <SurfaceCard
+        variant="low"
+        className={cn(
+          "flex items-center justify-center gap-3 rounded-[1.25rem] border border-dashed border-outline-variant/35 bg-transparent px-4 py-3.5 text-left sm:hidden",
+          disabled && "animate-pulse",
+        )}
+      >
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container-high text-on-surface-variant">
+          <Users className="h-4 w-4" />
+        </div>
+        <p className="font-headline text-sm font-bold text-on-surface">Invite a Friend</p>
+      </SurfaceCard>
+
+      <SurfaceCard
+        variant="low"
+        className={cn(
+          "hidden min-h-[16rem] flex-col items-center justify-center rounded-[2rem] border border-dashed border-outline-variant/35 bg-transparent text-center sm:flex",
+          disabled && "animate-pulse",
+        )}
+      >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-container-high text-on-surface-variant">
+          <Users className="h-5 w-5" />
+        </div>
+        <p className="mt-5 font-headline text-2xl font-bold text-on-surface">Invite a Friend</p>
+        <p className="mt-2 max-w-[16rem] text-sm leading-7 text-on-surface-variant">
+          Share the split-it experience.
+        </p>
+      </SurfaceCard>
+    </>
   );
 }
 
 function SummaryTileSkeleton() {
   return (
-    <SurfaceCard variant="high" className="min-h-44 rounded-[2rem] p-5 sm:p-6 lg:min-h-48 lg:rounded-[2.2rem]">
-      <div className="flex h-full animate-pulse flex-col justify-between gap-8">
-        <div className="h-12 w-12 rounded-[1rem] bg-white/6" />
-        <div className="space-y-3">
-          <div className="h-3 w-36 rounded-full bg-white/6" />
-          <div className="h-12 w-48 rounded-full bg-white/6" />
+    <SurfaceCard
+      variant="high"
+      className="rounded-[1.5rem] p-4 sm:min-h-44 sm:rounded-[2rem] sm:p-6 lg:min-h-48 lg:rounded-[2.2rem]"
+    >
+      <div className="flex animate-pulse items-center gap-4 sm:h-full sm:flex-col sm:justify-between sm:gap-8">
+        <div className="h-10 w-10 rounded-[0.85rem] bg-white/6 sm:h-12 sm:w-12 sm:rounded-[1rem]" />
+        <div className="flex-1 space-y-3 text-right sm:text-left">
+          <div className="ml-auto h-3 w-36 rounded-full bg-white/6 sm:ml-0" />
+          <div className="ml-auto h-9 w-32 rounded-full bg-white/6 sm:ml-0 sm:h-12 sm:w-48" />
         </div>
       </div>
     </SurfaceCard>
@@ -795,18 +831,31 @@ function SummaryTileSkeleton() {
 
 function GroupCardSkeleton() {
   return (
-    <SurfaceCard variant="high" className="min-h-[16rem] rounded-[2rem] p-5 sm:p-6">
-      <div className="flex h-full animate-pulse flex-col justify-between gap-8">
-        <div className="flex items-start justify-between">
-          <div className="h-14 w-14 rounded-[1.15rem] bg-white/6" />
-          <div className="h-10 w-24 rounded-[1rem] bg-white/6" />
+    <>
+      <SurfaceCard variant="high" className="rounded-[1.25rem] p-3 sm:hidden">
+        <div className="flex animate-pulse items-center gap-3">
+          <div className="h-11 w-11 rounded-[0.85rem] bg-white/6" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-28 rounded-full bg-white/6" />
+            <div className="h-3 w-16 rounded-full bg-white/6" />
+          </div>
+          <div className="h-7 w-16 rounded-full bg-white/6" />
         </div>
-        <div className="space-y-3">
-          <div className="h-8 w-40 rounded-full bg-white/6" />
-          <div className="h-4 w-24 rounded-full bg-white/6" />
-          <div className="h-4 w-44 rounded-full bg-white/6" />
+      </SurfaceCard>
+
+      <SurfaceCard variant="high" className="hidden min-h-[16rem] rounded-[2rem] p-5 sm:block sm:p-6">
+        <div className="flex h-full animate-pulse flex-col justify-between gap-8">
+          <div className="flex items-start justify-between">
+            <div className="h-14 w-14 rounded-[1.15rem] bg-white/6" />
+            <div className="h-10 w-24 rounded-[1rem] bg-white/6" />
+          </div>
+          <div className="space-y-3">
+            <div className="h-8 w-40 rounded-full bg-white/6" />
+            <div className="h-4 w-24 rounded-full bg-white/6" />
+            <div className="h-4 w-44 rounded-full bg-white/6" />
+          </div>
         </div>
-      </div>
-    </SurfaceCard>
+      </SurfaceCard>
+    </>
   );
 }

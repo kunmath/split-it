@@ -21,7 +21,7 @@ export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const meta = getRouteMeta(pathname);
   const { mode, isClerkConfigured, isConvexConfigured } = usePlaceholderMode();
-  const isFocusedExpenseCreateRoute = pathname.endsWith("/expenses/new");
+  const isFocusedExpenseRoute = pathname.includes("/expenses/");
   const isGroupDetailRoute =
     pathname.startsWith("/groups/") &&
     !pathname.endsWith("/settings") &&
@@ -35,8 +35,8 @@ export function AppShell({ children }: AppShellProps) {
       <DesktopRail meta={meta} />
 
       <div className="lg:ml-72">
-        {!isFocusedExpenseCreateRoute ? (
-          <div className="glass-panel sticky top-0 z-30 border-b border-white/5 px-4 py-4 lg:hidden">
+        {!isFocusedExpenseRoute ? (
+          <div className="glass-panel sticky top-0 z-30 border-b border-white/5 pb-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(1rem,env(safe-area-inset-top))] lg:hidden">
             {isGroupDetailRoute ? (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
@@ -88,7 +88,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         ) : null}
 
-        {!isFocusedExpenseCreateRoute ? (
+        {!isFocusedExpenseRoute ? (
           <TopUtilityBar
             meta={meta}
             mode={mode}
@@ -99,16 +99,18 @@ export function AppShell({ children }: AppShellProps) {
 
         <main
           className={
-            isFocusedExpenseCreateRoute
+            isFocusedExpenseRoute
               ? "pb-0"
-              : "px-4 pb-44 pt-6 sm:px-6 lg:px-10 lg:pb-28 lg:pt-8"
+              : meta.showFab
+                ? "pb-[calc(10rem+max(1rem,env(safe-area-inset-bottom)))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-5 sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] lg:px-10 lg:pb-28 lg:pt-8"
+                : "pb-[calc(6rem+max(1rem,env(safe-area-inset-bottom)))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-5 sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] lg:px-10 lg:pb-28 lg:pt-8"
           }
         >
           {children}
         </main>
       </div>
 
-      {!isFocusedExpenseCreateRoute ? <MobileBottomNav /> : null}
+      {!isFocusedExpenseRoute ? <MobileBottomNav /> : null}
       {meta.showFab ? <FloatingActionButton href={meta.fabHref} label={meta.fabLabel} /> : null}
     </div>
   );
