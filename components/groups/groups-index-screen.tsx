@@ -5,6 +5,7 @@ import { Coins, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { usePlaceholderMode } from "@/components/providers/app-providers";
+import { CompactGroupCard } from "@/components/groups/compact-group-card";
 import { PageContainer } from "@/components/shell/page-container";
 import { buttonVariants } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
@@ -129,41 +130,44 @@ function GroupsIndexScene({
   isMock?: boolean;
 }) {
   return (
-    <PageContainer className="page-glow relative space-y-8 lg:space-y-10">
+    <PageContainer className="page-glow relative space-y-5 sm:space-y-8 lg:space-y-10">
       <section className="space-y-3">
-        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant">
+        <p className="hidden text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant sm:block">
           Shared Ledgers
         </p>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex items-center justify-between gap-3 lg:items-end lg:gap-4">
           <div>
-            <h1 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
+            <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
               All Groups
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-on-surface-variant">
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-on-surface-variant sm:mt-3 sm:text-sm sm:leading-7">
               Browse every active split, jump back into a ledger, or start a new one from the dashboard composer.
             </p>
           </div>
-          <Link href="/dashboard?create=1" className={buttonVariants({ variant: "primary", size: "lg" })}>
+          <Link
+            href="/dashboard?create=1"
+            className={cn(buttonVariants({ variant: "primary", size: "lg" }), "hidden shrink-0 sm:inline-flex")}
+          >
             <Plus className="h-4.5 w-4.5" />
             New Group
           </Link>
         </div>
       </section>
 
-      <section className="space-y-5">
+      <section className="space-y-4 sm:space-y-5">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface sm:text-3xl">
+            <h2 className="font-headline text-xl font-bold tracking-tight text-on-surface sm:text-3xl">
               Active Groups
             </h2>
-            <p className="mt-1 text-sm text-on-surface-variant">
+            <p className="mt-0.5 text-xs text-on-surface-variant sm:mt-1 sm:text-sm">
               {groups.length} active {groups.length === 1 ? "group" : "groups"} in view
               {isMock ? " · mock data" : ""}
             </p>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
           {groups.length === 0 ? (
             <EmptyGroupsState />
           ) : (
@@ -179,69 +183,80 @@ function GroupCard({ group }: { group: GroupListItem }) {
   const Icon = iconMap[group.icon];
 
   return (
-    <Link href={group.href} className="group block">
-      <SurfaceCard
-        variant="high"
-        className="min-h-[16rem] rounded-[2rem] p-5 transition duration-200 hover:bg-surface-bright sm:p-6"
-      >
-        <div className="relative flex h-full flex-col justify-between gap-8 overflow-hidden">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-surface-container-low text-on-surface-variant">
-              <Icon
+    <>
+      <CompactGroupCard
+        href={group.href}
+        icon={group.icon}
+        name={group.name}
+        memberLabel={group.memberLabel}
+        balanceLabel={group.balanceLabel}
+        balanceTone={group.balanceTone}
+      />
+
+      <Link href={group.href} className="group hidden sm:block">
+        <SurfaceCard
+          variant="high"
+          className="min-h-[16rem] rounded-[2rem] p-5 transition duration-200 hover:bg-surface-bright sm:p-6"
+        >
+          <div className="relative flex h-full flex-col justify-between gap-8 overflow-hidden">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-surface-container-low text-on-surface-variant">
+                <Icon
+                  className={cn(
+                    "h-5 w-5",
+                    group.balanceTone === "negative" ? "text-secondary" : "text-primary",
+                  )}
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                {group.accentCount > 0 ? (
+                  <GroupAccentCluster name={group.name} accentCount={group.accentCount} />
+                ) : null}
+                {group.isOwner ? (
+                  <span className="hidden rounded-full bg-white/6 px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.2em] text-on-surface-variant xl:inline-flex">
+                    Owner
+                  </span>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-headline text-[1.7rem] font-bold tracking-tight text-on-surface">
+                  {group.name}
+                </h3>
+                <p className="mt-1 text-sm text-on-surface-variant">{group.memberLabel}</p>
+              </div>
+              <p className="max-w-[18rem] text-sm italic text-on-surface-variant/90">{group.contextLabel}</p>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[0.62rem] uppercase tracking-[0.24em] text-on-surface-variant">
+                Balance
+              </p>
+              <p
                 className={cn(
-                  "h-5 w-5",
-                  group.balanceTone === "negative" ? "text-secondary" : "text-primary",
+                  "font-headline text-[2rem] font-extrabold tracking-tight",
+                  group.balanceTone === "positive" && "text-primary",
+                  group.balanceTone === "negative" && "text-secondary",
+                  group.balanceTone === "neutral" && "text-on-surface",
                 )}
-              />
+              >
+                {group.balanceLabel}
+              </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              {group.accentCount > 0 ? (
-                <GroupAccentCluster name={group.name} accentCount={group.accentCount} />
-              ) : null}
-              {group.isOwner ? (
-                <span className="hidden rounded-full bg-white/6 px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.2em] text-on-surface-variant sm:inline-flex">
-                  Owner
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div>
-              <h3 className="font-headline text-[1.7rem] font-bold tracking-tight text-on-surface">
-                {group.name}
-              </h3>
-              <p className="mt-1 text-sm text-on-surface-variant">{group.memberLabel}</p>
-            </div>
-            <p className="max-w-[18rem] text-sm italic text-on-surface-variant/90">{group.contextLabel}</p>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-[0.62rem] uppercase tracking-[0.24em] text-on-surface-variant">
-              Balance
-            </p>
-            <p
+            <div
               className={cn(
-                "font-headline text-[2rem] font-extrabold tracking-tight",
-                group.balanceTone === "positive" && "text-primary",
-                group.balanceTone === "negative" && "text-secondary",
-                group.balanceTone === "neutral" && "text-on-surface",
+                "pointer-events-none absolute -bottom-8 -right-8 h-28 w-28 rounded-full blur-3xl transition group-hover:opacity-100",
+                group.balanceTone === "negative" ? "bg-secondary/12" : "bg-primary/10",
               )}
-            >
-              {group.balanceLabel}
-            </p>
+            />
           </div>
-
-          <div
-            className={cn(
-              "pointer-events-none absolute -bottom-8 -right-8 h-28 w-28 rounded-full blur-3xl transition group-hover:opacity-100",
-              group.balanceTone === "negative" ? "bg-secondary/12" : "bg-primary/10",
-            )}
-          />
-        </div>
-      </SurfaceCard>
-    </Link>
+        </SurfaceCard>
+      </Link>
+    </>
   );
 }
 
@@ -251,7 +266,7 @@ function GroupAccentCluster({ name, accentCount }: { name: string; accentCount: 
   const second = initials[1] ?? first;
 
   return (
-    <div className="hidden items-center sm:flex">
+    <div className="hidden items-center xl:flex">
       <div className="flex items-center -space-x-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-full border border-surface bg-primary/18 text-[0.65rem] font-semibold text-primary">
           {first}

@@ -19,7 +19,7 @@ export function FloatingActionButton({
       href={href}
       aria-label={label}
       className={cn(
-        "fixed bottom-24 right-4 z-40 flex h-16 w-16 items-center justify-center rounded-full",
+        "fixed bottom-[calc(5rem+max(1rem,env(safe-area-inset-bottom)))] right-[max(1rem,env(safe-area-inset-right))] z-40 flex h-16 w-16 items-center justify-center rounded-full",
         "bg-[linear-gradient(135deg,var(--color-primary),var(--color-primary-container))] text-on-primary",
         "shadow-[0_16px_42px_rgba(78,222,163,0.22)] ring-1 ring-white/10 transition hover:scale-[1.03]",
         "lg:bottom-8 lg:right-8",

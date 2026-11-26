@@ -54,6 +54,7 @@
       radial-gradient(circle at bottom right, rgb(255 181 158 / 0.07), transparent 32%),
       var(--surface);
     color: var(--on-surface);
+    overflow-x: clip;
   }
 
   body {

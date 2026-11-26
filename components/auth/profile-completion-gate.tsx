@@ -15,15 +15,24 @@ type ProfileCompletionGateProps = {
 
 export function ProfileCompletionGate({ children }: ProfileCompletionGateProps) {
   const { mode } = usePlaceholderMode();
+
+  if (mode !== "live") {
+    return <>{children}</>;
+  }
+
+  return <LiveProfileCompletionGate>{children}</LiveProfileCompletionGate>;
+}
+
+function LiveProfileCompletionGate({ children }: ProfileCompletionGateProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isLoading: isConvexAuthLoading, isAuthenticated: isConvexAuthenticated } = useConvexAuth();
-  const currentUser = useQuery(api.users.current, mode === "live" ? {} : "skip");
+  const currentUser = useQuery(api.users.current);
   const redirectedRef = useRef(false);
 
   useEffect(() => {
-    if (mode !== "live" || currentUser === undefined || currentUser === null || currentUser.profileCompletedAt) {
+    if (currentUser === undefined || currentUser === null || currentUser.profileCompletedAt) {
       return;
     }
 
@@ -38,11 +47,7 @@ export function ProfileCompletionGate({ children }: ProfileCompletionGateProps) 
     startTransition(() => {
       router.replace(buildProfileOnboardingHref(redirectPath));
     });
-  }, [currentUser, mode, pathname, router, searchParams]);
-
-  if (mode !== "live") {
-    return <>{children}</>;
-  }
+  }, [currentUser, pathname, router, searchParams]);
 
   if (currentUser === undefined) {
     return (

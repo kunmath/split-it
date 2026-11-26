@@ -66,7 +66,7 @@ export function ResponsiveDialog({
       />
 
       <div className="relative flex min-h-full items-end md:items-center md:justify-center">
-        <div className="w-full px-3 pb-3 pt-20 md:max-w-2xl md:px-6 md:pb-6 md:pt-6">
+        <div className="w-full pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-20 md:max-w-2xl md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pl-[max(1.5rem,env(safe-area-inset-left))] md:pr-[max(1.5rem,env(safe-area-inset-right))] md:pt-6">
           <SurfaceCard
             variant={tone === "danger" ? "high" : "hero"}
             role="dialog"

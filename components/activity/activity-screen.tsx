@@ -256,29 +256,29 @@ function ActivityScene({
   isMock?: boolean;
 }) {
   return (
-    <PageContainer className="page-glow relative space-y-8 lg:space-y-10">
+    <PageContainer className="page-glow relative space-y-5 sm:space-y-8 lg:space-y-10">
       <section className="space-y-3">
-        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant">
+        <p className="hidden text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant sm:block">
           Activity
         </p>
-        <div className="space-y-4 lg:flex lg:items-end lg:justify-between lg:gap-6 lg:space-y-0">
+        <div className="space-y-2 lg:flex lg:items-end lg:justify-between lg:gap-6 lg:space-y-0">
           <div>
-            <h1 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
+            <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
               Activity Feed
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-on-surface-variant">
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-on-surface-variant sm:mt-3 sm:text-sm sm:leading-7">
               Recent transactions across all groups
             </p>
           </div>
-          <div className="rounded-full border border-white/6 bg-surface-container-low px-4 py-2 text-xs uppercase tracking-[0.22em] text-on-surface-variant">
+          <div className="hidden rounded-full border border-white/6 bg-surface-container-low px-4 py-2 text-xs uppercase tracking-[0.22em] text-on-surface-variant sm:inline-block">
             Latest 20 involved transactions
           </div>
         </div>
       </section>
 
-      <section className="space-y-5">
+      <section className="space-y-3 sm:space-y-5">
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-on-surface-variant">
+          <p className="text-xs text-on-surface-variant sm:text-sm">
             Showing the latest 20 transactions you were involved in.
             {isMock ? " Mock data preview." : ""}
           </p>
@@ -298,13 +298,13 @@ function MobileActivityList({ activities }: { activities: ActivityItem[] }) {
   const dayGroups = groupActivitiesByDay(activities);
 
   return (
-    <div className="space-y-6 lg:hidden">
+    <div className="space-y-5 lg:hidden">
       {dayGroups.map((dayGroup) => (
-        <section key={dayGroup.key} className="space-y-3">
+        <section key={dayGroup.key} className="space-y-2.5">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
             {dayGroup.label}
           </p>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {dayGroup.items.map((activity) => (
               <MobileActivityRow key={activity.id} activity={activity} />
             ))}
@@ -326,12 +326,12 @@ function MobileActivityRow({ activity }: { activity: ActivityItem }) {
   return (
     <Link
       href={buildActivityHref(activity)}
-      className="group block rounded-[1.6rem] bg-surface-container-low px-4 py-4 transition hover:bg-surface-container-high"
+      className="group block rounded-[1.35rem] bg-surface-container-low px-3.5 py-3 transition hover:bg-surface-container-high"
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <div
           className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-surface-container-highest",
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-container-highest",
             isSettlement ? "text-primary" : "text-on-surface-variant",
           )}
         >
