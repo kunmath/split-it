@@ -7,7 +7,6 @@ import {
   NotebookPen,
   ReceiptText,
   Trash2,
-  WalletCards,
 } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
@@ -25,30 +24,39 @@ import { ComposerPayerSheet } from "@/components/expenses/composer-payer-sheet";
 import { ComposerSplitSheet } from "@/components/expenses/composer-split-sheet";
 import { useComposerState, type ComposerState } from "@/components/expenses/use-composer-state";
 import { useKeyboardInset } from "@/components/expenses/use-keyboard-inset";
+import { useBackNavigation } from "@/components/shell/mobile-top-bar";
 import { Button } from "@/components/ui/button";
 import { Money } from "@/components/ui/money";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { iconMap } from "@/lib/icon-map";
 import { cn } from "@/lib/utils";
 
-type SheetName = "payer" | "split" | "date" | "delete" | null;
+type SheetName = "payer" | "split" | "date" | "delete" | "discard" | null;
 
 type ExpenseComposerSceneProps = {
   data: ComposerSceneData;
   onSaveExpense?: (draft: ExpenseDraft) => Promise<void>;
   onDeleteExpense?: () => Promise<void>;
-  /** Shown above the save bar, e.g. a demo-mode confirmation. */
-  notice?: string | null;
 };
 
-export function ExpenseComposerScene({ data, onSaveExpense, onDeleteExpense, notice }: ExpenseComposerSceneProps) {
+export function ExpenseComposerScene({ data, onSaveExpense, onDeleteExpense }: ExpenseComposerSceneProps) {
   const state = useComposerState({ data, onSaveExpense, onDeleteExpense });
   const [openSheet, setOpenSheet] = useState<SheetName>(null);
   const [showNotes, setShowNotes] = useState(Boolean(data.expense?.notes));
   const amountRef = useRef<HTMLInputElement>(null);
   const descriptionRef = useRef<HTMLInputElement>(null);
   const keyboardInset = useKeyboardInset();
+  const leaveComposer = useBackNavigation(`/groups/${data.groupId}`);
   const closeSheet = () => setOpenSheet(null);
+
+  function requestClose() {
+    if (state.isDirty && !state.isSaving && !state.isDeleting) {
+      setOpenSheet("discard");
+      return;
+    }
+
+    leaveComposer();
+  }
 
   const { fieldErrors, isEditMode, currency } = state;
   const CategoryIcon = (() => {
@@ -86,14 +94,11 @@ export function ExpenseComposerScene({ data, onSaveExpense, onDeleteExpense, not
         noValidate
         className="mx-auto w-full max-w-2xl pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0"
       >
-        <ComposerHeader title={isEditMode ? "Edit expense" : "Add expense"} groupId={data.groupId} />
+        <ComposerHeader title={isEditMode ? "Edit expense" : "Add expense"} onClose={requestClose} />
 
         <div className="lg:mt-6 lg:rounded-3xl lg:bg-surface-container-low lg:p-8 lg:ring-1 lg:ring-white/5">
-          <p className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full bg-white/5 px-3 py-1.5 text-sm text-on-surface-variant lg:mt-0">
-            <WalletCards className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <span className="truncate">
-              in <span className="font-semibold text-on-surface">{data.groupName}</span>
-            </span>
+          <p className="mt-3 truncate text-sm text-on-surface-variant lg:mt-0">
+            in <span className="font-semibold text-on-surface">{data.groupName}</span>
           </p>
 
           <div className="mt-6">
@@ -215,11 +220,6 @@ export function ExpenseComposerScene({ data, onSaveExpense, onDeleteExpense, not
             )}
           >
             <div className="mx-auto max-w-2xl">
-              {notice ? (
-                <p role="status" className="mb-2 text-center text-sm font-medium text-primary">
-                  {notice}
-                </p>
-              ) : null}
               <Button type="submit" size="lg" fullWidth disabled={!state.canPersist}>
                 {state.isSaving ? "Saving…" : isEditMode ? "Save changes" : "Save expense"}
               </Button>
@@ -283,6 +283,30 @@ export function ExpenseComposerScene({ data, onSaveExpense, onDeleteExpense, not
           </Button>
         </div>
         {state.formError ? <p className="text-sm text-secondary">{state.formError}</p> : null}
+      </ResponsiveDialog>
+      <ResponsiveDialog
+        open={openSheet === "discard"}
+        onClose={closeSheet}
+        size="compact"
+        title={isEditMode ? "Discard your changes?" : "Discard this expense?"}
+        description={isEditMode ? "Your edits won't be saved." : "What you've entered won't be saved."}
+      >
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="ghost" size="lg" onClick={closeSheet} data-autofocus>
+            Keep editing
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            onClick={() => {
+              closeSheet();
+              leaveComposer();
+            }}
+            className="border-secondary/40 bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary"
+          >
+            Discard
+          </Button>
+        </div>
       </ResponsiveDialog>
     </>
   );

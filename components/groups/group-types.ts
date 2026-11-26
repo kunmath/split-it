@@ -30,6 +30,22 @@ export type GroupExpense = {
   iconKey: IconKey;
 };
 
+/** Read-only detail for one ledger entry; mirrors `api.expenses.getEntryDetail`. */
+export type GroupEntryDetail = {
+  id: string;
+  groupId: string;
+  description: string;
+  amountCents: number;
+  expenseAt: number;
+  kind: "expense" | "settlement";
+  splitType: "equal" | "exact" | "shares";
+  notes: string | null;
+  paidBy: { id: string; name: string; isCurrentUser: boolean };
+  shares: Array<{ userId: string; name: string; shareCents: number; isCurrentUser: boolean }>;
+  currentUserNetCents: number;
+  canEdit: boolean;
+};
+
 export type GroupSceneData = {
   groupId: string;
   groupName: string;

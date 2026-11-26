@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Minus, Plus } from "lucide-react";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import { getCurrencyToken, type SplitType } from "@/components/expenses/composer-model";
 import type { ComposerState } from "@/components/expenses/use-composer-state";
@@ -38,6 +38,7 @@ export function ComposerSplitSheet({ open, onClose, state }: ComposerSplitSheetP
   const totalCents = amountCents && amountCents > 0 ? amountCents : 0;
   const allSelected = selectedIds.length === members.length;
   const splitError = fieldErrors.participants ?? fieldErrors.exactShares ?? fieldErrors.shares;
+  const splitStatusId = useId();
 
   return (
     <ResponsiveDialog
@@ -221,13 +222,21 @@ export function ComposerSplitSheet({ open, onClose, state }: ComposerSplitSheetP
       </ul>
 
       <div className="sticky -bottom-4 -mx-4 space-y-3 border-t border-white/6 bg-[#1c1b1b] px-4 pb-1 pt-3 md:-bottom-6 md:-mx-6 md:px-6">
-        <SplitStatus state={state} />
+        <div id={splitStatusId}>
+          <SplitStatus state={state} />
+        </div>
         {splitError ? (
           <p role="alert" className="text-sm text-secondary">
             {splitError}
           </p>
         ) : null}
-        <Button size="lg" fullWidth onClick={onClose}>
+        <Button
+          size="lg"
+          fullWidth
+          variant={state.splitSummary.canSubmit ? "primary" : "ghost"}
+          onClick={onClose}
+          aria-describedby={state.splitSummary.canSubmit ? undefined : splitStatusId}
+        >
           Done
         </Button>
       </div>

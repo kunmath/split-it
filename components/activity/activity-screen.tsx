@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 
+import { getMockGroupSceneData } from "@/components/groups/group-mock-data";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { MobileTopBar } from "@/components/shell/mobile-top-bar";
 import { PageContainer } from "@/components/shell/page-container";
@@ -11,7 +12,6 @@ import { buttonVariants } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
 import { SkeletonBlock } from "@/components/ui/skeletons";
 import { api } from "@/convex/_generated/api";
-import { activityFeed } from "@/lib/placeholder-data";
 import { cn } from "@/lib/utils";
 
 import {
@@ -22,15 +22,22 @@ import {
   matchesFilter,
 } from "./activity-model";
 import { ActivityRow } from "./activity-row";
+import { buildMockActivityFeed } from "./mock-activity";
 
 export function ActivityScreen() {
   const { mode } = usePlaceholderMode();
 
   if (mode !== "live") {
-    return <ActivityScene activities={activityFeed} />;
+    return <MockActivityScreen />;
   }
 
   return <LiveActivityScreen />;
+}
+
+function MockActivityScreen() {
+  const [activities] = useState(() => buildMockActivityFeed(getMockGroupSceneData));
+
+  return <ActivityScene activities={activities} />;
 }
 
 function LiveActivityScreen() {

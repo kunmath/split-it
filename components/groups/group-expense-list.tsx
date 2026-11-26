@@ -9,7 +9,8 @@ import { iconMap } from "@/lib/icon-map";
 import { cn } from "@/lib/utils";
 
 const monthLabelFormat = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" });
-const shortMonthFormat = new Intl.DateTimeFormat("en-US", { month: "short" });
+const weekdayFormat = new Intl.DateTimeFormat("en-US", { weekday: "short" });
+const fullDateFormat = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
 const dayFormat = new Intl.DateTimeFormat("en-US", { day: "numeric" });
 
 function groupByMonth(expenses: GroupExpense[]) {
@@ -47,7 +48,15 @@ export type GroupExpensePager = {
   loadMore: () => void;
 };
 
-export function GroupExpenseList({ group, pager }: { group: GroupSceneData; pager?: GroupExpensePager }) {
+export function GroupExpenseList({
+  group,
+  pager,
+  onOpenEntry,
+}: {
+  group: GroupSceneData;
+  pager?: GroupExpensePager;
+  onOpenEntry: (expense: GroupExpense) => void;
+}) {
   const expenses = [...group.recentExpenses].sort((left, right) => right.expenseAt - left.expenseAt);
   const allNames = group.members.map((member) => member.name);
 
@@ -75,10 +84,10 @@ export function GroupExpenseList({ group, pager }: { group: GroupSceneData; page
             {section.items.map((expense) => (
               <li key={expense.id}>
                 <GroupExpenseRow
-                  groupId={group.groupId}
                   currency={group.groupCurrency}
                   expense={expense}
                   allNames={allNames}
+                  onOpen={onOpenEntry}
                 />
               </li>
             ))}
@@ -108,26 +117,29 @@ export function GroupExpenseList({ group, pager }: { group: GroupSceneData; page
 
 function DateBlock({ timestamp }: { timestamp: number }) {
   return (
-    <div className="flex w-9 shrink-0 flex-col items-center leading-none" aria-hidden="true">
-      <span className="text-xs text-on-surface-variant">{shortMonthFormat.format(timestamp)}</span>
+    <div className="flex w-8 shrink-0 flex-col items-center leading-none" aria-hidden="true">
+      <span className="text-xs text-on-surface-variant">{weekdayFormat.format(timestamp)}</span>
       <span className="mt-1 font-headline text-lg font-bold text-on-surface">{dayFormat.format(timestamp)}</span>
     </div>
   );
 }
 
+const rowClass =
+  "flex min-h-16 w-full items-center gap-2.5 rounded-2xl px-1.5 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 sm:gap-3 sm:px-2";
+
 function GroupExpenseRow({
-  groupId,
   currency,
   expense,
   allNames,
+  onOpen,
 }: {
-  groupId: string;
   currency: string;
   expense: GroupExpense;
   allNames: string[];
+  onOpen: (expense: GroupExpense) => void;
 }) {
   const payer = expense.paidByCurrentUser ? "You" : getShortName(expense.paidByName, allNames);
-  const dateLabel = `${shortMonthFormat.format(expense.expenseAt)} ${dayFormat.format(expense.expenseAt)}`;
+  const dateLabel = fullDateFormat.format(expense.expenseAt);
 
   if (expense.kind === "settlement") {
     const recipient = expense.counterpartyIsCurrentUser
@@ -140,23 +152,28 @@ function GroupExpenseRow({
         : "settlement";
 
     return (
-      <div className="flex min-h-16 items-center gap-3 rounded-2xl bg-primary/[0.05] px-2 py-2.5 ring-1 ring-inset ring-primary/10">
-        <span className="sr-only">{dateLabel}</span>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        onClick={() => onOpen(expense)}
+        className={cn(rowClass, "bg-primary/[0.05] ring-1 ring-inset ring-primary/10 hover:bg-primary/[0.09]")}
+      >
+        <span className="sr-only">{dateLabel}, </span>
         <DateBlock timestamp={expense.expenseAt} />
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
           <HandCoins aria-hidden="true" className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[0.95rem] font-semibold text-on-surface">
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold text-on-surface">
             {payer} paid {recipient}
-          </p>
-          <p className="truncate text-xs text-on-surface-variant">Settlement</p>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-xs text-on-surface-variant">{label}</p>
-          <Money cents={expense.amountCents} currency={currency} className="font-headline text-sm font-bold text-on-surface" />
-        </div>
-      </div>
+          </span>
+          <span className="block truncate text-xs text-on-surface-variant">Settlement</span>
+        </span>
+        <span className="shrink-0 text-right">
+          <span className="block text-xs text-on-surface-variant">{label}</span>
+          <Money cents={expense.amountCents} currency={currency} className="block font-headline text-sm font-bold text-on-surface" />
+        </span>
+      </button>
     );
   }
 
@@ -164,39 +181,41 @@ function GroupExpenseRow({
   const net = describeExpenseNet(expense);
 
   return (
-    <Link
-      href={`/groups/${groupId}/expenses/${expense.id}/edit`}
-      className="flex min-h-16 items-center gap-3 rounded-2xl px-2 py-2.5 transition hover:bg-white/4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      onClick={() => onOpen(expense)}
+      className={cn(rowClass, "hover:bg-white/4")}
     >
-      <span className="sr-only">{dateLabel}</span>
+      <span className="sr-only">{dateLabel}, </span>
       <DateBlock timestamp={expense.expenseAt} />
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-container-high text-on-surface-variant">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-container-high text-on-surface-variant">
         <Icon aria-hidden="true" className="h-5 w-5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[0.95rem] font-semibold text-on-surface">{expense.description}</p>
-        <p className="truncate text-xs text-on-surface-variant">
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-on-surface">{expense.description}</span>
+        <span className="block truncate text-xs text-on-surface-variant">
           {payer} paid {formatMoneyFromCents(expense.amountCents, currency)}
           <span className="hidden sm:inline">
             {" "}
             · split {expense.participantCount} {expense.participantCount === 1 ? "way" : "ways"}
           </span>
-        </p>
-      </div>
-      <div className="shrink-0 text-right">
-        <p className={cn("text-xs", net.tone === "neutral" ? "text-on-surface-variant" : toneTextClass[net.tone])}>
+        </span>
+      </span>
+      <span className="shrink-0 text-right">
+        <span className={cn("block text-xs", net.tone === "neutral" ? "text-on-surface-variant" : toneTextClass[net.tone])}>
           {net.label}
-        </p>
+        </span>
         {net.showAmount ? (
           <Money
             cents={expense.currentUserNetCents}
             currency={currency}
             tone={net.tone}
-            className="font-headline text-sm font-bold"
+            className="block font-headline text-sm font-bold"
           />
         ) : null}
-      </div>
-    </Link>
+      </span>
+    </button>
   );
 }
 

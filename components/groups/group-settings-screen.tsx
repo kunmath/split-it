@@ -353,6 +353,7 @@ function GroupTotalsCard({ group }: { group: GroupSettingsSceneData }) {
   );
 }
 
+/** Other members' net positions stay neutral; only the viewer's own row is colored. */
 function MemberBalance({ cents, currency }: { cents: number; currency: string }) {
   const standing = describeMemberBalance(cents);
 
@@ -360,7 +361,7 @@ function MemberBalance({ cents, currency }: { cents: number; currency: string })
     <span className="flex flex-col items-end text-right">
       <span className="text-xs leading-4 text-on-surface-variant">{standing.label}</span>
       {cents !== 0 ? (
-        <Money cents={cents} currency={currency} tone={standing.tone} className="font-headline text-sm font-bold" />
+        <Money cents={cents} currency={currency} className="font-headline text-sm font-bold text-on-surface" />
       ) : null}
     </span>
   );

@@ -55,6 +55,8 @@ export function useComposerState({ data, onSaveExpense, onDeleteExpense }: UseCo
   const [shareInputs, setShareInputs] = useState<Record<string, string>>(() =>
     buildInitialShareInputs(data.members, existingExpense?.shares ?? []),
   );
+  // Untouched exact amounts follow the total (re-seeded evenly); a saved exact split counts as touched.
+  const [exactTouched, setExactTouched] = useState(existingExpense?.splitType === "exact");
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -113,12 +115,21 @@ export function useComposerState({ data, onSaveExpense, onDeleteExpense }: UseCo
     );
   }
 
-  const canPersist =
-    Boolean(onSaveExpense) &&
-    !isSaving &&
-    !isDeleting &&
-    data.members.length > 0 &&
-    splitSummary.canSubmit;
+  const canPersist = Boolean(onSaveExpense) && !isSaving && !isDeleting && data.members.length > 0;
+
+  const draftSnapshot = JSON.stringify({
+    amountInput,
+    description,
+    notes,
+    expenseDate,
+    paidById,
+    splitType,
+    selected: orderedSelectedParticipantIds,
+    exact: splitType === "exact" ? orderedSelectedParticipantIds.map((id) => exactShareInputs[id] ?? "") : null,
+    shares: splitType === "shares" ? orderedSelectedParticipantIds.map((id) => shareInputs[id] ?? "") : null,
+  });
+  const [initialDraftSnapshot] = useState(draftSnapshot);
+  const isDirty = draftSnapshot !== initialDraftSnapshot;
 
   function clearSplitErrors() {
     setFieldErrors((current) => ({
@@ -131,6 +142,12 @@ export function useComposerState({ data, onSaveExpense, onDeleteExpense }: UseCo
 
   function setAmountInput(value: string) {
     setAmountInputState(value);
+
+    if (splitType === "exact" && !exactTouched) {
+      const nextCents = parseAmountInputToCents(value);
+      seedExactAmounts(orderedSelectedParticipantIds, nextCents && nextCents > 0 ? nextCents : 0);
+    }
+
     setFieldErrors((current) => ({ ...current, amount: undefined, exactShares: undefined }));
     setFormError(null);
   }
@@ -158,8 +175,8 @@ export function useComposerState({ data, onSaveExpense, onDeleteExpense }: UseCo
     setFormError(null);
   }
 
-  function seedExactAmounts(nextSelectedIds: string[]) {
-    const evenPreview = buildEqualSharePreview(positiveAmountCents, nextSelectedIds);
+  function seedExactAmounts(nextSelectedIds: string[], totalCents = positiveAmountCents) {
+    const evenPreview = buildEqualSharePreview(totalCents, nextSelectedIds);
     const nextInputs: Record<string, string> = {};
 
     for (const member of data.members) {
@@ -184,7 +201,7 @@ export function useComposerState({ data, onSaveExpense, onDeleteExpense }: UseCo
   function changeSplitType(nextType: SplitType) {
     setSplitTypeState(nextType);
 
-    if (nextType === "exact" && existingExpense?.splitType !== "exact" && exactShareRows.length === 0) {
+    if (nextType === "exact" && !exactTouched) {
       seedExactAmounts(orderedSelectedParticipantIds);
     }
 
@@ -202,21 +219,25 @@ export function useComposerState({ data, onSaveExpense, onDeleteExpense }: UseCo
       ? selectedParticipantIds.filter((participantId) => participantId !== memberId)
       : [...selectedParticipantIds, memberId];
 
-    if (splitType === "exact" && isSelected) {
-      setExactShareInputs((currentInputs) => ({ ...currentInputs, [memberId]: "" }));
-    }
+    const nextOrderedIds = data.members
+      .filter((member) => nextSelectedIds.includes(member.id))
+      .map((member) => member.id);
 
-    if (splitType === "exact" && !isSelected && !(exactShareInputs[memberId] ?? "").trim()) {
-      const seededPreview = buildEqualSharePreview(
-        positiveAmountCents,
-        data.members.filter((member) => nextSelectedIds.includes(member.id)).map((member) => member.id),
-      );
-      const seededCents = seededPreview.get(memberId) ?? 0;
+    if (splitType === "exact" && !exactTouched) {
+      seedExactAmounts(nextOrderedIds);
+    } else {
+      if (splitType === "exact" && isSelected) {
+        setExactShareInputs((currentInputs) => ({ ...currentInputs, [memberId]: "" }));
+      }
 
-      setExactShareInputs((currentInputs) => ({
-        ...currentInputs,
-        [memberId]: seededCents > 0 ? formatCentsForInput(seededCents) : "",
-      }));
+      if (splitType === "exact" && !isSelected && !(exactShareInputs[memberId] ?? "").trim()) {
+        const seededCents = buildEqualSharePreview(positiveAmountCents, nextOrderedIds).get(memberId) ?? 0;
+
+        setExactShareInputs((currentInputs) => ({
+          ...currentInputs,
+          [memberId]: seededCents > 0 ? formatCentsForInput(seededCents) : "",
+        }));
+      }
     }
 
     if (splitType === "shares" && isSelected) {
@@ -236,7 +257,9 @@ export function useComposerState({ data, onSaveExpense, onDeleteExpense }: UseCo
     const allMemberIds = data.members.map((member) => member.id);
     setSelectedParticipantIds(allMemberIds);
 
-    if (splitType === "exact") {
+    if (splitType === "exact" && !exactTouched) {
+      seedExactAmounts(allMemberIds);
+    } else if (splitType === "exact") {
       const evenPreview = buildEqualSharePreview(positiveAmountCents, allMemberIds);
 
       setExactShareInputs((current) => {
@@ -283,6 +306,7 @@ export function useComposerState({ data, onSaveExpense, onDeleteExpense }: UseCo
   function resetSplitValues() {
     if (splitType === "exact") {
       seedExactAmounts(orderedSelectedParticipantIds);
+      setExactTouched(false);
     } else if (splitType === "shares") {
       seedShareAmounts(orderedSelectedParticipantIds);
     }
@@ -293,6 +317,7 @@ export function useComposerState({ data, onSaveExpense, onDeleteExpense }: UseCo
 
   function setExactInput(memberId: string, value: string) {
     setExactShareInputs((current) => ({ ...current, [memberId]: value }));
+    setExactTouched(true);
     clearSplitErrors();
     setFormError(null);
   }
@@ -450,6 +475,7 @@ export function useComposerState({ data, onSaveExpense, onDeleteExpense }: UseCo
     isSaving,
     isDeleting,
     canPersist,
+    isDirty,
     setAmountInput,
     setDescription,
     setNotes,

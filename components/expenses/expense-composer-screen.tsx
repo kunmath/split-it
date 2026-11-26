@@ -7,17 +7,19 @@ import { useRouter } from "next/navigation";
 import { startTransition, useContext, useState } from "react";
 
 import { ExpenseComposerScene } from "@/components/expenses/composer-scene";
-import type {
-  ComposerMember,
-  ComposerSceneData,
-  ExpenseDraft,
-  SplitType,
+import {
+  buildSavedExpenseMessage,
+  type ComposerMember,
+  type ComposerSceneData,
+  type ExpenseDraft,
+  type SplitType,
 } from "@/components/expenses/composer-model";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { InAppHistoryContext } from "@/components/shell/mobile-top-bar";
 import { buttonVariants } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
 import { SkeletonBlock } from "@/components/ui/skeletons";
+import { showToast } from "@/components/ui/toast";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getMockGroupSceneData } from "@/components/groups/group-mock-data";
@@ -191,20 +193,22 @@ export function ExpenseComposerScreen({ groupId, expenseId }: ExpenseComposerScr
 function MockExpenseComposerScreen({ groupId, expenseId }: ExpenseComposerScreenProps) {
   const exitComposer = useExitComposer(groupId);
   const [data] = useState(() => buildMockComposerData(groupId, expenseId));
-  const [notice, setNotice] = useState<string | null>(null);
-
-  async function finishWithNotice(message: string) {
-    setNotice(message);
-    await new Promise((resolve) => window.setTimeout(resolve, 900));
-    exitComposer();
-  }
 
   return (
     <ExpenseComposerScene
       data={data}
-      notice={notice}
-      onSaveExpense={() => finishWithNotice("Demo mode — expense not saved")}
-      onDeleteExpense={expenseId ? () => finishWithNotice("Demo mode — expense not deleted") : undefined}
+      onSaveExpense={async (draft) => {
+        showToast(`Demo mode — “${draft.description}” not saved`);
+        exitComposer();
+      }}
+      onDeleteExpense={
+        expenseId
+          ? async () => {
+              showToast(`Demo mode — “${data.expense?.description ?? "Expense"}” not deleted`);
+              exitComposer();
+            }
+          : undefined
+      }
     />
   );
 }
@@ -249,6 +253,8 @@ function LiveExpenseComposerScreen({ groupId, expenseId }: ExpenseComposerScreen
     return <UnavailableComposerState groupId={groupId} isEditMode={Boolean(expenseId)} />;
   }
 
+  const sceneData = buildSceneData(composer);
+
   async function saveExpense(draft: ExpenseDraft) {
     const payload = {
       description: draft.description,
@@ -274,18 +280,22 @@ function LiveExpenseComposerScreen({ groupId, expenseId }: ExpenseComposerScreen
       await createExpense({ groupId: groupId as Id<"groups">, ...payload });
     }
 
+    showToast(
+      buildSavedExpenseMessage(expenseId ? "Updated" : "Added", draft, sceneData.members, sceneData.groupCurrency),
+    );
     exitComposer();
   }
 
   return (
     <ExpenseComposerScene
       key={expenseId ?? "new"}
-      data={buildSceneData(composer)}
+      data={sceneData}
       onSaveExpense={saveExpense}
       onDeleteExpense={
         expenseId
           ? async () => {
               await deleteExpense({ expenseId: expenseId as Id<"expenses"> });
+              showToast(`Deleted ${sceneData.expense?.description ?? "expense"}`);
               exitComposer();
             }
           : undefined

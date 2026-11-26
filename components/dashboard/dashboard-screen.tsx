@@ -12,12 +12,12 @@ import { CreateGroupDialog, useCreateGroupDialog } from "@/components/groups/cre
 import {
   buildGroupHref,
   buildLocalGroup,
-  dominantCurrency,
   mapLiveGroup,
   mockGroups,
   mockPeople,
-  summarizeGroups,
+  summarizeGroupsByCurrency,
   type CreateGroupDraft,
+  type CurrencyTotals,
   type GroupListItem,
   type PersonBalanceItem,
 } from "@/components/groups/group-list-data";
@@ -35,7 +35,8 @@ type DashboardScreenProps = {
 };
 
 type DashboardData = {
-  summary: { owedCents: number; oweCents: number };
+  /** One entry per currency; amounts in different currencies are never summed. */
+  summary: CurrencyTotals[];
   groups: GroupListItem[];
   people: PersonBalanceItem[];
 };
@@ -62,7 +63,7 @@ function MockDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps
   return (
     <DashboardScene
       initialCreateOpen={initialCreateOpen}
-      data={{ summary: summarizeGroups(groups), groups, people: mockPeople }}
+      data={{ summary: summarizeGroupsByCurrency(groups), groups, people: mockPeople }}
       onCreateGroup={handleCreateGroup}
     />
   );
@@ -109,10 +110,11 @@ function LiveDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps
     summary === undefined || groups === undefined || people === undefined
       ? null
       : {
-          summary: { owedCents: summary.overallYouAreOwedCents, oweCents: summary.totalYouOweCents },
+          summary: summary.byCurrency,
           groups: groups.map(mapLiveGroup),
           people: people.map((person) => ({
             key: `${person.userId}:${person.currency}`,
+            userId: person.userId,
             name: person.name,
             imageUrl: person.imageUrl,
             currency: person.currency,
@@ -121,6 +123,7 @@ function LiveDashboardScreen({ initialCreateOpen = false }: DashboardScreenProps
               id: group.groupId,
               name: group.groupName,
               href: buildGroupHref(group.groupId, group.groupName),
+              balanceCents: group.balanceCents,
             })),
           })),
         };
@@ -163,11 +166,7 @@ function DashboardScene({ initialCreateOpen, data, onCreateGroup }: DashboardSce
       ) : (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:items-start xl:gap-8">
           <div className="space-y-6">
-            <NetBalanceCard
-              owedCents={data.summary.owedCents}
-              oweCents={data.summary.oweCents}
-              currency={dominantCurrency(data.groups)}
-            />
+            <NetBalanceCard totals={data.summary} />
 
             <section id="people" aria-labelledby="people-heading" className="scroll-mt-20 space-y-2">
               <SectionHeading id="people-heading" title="People" />

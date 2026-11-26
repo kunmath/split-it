@@ -2,18 +2,17 @@
 
 import { X } from "lucide-react";
 
-import { topBarIconButtonClass, useBackNavigation } from "@/components/shell/mobile-top-bar";
+import { topBarIconButtonClass } from "@/components/shell/mobile-top-bar";
 import { cn } from "@/lib/utils";
 
 type ComposerHeaderProps = {
   title: string;
-  groupId: string;
+  /** Leaves the composer (or asks to discard a dirty draft first). */
+  onClose: () => void;
 };
 
 /** Sticky top bar on mobile; a plain heading row above the card on desktop. */
-export function ComposerHeader({ title, groupId }: ComposerHeaderProps) {
-  const close = useBackNavigation(`/groups/${groupId}`);
-
+export function ComposerHeader({ title, onClose }: ComposerHeaderProps) {
   return (
     <header
       className={cn(
@@ -24,7 +23,7 @@ export function ComposerHeader({ title, groupId }: ComposerHeaderProps) {
       <div className="flex min-h-14 items-center gap-2 lg:min-h-0 lg:gap-3">
         <button
           type="button"
-          onClick={close}
+          onClick={onClose}
           aria-label="Close"
           className={cn(topBarIconButtonClass, "-ml-2 text-on-surface lg:ml-0 lg:bg-white/5")}
         >

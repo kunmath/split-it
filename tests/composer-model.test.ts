@@ -4,14 +4,19 @@ import {
   buildEqualSharePreview,
   buildExactRows,
   buildInitialShareInputs,
+  buildSavedExpenseMessage,
   buildShareRows,
   buildSharesPreview,
   deriveSplitSummary,
   formatDateChipLabel,
   parseAmountInputToCents,
+  reconstructShareWeights,
   shiftDateInputValue,
   type ComposerMember,
 } from "../components/expenses/composer-model";
+import { splitByShares } from "../convex/lib/money";
+
+const buildSharesCents = (totalCents: number, weights: number[]) => splitByShares(totalCents, weights);
 
 const members: ComposerMember[] = ["a", "b", "c"].map((id, index) => ({
   id,
@@ -51,6 +56,65 @@ describe("composer model", () => {
       { userId: "b", shareCents: 2_000 },
     ]);
     expect(inputs).toEqual({ a: "2", b: "1", c: "1" });
+  });
+
+  it("reconstructs small weights when the split had rounding cents", () => {
+    expect(
+      buildInitialShareInputs(members, [
+        { userId: "a", shareCents: 3_334 },
+        { userId: "b", shareCents: 3_333 },
+        { userId: "c", shareCents: 3_333 },
+      ]),
+    ).toEqual({ a: "1", b: "1", c: "1" });
+
+    // 2:1 of ₹100 is 6667 / 3333.
+    expect(reconstructShareWeights([6_667, 3_333])).toEqual([2, 1]);
+    // 3:2:2 of ₹10 → 429 / 286 / 285.
+    expect(reconstructShareWeights(buildSharesCents(1_000, [3, 2, 2]))).toEqual([3, 2, 2]);
+    // 1.5 : 1 is stored as 3 : 2.
+    expect(reconstructShareWeights(buildSharesCents(12_345, [1.5, 1]))).toEqual([3, 2]);
+  });
+
+  it("only returns weights that reproduce the saved cents exactly", () => {
+    for (const weights of [
+      [1, 1, 1],
+      [5, 3, 1],
+      [7, 2],
+      [1, 1, 1, 1, 1, 1, 1],
+      [100, 1],
+    ]) {
+      const cents = buildSharesCents(99_999, weights);
+      const rebuilt = reconstructShareWeights(cents);
+      expect(Math.max(...rebuilt)).toBeLessThanOrEqual(100);
+      expect(buildSharesCents(99_999, rebuilt)).toEqual(cents);
+    }
+  });
+
+  it("falls back to reduced cents when no small ratio fits", () => {
+    // 1001 / 1000 is just a 1:1 split of an odd total.
+    expect(reconstructShareWeights([1_001, 1_000])).toEqual([1, 1]);
+    expect(reconstructShareWeights([5_003, 1])).toEqual([5_003, 1]);
+    expect(reconstructShareWeights([2_002, 2_000])).toEqual([1_001, 1_000]);
+  });
+
+  it("describes the saved expense for the confirmation toast", () => {
+    const draft = {
+      description: "Groceries",
+      amountCents: 1_250_00,
+      paidBy: "a",
+      splitType: "equal" as const,
+      participantIds: ["a", "b", "c", "d"],
+      expenseAt: 0,
+    };
+    const people = [...members, { ...members[1]!, id: "d", name: "Priya Shah" }];
+    expect(buildSavedExpenseMessage("Added", draft, people, "INR")).toBe("Added Groceries · you lent ₹937.50");
+    expect(
+      buildSavedExpenseMessage("Added", { ...draft, paidBy: "d", amountCents: 900_00, participantIds: ["a", "d"] }, people, "INR"),
+    ).toBe("Added Groceries · you owe Priya ₹450.00");
+    expect(
+      buildSavedExpenseMessage("Added", { ...draft, paidBy: "b", participantIds: ["b", "c"] }, people, "INR"),
+    ).toBe("Added Groceries");
+    expect(buildSavedExpenseMessage("Updated", draft, people, "INR")).toBe("Updated Groceries");
   });
 
   it("reports what is left or over for exact splits", () => {

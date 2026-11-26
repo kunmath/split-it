@@ -266,6 +266,44 @@ function gcdArray(nums: number[]): number {
   return nums.reduce((acc, num) => gcd(acc, num));
 }
 
+const MAX_RECONSTRUCTED_WEIGHT = 100;
+
+/**
+ * Smallest integer weights (each ≤ 100) that reproduce the saved cents exactly
+ * through the same proportional split the backend uses, e.g. 3334/3333/3333 → 1/1/1.
+ * Falls back to the cents reduced by their GCD when no small ratio fits.
+ */
+export function reconstructShareWeights(shareCents: number[]): number[] {
+  if (shareCents.length === 0) {
+    return [];
+  }
+
+  if (shareCents.some((cents) => !Number.isSafeInteger(cents) || cents <= 0)) {
+    return shareCents.map(() => 1);
+  }
+
+  const totalCents = shareCents.reduce((sum, cents) => sum + cents, 0);
+  const minCents = Math.min(...shareCents);
+
+  for (let minWeight = 1; minWeight <= MAX_RECONSTRUCTED_WEIGHT; minWeight += 1) {
+    const weights = shareCents.map((cents) => Math.max(1, Math.round((cents * minWeight) / minCents)));
+
+    if (weights.some((weight) => weight > MAX_RECONSTRUCTED_WEIGHT)) {
+      break;
+    }
+
+    const reproduced = splitByShares(totalCents, weights);
+
+    if (reproduced.every((cents, index) => cents === shareCents[index])) {
+      const divisor = gcdArray(weights);
+      return weights.map((weight) => weight / divisor);
+    }
+  }
+
+  const divisor = gcdArray(shareCents);
+  return shareCents.map((cents) => cents / divisor);
+}
+
 export function buildInitialShareInputs(
   members: ComposerMember[],
   shares: ExistingExpenseDraft["shares"],
@@ -277,14 +315,12 @@ export function buildInitialShareInputs(
     inputs[member.id] = "1";
   }
 
-  // For edits, reconstruct ratios from persisted shareCents
+  // For edits, reconstruct small ratios from persisted shareCents
   if (shares.length > 0) {
-    const shareCents = shares.map((s) => s.shareCents);
-    const g = gcdArray(shareCents);
-    for (const share of shares) {
-      const ratio = share.shareCents / g;
-      inputs[share.userId] = ratio.toString();
-    }
+    const weights = reconstructShareWeights(shares.map((share) => share.shareCents));
+    shares.forEach((share, index) => {
+      inputs[share.userId] = String(weights[index]);
+    });
   }
 
   return inputs;
@@ -432,4 +468,52 @@ export function guessExpenseIconKey(description: string): ExpenseIconKey | null 
   const withCartFallback = getExpenseIconKey(description, "cart");
 
   return withCartFallback === getExpenseIconKey(description, "plane") ? withCartFallback : null;
+}
+
+/** Each participant's share of a saved draft in cents, matching what the backend stores. */
+export function getDraftShareCents(draft: ExpenseDraft) {
+  if (draft.splitType === "exact") {
+    return new Map((draft.exactShares ?? []).map((share) => [share.userId, share.shareCents]));
+  }
+
+  if (draft.splitType === "shares") {
+    return buildSharesPreview(draft.amountCents, draft.shares ?? []);
+  }
+
+  return buildEqualSharePreview(draft.amountCents, draft.participantIds);
+}
+
+/** "you lent ₹937.50", "you owe Priya ₹300.00", or null when the viewer isn't involved. */
+export function describeDraftStanding(draft: ExpenseDraft, members: ComposerMember[], currency: string) {
+  const me = members.find((member) => member.isCurrentUser);
+
+  if (!me) {
+    return null;
+  }
+
+  const myShareCents = getDraftShareCents(draft).get(me.id) ?? 0;
+
+  if (draft.paidBy === me.id) {
+    const lentCents = draft.amountCents - myShareCents;
+    return lentCents > 0 ? `you lent ${formatMoneyFromCents(lentCents, currency)}` : null;
+  }
+
+  if (myShareCents > 0) {
+    const payer = members.find((member) => member.id === draft.paidBy);
+    const payerName = payer ? payer.name.split(" ")[0] : "them";
+    return `you owe ${payerName} ${formatMoneyFromCents(myShareCents, currency)}`;
+  }
+
+  return null;
+}
+
+/** Toast copy after a successful save, e.g. "Added Groceries · you lent ₹937.50". */
+export function buildSavedExpenseMessage(
+  verb: "Added" | "Updated",
+  draft: ExpenseDraft,
+  members: ComposerMember[],
+  currency: string,
+) {
+  const standing = verb === "Added" ? describeDraftStanding(draft, members, currency) : null;
+  return standing ? `${verb} ${draft.description} · ${standing}` : `${verb} ${draft.description}`;
 }

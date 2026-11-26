@@ -721,6 +721,7 @@ export const getDashboardSummary = query({
         overallYouAreOwedCents: 0,
         totalYouOweCents: 0,
         activeGroupCount: 0,
+        byCurrency: [] as Array<{ currency: string; owedCents: number; oweCents: number }>,
       };
     }
 
@@ -728,15 +729,27 @@ export const getDashboardSummary = query({
 
     let overallYouAreOwedCents = 0;
     let totalYouOweCents = 0;
+    // Amounts in different currencies are never added together; the legacy totals above only make
+    // sense when every group shares one currency.
+    const totalsByCurrency = new Map<string, { currency: string; owedCents: number; oweCents: number }>();
 
     for (const group of groups) {
+      const totals = totalsByCurrency.get(group.group.currency) ?? {
+        currency: group.group.currency,
+        owedCents: 0,
+        oweCents: 0,
+      };
+      totalsByCurrency.set(group.group.currency, totals);
+
       if (group.balanceCents > 0) {
         overallYouAreOwedCents += group.balanceCents;
+        totals.owedCents += group.balanceCents;
         continue;
       }
 
       if (group.balanceCents < 0) {
         totalYouOweCents += Math.abs(group.balanceCents);
+        totals.oweCents += Math.abs(group.balanceCents);
       }
     }
 
@@ -744,6 +757,7 @@ export const getDashboardSummary = query({
       overallYouAreOwedCents,
       totalYouOweCents,
       activeGroupCount: groups.length,
+      byCurrency: [...totalsByCurrency.values()].sort((left, right) => left.currency.localeCompare(right.currency)),
     };
   },
 });

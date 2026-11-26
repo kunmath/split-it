@@ -14,7 +14,7 @@ import {
   type GroupListItem,
 } from "@/components/groups/group-list-data";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
-import { MobileTopBar, topBarIconButtonClass } from "@/components/shell/mobile-top-bar";
+import { MobileTopBar } from "@/components/shell/mobile-top-bar";
 import { PageContainer } from "@/components/shell/page-container";
 import { Button } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
@@ -120,11 +120,11 @@ function GroupsIndexScene({ initialCreateOpen, groups, onCreateGroup }: GroupsIn
         actions={
           <button
             type="button"
-            aria-label="New group"
             onClick={createDialog.openDialog}
-            className={cn(topBarIconButtonClass, "-mr-2 text-primary")}
+            className="relative inline-flex h-9 items-center gap-1.5 rounded-full border border-white/8 bg-surface-container-high px-3.5 text-sm font-semibold text-on-surface transition after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           >
-            <Plus className="h-6 w-6" aria-hidden="true" />
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New group
           </button>
         }
       />

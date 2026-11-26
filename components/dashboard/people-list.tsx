@@ -1,15 +1,21 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useId, useState } from "react";
 
+import { PersonBreakdownSheet } from "@/components/dashboard/person-breakdown-sheet";
 import type { PersonBalanceItem } from "@/components/groups/group-list-data";
 import { Money, toneTextClass, toneFromCents } from "@/components/ui/money";
 import { SkeletonBlock } from "@/components/ui/skeletons";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 
-const VISIBLE_COUNT = 5;
+const VISIBLE_COUNT = 4;
+
+const rowClass = "flex min-h-[4.5rem] w-full items-center gap-3 px-4 py-3 text-left";
+const interactiveRowClass =
+  "transition hover:bg-white/4 focus-visible:bg-white/4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60";
 
 function describeGroups(groups: PersonBalanceItem["groups"]) {
   if (groups.length === 1) {
@@ -21,6 +27,7 @@ function describeGroups(groups: PersonBalanceItem["groups"]) {
 
 export function PeopleList({ people }: { people: PersonBalanceItem[] }) {
   const [expanded, setExpanded] = useState(false);
+  const [openKey, setOpenKey] = useState<string | null>(null);
   const listId = useId();
 
   if (people.length === 0) {
@@ -33,32 +40,37 @@ export function PeopleList({ people }: { people: PersonBalanceItem[] }) {
 
   const hasMore = people.length > VISIBLE_COUNT;
   const visible = expanded ? people : people.slice(0, VISIBLE_COUNT);
+  const openPerson = people.find((person) => person.key === openKey) ?? null;
 
   return (
-    <div className="overflow-hidden rounded-3xl bg-surface-container-low">
-      <ul id={listId} className="divide-y divide-white/5">
-        {visible.map((person) => (
-          <PersonRow key={person.key} person={person} />
-        ))}
-      </ul>
-      {hasMore ? (
-        <button
-          type="button"
-          aria-expanded={expanded}
-          aria-controls={listId}
-          onClick={() => setExpanded((current) => !current)}
-          className="flex min-h-12 w-full items-center justify-center border-t border-white/5 text-sm font-semibold text-primary transition hover:bg-white/4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60"
-        >
-          {expanded ? "Show fewer" : `Show all ${people.length}`}
-        </button>
-      ) : null}
-    </div>
+    <>
+      <div className="overflow-hidden rounded-3xl bg-surface-container-low">
+        <ul id={listId} className="divide-y divide-white/5">
+          {visible.map((person) => (
+            <PersonRow key={person.key} person={person} onOpenBreakdown={() => setOpenKey(person.key)} />
+          ))}
+        </ul>
+        {hasMore ? (
+          <button
+            type="button"
+            aria-expanded={expanded}
+            aria-controls={listId}
+            onClick={() => setExpanded((current) => !current)}
+            className="flex min-h-12 w-full items-center justify-center border-t border-white/5 text-sm font-semibold text-primary transition hover:bg-white/4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60"
+          >
+            {expanded ? "Show fewer" : `Show all ${people.length}`}
+          </button>
+        ) : null}
+      </div>
+
+      <PersonBreakdownSheet person={openPerson} onClose={() => setOpenKey(null)} />
+    </>
   );
 }
 
-function PersonRow({ person }: { person: PersonBalanceItem }) {
+function PersonRow({ person, onOpenBreakdown }: { person: PersonBalanceItem; onOpenBreakdown: () => void }) {
   const tone = toneFromCents(person.balanceCents);
-  const target = person.groups[0];
+  const multiGroup = person.groups.length > 1;
   const content = (
     <>
       <UserAvatar name={person.name} imageUrl={person.imageUrl} size="md" />
@@ -77,20 +89,26 @@ function PersonRow({ person }: { person: PersonBalanceItem }) {
           className="block font-headline text-base font-bold"
         />
       </span>
+      {multiGroup ? <ChevronRight className="-mr-1 h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden="true" /> : null}
     </>
   );
-  const rowClass = "flex min-h-[4.5rem] items-center gap-3 px-4 py-3";
+
+  if (multiGroup) {
+    return (
+      <li>
+        <button type="button" aria-haspopup="dialog" onClick={onOpenBreakdown} className={cn(rowClass, interactiveRowClass)}>
+          {content}
+        </button>
+      </li>
+    );
+  }
+
+  const target = person.groups[0];
 
   return (
     <li>
       {target ? (
-        <Link
-          href={target.href}
-          className={cn(
-            rowClass,
-            "transition hover:bg-white/4 focus-visible:bg-white/4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60",
-          )}
-        >
+        <Link href={target.href} className={cn(rowClass, interactiveRowClass)}>
           {content}
         </Link>
       ) : (

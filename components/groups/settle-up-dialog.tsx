@@ -2,7 +2,7 @@
 
 import { useMutation } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
-import { ArrowDownLeft, ArrowUpRight, Check, Plus } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Check, ChevronDown, Plus } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { getShortName } from "@/components/groups/group-types";
@@ -120,6 +120,7 @@ function SettleUpDialogScene({
   const amountId = useId();
   const noteId = useId();
   const memberLabelId = useId();
+  const othersId = useId();
   const currentUser = useMemo(() => members.find((member) => member.isCurrentUser), [members]);
   const otherMembers = useMemo(
     () => members.filter((member) => !member.isCurrentUser),
@@ -131,10 +132,18 @@ function SettleUpDialogScene({
   const [direction, setDirection] = useState<Direction>("youPay");
   const [counterpartyId, setCounterpartyId] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
+  // Who the typed amount belongs to; picking someone else replaces it with their suggestion.
+  const [amountTypedFor, setAmountTypedFor] = useState<string | null>(null);
+  const [showOthers, setShowOthers] = useState(false);
   const [note, setNote] = useState<string>("");
   const [showNote, setShowNote] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const findSuggestion = (personId: string, forDirection: Direction) =>
+    suggestions.find(
+      (suggestion) => suggestion.counterpartyId === personId && suggestion.direction === forDirection,
+    );
 
   useEffect(() => {
     if (!open) {
@@ -144,14 +153,9 @@ function SettleUpDialogScene({
     setIsSubmitting(false);
     setNote("");
     setShowNote(false);
+    setAmountTypedFor(null);
 
-    const presetSuggestion = preset
-      ? suggestions.find(
-          (suggestion) =>
-            suggestion.counterpartyId === preset.counterpartyId &&
-            suggestion.direction === preset.direction,
-        )
-      : undefined;
+    const presetSuggestion = preset ? findSuggestion(preset.counterpartyId, preset.direction) : undefined;
     const initial =
       presetSuggestion ??
       (preset ? undefined : suggestions.find((suggestion) => suggestion.direction === "youPay") ?? suggestions[0]);
@@ -160,10 +164,12 @@ function SettleUpDialogScene({
       setDirection(initial.direction);
       setCounterpartyId(initial.counterpartyId);
       setAmount((initial.amountCents / 100).toFixed(2));
+      setShowOthers(false);
     } else {
       setDirection(preset?.direction ?? "youPay");
       setCounterpartyId(preset?.counterpartyId ?? "");
       setAmount("");
+      setShowOthers(Boolean(preset?.counterpartyId));
     }
     // Only reset when the dialog transitions to open so the user's edits aren't
     // overwritten by live query updates while it is showing.
@@ -171,29 +177,45 @@ function SettleUpDialogScene({
   }, [open]);
 
   const directionSuggestions = suggestions.filter((suggestion) => suggestion.direction === direction);
+  const suggestedIds = new Set(directionSuggestions.map((suggestion) => suggestion.counterpartyId));
+  const otherPeople = otherMembers.filter((member) => !suggestedIds.has(member.id));
+  const hasSuggestions = directionSuggestions.length > 0;
+  const chipsVisible = !hasSuggestions || showOthers;
+  const chipMembers = hasSuggestions ? otherPeople : otherMembers;
   const amountCents = parseAmountToCents(amount);
   const counterparty = otherMembers.find((member) => member.id === counterpartyId);
   const isPaying = direction === "youPay";
   const currencySymbol = getCurrencySymbol(groupCurrency);
+
+  /** Selects a person and syncs the amount to what they're owed in this direction. */
+  const selectPerson = (personId: string, forDirection: Direction = direction) => {
+    setCounterpartyId(personId);
+    setError(null);
+    if (personId && amountTypedFor === personId) {
+      return;
+    }
+    const match = personId ? findSuggestion(personId, forDirection) : undefined;
+    setAmount(match ? (match.amountCents / 100).toFixed(2) : "");
+    setAmountTypedFor(null);
+  };
 
   const changeDirection = (next: Direction) => {
     if (next === direction) {
       return;
     }
     setDirection(next);
-    setError(null);
-    const match = suggestions.find((suggestion) => suggestion.direction === next);
-    if (match) {
-      setCounterpartyId(match.counterpartyId);
-      setAmount((match.amountCents / 100).toFixed(2));
-    } else {
-      setAmount("");
-    }
+    const nextSuggestions = suggestions.filter((suggestion) => suggestion.direction === next);
+    const keepPerson = counterpartyId && findSuggestion(counterpartyId, next);
+    const person = keepPerson ? counterpartyId : nextSuggestions[0]?.counterpartyId ?? counterpartyId;
+    const personIsSuggested = nextSuggestions.some((suggestion) => suggestion.counterpartyId === person);
+    setShowOthers(Boolean(person) && !personIsSuggested && nextSuggestions.length > 0);
+    selectPerson(person, next);
   };
 
   const applySuggestion = (suggestion: SettleUpSuggestion) => {
     setCounterpartyId(suggestion.counterpartyId);
     setAmount((suggestion.amountCents / 100).toFixed(2));
+    setAmountTypedFor(null);
     setError(null);
   };
 
@@ -249,18 +271,14 @@ function SettleUpDialogScene({
     }
   };
 
+  const personLabel = counterparty ? `${isPaying ? "to" : "from"} ${shortName(counterparty.name)}` : null;
   const submitLabel = isSubmitting
     ? "Recording…"
     : amountCents !== null
-      ? `Record ${formatMoneyFromCents(amountCents, groupCurrency)} payment`
-      : "Record payment";
-
-  const summary =
-    counterparty && amountCents !== null
-      ? isPaying
-        ? `You paid ${shortName(counterparty.name)} ${formatMoneyFromCents(amountCents, groupCurrency)}`
-        : `${shortName(counterparty.name)} paid you ${formatMoneyFromCents(amountCents, groupCurrency)}`
-      : null;
+      ? `Record ${formatMoneyFromCents(amountCents, groupCurrency)} ${personLabel ?? "payment"}`
+      : personLabel
+        ? `Record payment ${personLabel}`
+        : "Record payment";
 
   return (
     <ResponsiveDialog
@@ -304,14 +322,14 @@ function SettleUpDialogScene({
           })}
         </div>
 
-        {directionSuggestions.length > 0 ? (
-          <section className="space-y-2">
-            <h3 className="text-xs font-semibold text-on-surface-variant">Suggested</h3>
+        <section aria-labelledby={memberLabelId} className="space-y-2">
+          <h3 id={memberLabelId} className="text-xs font-semibold text-on-surface-variant">
+            {isPaying ? "Who did you pay?" : "Who paid you?"}
+          </h3>
+          {hasSuggestions ? (
             <ul className="space-y-2">
               {directionSuggestions.map((suggestion) => {
-                const selected =
-                  suggestion.counterpartyId === counterpartyId &&
-                  amountCents === suggestion.amountCents;
+                const selected = suggestion.counterpartyId === counterpartyId;
                 return (
                   <li key={`${suggestion.counterpartyId}-${suggestion.direction}`}>
                     <button
@@ -319,7 +337,7 @@ function SettleUpDialogScene({
                       onClick={() => applySuggestion(suggestion)}
                       aria-pressed={selected}
                       className={cn(
-                        "flex min-h-13 w-full items-center gap-3 rounded-2xl px-3 py-1.5 text-left ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                        "flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 py-1.5 text-left ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
                         selected
                           ? "bg-primary/10 ring-primary/40"
                           : "bg-surface-container-low ring-white/5 hover:bg-surface-container-high",
@@ -332,9 +350,10 @@ function SettleUpDialogScene({
                       />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-semibold text-on-surface">
-                          {isPaying
-                            ? `You owe ${shortName(suggestion.counterpartyName)}`
-                            : `${shortName(suggestion.counterpartyName)} owes you`}
+                          {shortName(suggestion.counterpartyName)}
+                        </span>
+                        <span className="block truncate text-xs text-on-surface-variant">
+                          {isPaying ? "you owe them" : "owes you"}
                         </span>
                       </span>
                       <Money
@@ -349,33 +368,37 @@ function SettleUpDialogScene({
                 );
               })}
             </ul>
-          </section>
-        ) : (
-          <p className="rounded-2xl bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
-            {isPaying
-              ? "You don't owe anyone here right now. You can still record a payment."
-              : "No one owes you here right now. You can still record a payment."}
-          </p>
-        )}
+          ) : (
+            <p className="text-sm text-on-surface-variant">
+              {isPaying ? "You don't owe anyone here right now." : "No one owes you here right now."}
+            </p>
+          )}
 
-        <section className="space-y-2">
-          <h3 id={memberLabelId} className="text-xs font-semibold text-on-surface-variant">
-            {isPaying ? "Who did you pay?" : "Who paid you?"}
-          </h3>
-          {otherMembers.length > 0 ? (
-            <div role="radiogroup" aria-labelledby={memberLabelId} className="flex flex-wrap gap-2">
-              {otherMembers.map((member) => {
+          {hasSuggestions && otherPeople.length > 0 ? (
+            <button
+              type="button"
+              aria-expanded={showOthers}
+              aria-controls={othersId}
+              onClick={() => setShowOthers((current) => !current)}
+              className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+            >
+              Someone else
+              <ChevronDown aria-hidden="true" className={cn("h-4 w-4 transition", showOthers && "rotate-180")} />
+            </button>
+          ) : null}
+
+          {otherMembers.length === 0 ? (
+            <p className="text-sm text-on-surface-variant">Invite someone to this group to record payments.</p>
+          ) : chipsVisible && chipMembers.length > 0 ? (
+            <div id={othersId} role="group" aria-label={hasSuggestions ? "Someone else" : undefined} className="flex flex-wrap gap-2">
+              {chipMembers.map((member) => {
                 const selected = member.id === counterpartyId;
                 return (
                   <button
                     key={member.id}
                     type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => {
-                      setCounterpartyId(member.id);
-                      setError(null);
-                    }}
+                    aria-pressed={selected}
+                    onClick={() => selectPerson(member.id)}
                     className={cn(
                       "flex min-h-11 items-center gap-2 rounded-full py-1 pl-1 pr-3.5 text-sm font-medium ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
                       selected
@@ -390,9 +413,7 @@ function SettleUpDialogScene({
                 );
               })}
             </div>
-          ) : (
-            <p className="text-sm text-on-surface-variant">Invite someone to this group to record payments.</p>
-          )}
+          ) : null}
         </section>
 
         <div className="space-y-2">
@@ -425,6 +446,7 @@ function SettleUpDialogScene({
               aria-invalid={error && amountCents === null ? true : undefined}
               onChange={(event) => {
                 setAmount(event.target.value.replace(/[^\d.]/g, ""));
+                setAmountTypedFor(counterpartyId || null);
                 setError(null);
               }}
               className="w-full min-w-0 border-none bg-transparent font-headline text-2xl font-bold tabular-nums text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none"
@@ -469,7 +491,7 @@ function SettleUpDialogScene({
           <p className="text-center text-xs text-on-surface-variant" aria-live="polite">
             {isMock
               ? "Demo data — payments can't be recorded here."
-              : summary ?? "Balances update for everyone as soon as it's recorded."}
+              : "Balances update for everyone as soon as it's recorded."}
           </p>
         </div>
       </form>

@@ -20,23 +20,21 @@ function Strong({ children }: { children: ReactNode }) {
   return <strong className="font-semibold text-on-surface">{children}</strong>;
 }
 
+/** Settlement amounts appear only in the right-hand column, so the sentence never repeats them. */
 function buildSentence(activity: ActivityItem): ReactNode {
-  const money = formatMoneyFromCents(activity.amountCents, activity.groupCurrency);
-
   if (activity.kind === "settlement") {
     if (activity.action === "deleted") {
       return (
         <>
-          <Strong>{actorLabel(activity)}</Strong> deleted a {money} payment from <Strong>{payerLabel(activity)}</Strong>{" "}
-          to <Strong>{payeeLabel(activity)}</Strong>
+          <Strong>{actorLabel(activity)}</Strong> deleted a payment from <Strong>{payerLabel(activity)}</Strong> to{" "}
+          <Strong>{payeeLabel(activity)}</Strong>
         </>
       );
     }
 
     return (
       <>
-        <Strong>{payerLabel(activity)}</Strong> paid <Strong>{payeeLabel(activity)}</Strong>{" "}
-        <span className="whitespace-nowrap font-semibold text-on-surface tabular-nums">{money}</span>
+        <Strong>{payerLabel(activity)}</Strong> paid <Strong>{payeeLabel(activity)}</Strong>
       </>
     );
   }
@@ -113,7 +111,11 @@ export function ActivityRow({ activity }: { activity: ActivityItem }) {
             cents={outcome.cents}
             currency={activity.groupCurrency}
             tone={outcome.tone}
-            className={cn("font-headline text-[0.95rem] font-bold", outcome.tone === "none" && "text-on-surface-variant")}
+            className={cn(
+              "font-headline text-[0.95rem] font-bold",
+              outcome.tone === "none" && "text-on-surface-variant",
+              isSettlement && outcome.tone === "neutral" && "text-on-surface",
+            )}
           />
         ) : null}
       </span>

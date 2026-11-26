@@ -121,7 +121,10 @@ export type ActivityOutcome = {
   tone: "positive" | "negative" | "neutral" | "none";
 };
 
-/** Right-hand summary: what this event means for the viewer, in words + amount. */
+/**
+ * Right-hand summary: what this event means for the viewer, in words + amount. Expenses use the
+ * group ledger's "you lent / you borrowed"; settlements stay neutral because the words carry the meaning.
+ */
 export function getActivityOutcome(activity: ActivityItem): ActivityOutcome {
   if (activity.action === "deleted") {
     return { label: "deleted", cents: activity.amountCents, tone: "none" };
@@ -129,22 +132,22 @@ export function getActivityOutcome(activity: ActivityItem): ActivityOutcome {
 
   if (activity.kind === "settlement") {
     if (activity.paidByCurrentUser) {
-      return { label: "you paid", cents: activity.amountCents, tone: "negative" };
+      return { label: "you paid", cents: activity.amountCents, tone: "neutral" };
     }
 
     if (activity.counterpartyIsCurrentUser) {
-      return { label: "you received", cents: activity.amountCents, tone: "positive" };
+      return { label: "you received", cents: activity.amountCents, tone: "neutral" };
     }
 
     return { label: "not involved", cents: null, tone: "neutral" };
   }
 
   if (activity.currentUserNetCents > 0) {
-    return { label: "you get back", cents: activity.currentUserNetCents, tone: "positive" };
+    return { label: "you lent", cents: activity.currentUserNetCents, tone: "positive" };
   }
 
   if (activity.currentUserNetCents < 0) {
-    return { label: "you owe", cents: activity.currentUserNetCents, tone: "negative" };
+    return { label: "you borrowed", cents: activity.currentUserNetCents, tone: "negative" };
   }
 
   return { label: "not involved", cents: null, tone: "neutral" };

@@ -8,11 +8,12 @@ import { useState, type ReactNode } from "react";
 
 import { GroupBalanceStrip } from "@/components/groups/group-balance-strip";
 import { GroupBalancesSheet, GroupMemberBalanceList } from "@/components/groups/group-balances-sheet";
+import { LiveGroupEntrySheet, MockGroupEntrySheet } from "@/components/groups/group-entry-sheet";
 import { GroupExpenseList, type GroupExpensePager } from "@/components/groups/group-expense-list";
 import { GroupInsights } from "@/components/groups/group-insights";
 import { getMockGroupSceneData } from "@/components/groups/group-mock-data";
 import { GroupScreenSkeleton } from "@/components/groups/group-screen-skeleton";
-import { formatMemberCount, type GroupSceneData } from "@/components/groups/group-types";
+import { formatMemberCount, type GroupExpense, type GroupSceneData } from "@/components/groups/group-types";
 import { SettleUpDialog, type SettleUpPreset } from "@/components/groups/settle-up-dialog";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { MobileTopBar, topBarIconButtonClass } from "@/components/shell/mobile-top-bar";
@@ -178,6 +179,7 @@ function GroupScene({
   const [localSettleOpen, setLocalSettleOpen] = useState(false);
   const [localPreset, setLocalPreset] = useState<SettleUpPreset | null>(null);
   const [balancesOpen, setBalancesOpen] = useState(false);
+  const [openEntry, setOpenEntry] = useState<GroupExpense | null>(null);
   const isSettleOpen = shouldAutoOpen || localSettleOpen;
 
   const urlPreset: SettleUpPreset | null =
@@ -256,7 +258,7 @@ function GroupScene({
             onSettleUp={openSettle}
             onShowBalances={() => setBalancesOpen(true)}
           />
-          <GroupExpenseList group={group} pager={pager} />
+          <GroupExpenseList group={group} pager={pager} onOpenEntry={setOpenEntry} />
           <GroupInsights className="lg:hidden" group={group} />
         </div>
 
@@ -266,6 +268,7 @@ function GroupScene({
             onSettleUp={openSettle}
             onShowBalances={() => setBalancesOpen(true)}
             showActions={false}
+            maxLines={3}
           />
           <section className="rounded-3xl bg-surface-container-low px-5 pb-3 pt-4 ring-1 ring-white/5">
             <h2 className="text-sm font-semibold text-on-surface">Member balances</h2>
@@ -283,6 +286,22 @@ function GroupScene({
         onSettleUp={() => openSettle()}
         canSettle={canSettle}
       />
+
+      {isMock ? (
+        <MockGroupEntrySheet
+          entry={openEntry}
+          groupId={group.groupId}
+          currency={group.groupCurrency}
+          onClose={() => setOpenEntry(null)}
+        />
+      ) : (
+        <LiveGroupEntrySheet
+          entry={openEntry}
+          groupId={group.groupId}
+          currency={group.groupCurrency}
+          onClose={() => setOpenEntry(null)}
+        />
+      )}
 
       <SettleUpDialog
         open={isSettleOpen}

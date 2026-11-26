@@ -7,6 +7,7 @@ import { AddExpenseProvider } from "@/components/shell/add-expense";
 import { DesktopRail } from "@/components/shell/desktop-rail";
 import { MobileBottomNav } from "@/components/shell/mobile-bottom-nav";
 import { InAppHistoryContext } from "@/components/shell/mobile-top-bar";
+import { Toaster } from "@/components/ui/toast";
 import { isExpenseComposerRoute } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ export function AppShell({ children }: AppShellProps) {
           </div>
 
           {!isComposer ? <MobileBottomNav /> : null}
+          <Toaster />
         </div>
       </AddExpenseProvider>
     </InAppHistoryContext.Provider>

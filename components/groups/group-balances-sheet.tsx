@@ -7,16 +7,24 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 
+/**
+ * Only the viewer's own row is colored (mint = you get back, peach = you owe). Other members' net
+ * positions are neutral so they never contradict the viewer-relative colors elsewhere on screen.
+ */
 function describeMemberBalance(member: GroupMember) {
   if (member.balanceCents > 0) {
-    return { label: member.isCurrentUser ? "you get back" : "gets back", tone: "positive" as const };
+    return member.isCurrentUser
+      ? { label: "you get back", tone: "positive" as const }
+      : { label: "gets back", tone: "none" as const };
   }
 
   if (member.balanceCents < 0) {
-    return { label: member.isCurrentUser ? "you owe" : "owes", tone: "negative" as const };
+    return member.isCurrentUser
+      ? { label: "you owe", tone: "negative" as const }
+      : { label: "owes", tone: "none" as const };
   }
 
-  return { label: "settled up", tone: "neutral" as const };
+  return { label: "settled up", tone: "settled" as const };
 }
 
 /** Every member's net position in the group, in words + amount. Viewer first, then by magnitude. */
@@ -55,12 +63,12 @@ export function GroupMemberBalanceList({
             </div>
             <div className="shrink-0 text-right">
               <p className="text-xs text-on-surface-variant">{balance.label}</p>
-              {balance.tone !== "neutral" ? (
+              {balance.tone !== "settled" ? (
                 <Money
                   cents={member.balanceCents}
                   currency={currency}
                   tone={balance.tone}
-                  className="font-headline text-sm font-bold"
+                  className={cn("font-headline text-sm font-bold", balance.tone === "none" && "text-on-surface")}
                 />
               ) : null}
             </div>

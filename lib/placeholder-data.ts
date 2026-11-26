@@ -3,24 +3,6 @@ import { titleFromSlug } from "@/lib/utils";
 export type StatTone = "positive" | "negative" | "neutral";
 export type IconKey = "home" | "plane" | "utensils" | "cart" | "mountain" | "fuel";
 
-export type SummaryCard = {
-  label: string;
-  value: number;
-  tone: StatTone;
-  detail: string;
-};
-
-export type GroupPlaceholder = {
-  id: string;
-  name: string;
-  memberCount: number;
-  context: string;
-  balanceLabel: string;
-  balanceTone: StatTone;
-  icon: IconKey;
-  accentCount?: number;
-};
-
 export type ExpensePlaceholder = {
   id: string;
   title: string;
@@ -63,53 +45,6 @@ export type SettingsAction = {
   note: string;
   tone: "default" | "danger";
 };
-
-export const dashboardSummary: SummaryCard[] = [
-  { label: "Overall you are owed", value: 1240.5, tone: "positive", detail: "Across your active groups" },
-  { label: "Total you owe", value: 342.15, tone: "negative", detail: "Across your active groups" },
-];
-
-export const dashboardGroups: GroupPlaceholder[] = [
-  {
-    id: "modern-loft-4b",
-    name: "Modern Loft 4B",
-    memberCount: 4,
-    context: "Rent, utilities, groceries",
-    balanceLabel: "+₹450.00",
-    balanceTone: "positive",
-    icon: "home",
-    accentCount: 2,
-  },
-  {
-    id: "tokyo-trip-24",
-    name: "Tokyo Trip '24",
-    memberCount: 6,
-    context: "Flights, dining, transit",
-    balanceLabel: "-₹125.40",
-    balanceTone: "negative",
-    icon: "plane",
-    accentCount: 5,
-  },
-  {
-    id: "friday-dinners",
-    name: "Friday Dinners",
-    memberCount: 3,
-    context: "Rotating hosts, weekly tabs",
-    balanceLabel: "Settled",
-    balanceTone: "neutral",
-    icon: "utensils",
-    accentCount: 1,
-  },
-  {
-    id: "shared-groceries",
-    name: "Shared Groceries",
-    memberCount: 2,
-    context: "Home staples and restocks",
-    balanceLabel: "+₹12.80",
-    balanceTone: "positive",
-    icon: "cart",
-  },
-];
 
 export const groupExpenses: ExpensePlaceholder[] = [
   {
@@ -166,123 +101,6 @@ export const groupExpenses: ExpensePlaceholder[] = [
     signedBalance: -38,
     tone: "negative",
     icon: "cart",
-  },
-];
-
-// Demo activity is dated relative to "now" so day grouping (Today / Yesterday) shows up.
-function hoursAgo(hours: number) {
-  return Date.now() - hours * 60 * 60 * 1000;
-}
-
-function daysAgo(days: number, hourOfDay: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  date.setHours(hourOfDay, 0, 0, 0);
-  return date.getTime();
-}
-
-export const activityFeed: ActivityPlaceholder[] = [
-  {
-    id: "activity-reykjavik-flights",
-    groupId: "iceland-expedition",
-    groupName: "Iceland Expedition",
-    groupCurrency: "INR",
-    groupIconKey: "plane",
-    description: "Reykjavik Flights",
-    amountCents: 124_000,
-    expenseAt: hoursAgo(2),
-    kind: "expense",
-    paidByName: "Sarah Jenkins",
-    paidByCurrentUser: false,
-    currentUserNetCents: -41_333,
-    participantCount: 3,
-    counterpartyName: null,
-    counterpartyIsCurrentUser: false,
-  },
-  {
-    id: "activity-dinner-grillmarkadurinn",
-    groupId: "iceland-expedition",
-    groupName: "Iceland Expedition",
-    groupCurrency: "INR",
-    groupIconKey: "utensils",
-    description: "Dinner at Grillmarkaðurinn",
-    amountCents: 32_050,
-    expenseAt: hoursAgo(5),
-    kind: "expense",
-    paidByName: "Marcus Vale",
-    paidByCurrentUser: false,
-    currentUserNetCents: -10_683,
-    participantCount: 3,
-    counterpartyName: null,
-    counterpartyIsCurrentUser: false,
-  },
-  {
-    id: "activity-rental-car-deposit",
-    groupId: "iceland-expedition",
-    groupName: "Iceland Expedition",
-    groupCurrency: "INR",
-    groupIconKey: "mountain",
-    description: "Rental Car Deposit",
-    amountCents: 50_000,
-    expenseAt: daysAgo(1, 13),
-    kind: "expense",
-    paidByName: "You",
-    paidByCurrentUser: true,
-    currentUserNetCents: 16_666,
-    participantCount: 3,
-    counterpartyName: null,
-    counterpartyIsCurrentUser: false,
-  },
-  {
-    id: "activity-groceries-cabin",
-    groupId: "weekend-getaway",
-    groupName: "Weekend Getaway",
-    groupCurrency: "INR",
-    groupIconKey: "cart",
-    description: "Groceries for Cabin",
-    amountCents: 18_520,
-    expenseAt: daysAgo(1, 9),
-    kind: "expense",
-    paidByName: "Elena Rodriguez",
-    paidByCurrentUser: false,
-    currentUserNetCents: -4_630,
-    participantCount: 4,
-    counterpartyName: null,
-    counterpartyIsCurrentUser: false,
-  },
-  {
-    id: "activity-settlement-elena",
-    groupId: "modern-loft-4b",
-    groupName: "Modern Loft 4B",
-    groupCurrency: "INR",
-    groupIconKey: "home",
-    description: "Settlement",
-    amountCents: 35_000,
-    expenseAt: daysAgo(3, 16),
-    kind: "settlement",
-    paidByName: "You",
-    paidByCurrentUser: true,
-    currentUserNetCents: 35_000,
-    participantCount: 1,
-    counterpartyName: "Elena Rodriguez",
-    counterpartyIsCurrentUser: false,
-  },
-  {
-    id: "activity-sushi-team",
-    groupId: "friday-dinners",
-    groupName: "Friday Dinners",
-    groupCurrency: "INR",
-    groupIconKey: "utensils",
-    description: "Sushi with Team",
-    amountCents: 18_000,
-    expenseAt: daysAgo(6, 19),
-    kind: "expense",
-    paidByName: "You",
-    paidByCurrentUser: true,
-    currentUserNetCents: 4_500,
-    participantCount: 4,
-    counterpartyName: null,
-    counterpartyIsCurrentUser: false,
   },
 ];
 

@@ -3,12 +3,12 @@ import { cn } from "@/lib/utils";
 
 function RowSkeleton() {
   return (
-    <div className="flex min-h-16 items-center gap-3 px-2 py-2.5">
-      <div className="flex w-9 flex-col items-center gap-1">
+    <div className="flex min-h-16 items-center gap-2.5 px-1.5 py-2.5 sm:gap-3 sm:px-2">
+      <div className="flex w-8 flex-col items-center gap-1">
         <SkeletonBlock className="h-3 w-6 rounded" />
         <SkeletonBlock className="h-4 w-5 rounded" />
       </div>
-      <SkeletonBlock className="h-11 w-11 shrink-0 rounded-xl" />
+      <SkeletonBlock className="h-10 w-10 shrink-0 rounded-xl" />
       <div className="flex-1 space-y-2">
         <SkeletonBlock className="h-4 w-2/3 rounded-md" />
         <SkeletonBlock className="h-3 w-1/3 rounded-md" />

@@ -4,15 +4,16 @@ import { useQuery } from "convex/react";
 import { ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { mockGroups } from "@/components/groups/group-list-data";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
 import { buttonVariants } from "@/components/ui/button";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { api } from "@/convex/_generated/api";
 import { iconMap } from "@/lib/icon-map";
 import { getGroupIdFromPathname } from "@/lib/navigation";
-import { dashboardGroups, type IconKey } from "@/lib/placeholder-data";
+import type { IconKey } from "@/lib/placeholder-data";
 import { cn } from "@/lib/utils";
 
 type PickerGroup = {
@@ -82,32 +83,53 @@ export function AddExpenseTrigger({ className, children, ariaLabel }: AddExpense
 function GroupPickerSheet({ onClose }: { onClose: () => void }) {
   const { mode } = usePlaceholderMode();
 
-  return mode === "live" ? <LiveGroupPicker onClose={onClose} /> : <GroupPickerScene groups={mockGroups()} onClose={onClose} />;
+  return mode === "live" ? <LiveGroupPicker onClose={onClose} /> : <GroupPickerScene groups={mockPickerGroups} onClose={onClose} />;
 }
 
-function mockGroups(): PickerGroup[] {
-  return dashboardGroups.map((group) => ({
-    id: group.id,
-    name: group.name,
-    memberCount: group.memberCount,
-    icon: group.icon,
-  }));
-}
+// Same demo groups (and member counts) as Home / Groups.
+const mockPickerGroups: PickerGroup[] = mockGroups.map((group) => ({
+  id: group.id,
+  name: group.name,
+  memberCount: group.memberCount,
+  icon: group.icon,
+}));
 
 function LiveGroupPicker({ onClose }: { onClose: () => void }) {
   const groups = useQuery(api.groups.listActiveForCurrentUser, {});
-  const mapped = groups?.map((group) => ({
-    id: group._id,
-    name: group.name,
-    memberCount: group.memberCount,
-    icon: group.iconKey as IconKey,
-  }));
+  // No last-activity timestamp is available, so newest groups come first.
+  const mapped = groups
+    ? [...groups]
+        .sort((left, right) => right.createdAt - left.createdAt)
+        .map((group) => ({
+          id: group._id,
+          name: group.name,
+          memberCount: group.memberCount,
+          icon: group.iconKey as IconKey,
+        }))
+    : undefined;
 
   return <GroupPickerScene groups={mapped} onClose={onClose} />;
 }
 
+function composerHref(groupId: string) {
+  return `/groups/${groupId}/expenses/new`;
+}
+
 function GroupPickerScene({ groups, onClose }: { groups: PickerGroup[] | undefined; onClose: () => void }) {
   const router = useRouter();
+  const onlyGroupId = groups?.length === 1 ? groups[0]!.id : null;
+
+  // With a single group there is nothing to pick: go straight to its composer.
+  useEffect(() => {
+    if (onlyGroupId) {
+      onClose();
+      router.push(composerHref(onlyGroupId));
+    }
+  }, [onlyGroupId, onClose, router]);
+
+  if (onlyGroupId) {
+    return null;
+  }
 
   return (
     <ResponsiveDialog open size="compact" title="Add expense to…" onClose={onClose}>
@@ -142,7 +164,7 @@ function GroupPickerScene({ groups, onClose }: { groups: PickerGroup[] | undefin
                   type="button"
                   onClick={() => {
                     onClose();
-                    router.push(`/groups/${group.id}/expenses/new`);
+                    router.push(composerHref(group.id));
                   }}
                   className={cn(
                     "flex min-h-16 w-full items-center gap-3 rounded-2xl px-3 py-2 text-left transition",

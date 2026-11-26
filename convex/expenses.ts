@@ -593,6 +593,72 @@ export const listPageForGroup = query({
   },
 });
 
+/**
+ * Read-only view of a single ledger entry (expense or settlement) for any
+ * active member of its group. `canEdit` mirrors requireExpenseEditPermission.
+ */
+export const getEntryDetail = query({
+  args: {
+    expenseId: v.id("expenses"),
+  },
+  handler: async (ctx, args) => {
+    const expense = await ctx.db.get(args.expenseId);
+
+    if (expense === null) {
+      return null;
+    }
+
+    const access = await requireGroupMember(ctx, expense.groupId);
+    const shares = await ctx.db
+      .query("expenseShares")
+      .withIndex("by_expense", (q) => q.eq("expenseId", expense._id))
+      .collect();
+
+    const userIds = new Set<Id<"users">>([expense.paidBy, ...shares.map((share) => share.userId)]);
+    const users = await Promise.all([...userIds].map((userId) => ctx.db.get(userId)));
+    const nameLookup = new Map<Id<"users">, string>();
+    for (const user of users) {
+      if (user !== null) {
+        nameLookup.set(user._id, user.name);
+      }
+    }
+    const nameOf = (userId: Id<"users">) => nameLookup.get(userId) ?? "Former member";
+
+    const shareRows = shares
+      .map((share) => ({
+        userId: share.userId,
+        name: nameOf(share.userId),
+        shareCents: share.shareCents,
+        isCurrentUser: share.userId === access.user._id,
+      }))
+      .sort((left, right) => {
+        if (left.isCurrentUser !== right.isCurrentUser) {
+          return left.isCurrentUser ? -1 : 1;
+        }
+        return right.shareCents - left.shareCents || left.name.localeCompare(right.name);
+      });
+
+    return {
+      id: expense._id,
+      groupId: expense.groupId,
+      description: expense.description,
+      amountCents: expense.amountCents,
+      expenseAt: expense.expenseAt,
+      kind: expense.kind ?? ("expense" as const),
+      splitType: expense.splitType,
+      notes: expense.notes ?? null,
+      paidBy: {
+        id: expense.paidBy,
+        name: nameOf(expense.paidBy),
+        isCurrentUser: expense.paidBy === access.user._id,
+      },
+      shares: shareRows,
+      currentUserNetCents: getCurrentUserExpenseNetCents({ expense, shares }, access.user._id),
+      canEdit: expense.createdBy === access.user._id || access.membership.role === "owner",
+    };
+  },
+});
+
 export const createExpense = mutation({
   args: {
     groupId: v.id("groups"),
