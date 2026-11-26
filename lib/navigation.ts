@@ -1,15 +1,7 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  BellDot,
-  CircleHelp,
-  LayoutDashboard,
-  Settings2,
-  UserRound,
-  Users,
-  WalletCards,
-} from "lucide-react";
+import { Activity, House, UserRound, WalletCards } from "lucide-react";
 
-export type AppSection = "dashboard" | "groups" | "friends" | "activity" | "account";
+export type AppSection = "home" | "groups" | "activity" | "account";
 
 export type NavItem = {
   label: string;
@@ -18,32 +10,16 @@ export type NavItem = {
   section: AppSection;
 };
 
-export const desktopPrimaryNav: NavItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, section: "dashboard" },
-  { label: "Activity", href: "/activity", icon: BellDot, section: "activity" },
-  { label: "Friends", href: "/friends", icon: Users, section: "friends" },
+export const primaryNav: NavItem[] = [
+  { label: "Home", href: "/dashboard", icon: House, section: "home" },
   { label: "Groups", href: "/groups", icon: WalletCards, section: "groups" },
-];
-
-export const desktopSecondaryNav = [
-  { label: "Settings", href: "/account", icon: Settings2, section: "account" as const },
-  { label: "Support", href: "/invites/demo-token", icon: CircleHelp, section: "account" as const },
-];
-
-export const mobileNav: NavItem[] = [
-  { label: "Groups", href: "/groups", icon: WalletCards, section: "groups" },
-  { label: "Friends", href: "/friends", icon: Users, section: "friends" },
-  { label: "Activity", href: "/activity", icon: BellDot, section: "activity" },
+  { label: "Activity", href: "/activity", icon: Activity, section: "activity" },
   { label: "Account", href: "/account", icon: UserRound, section: "account" },
 ];
 
 export function getSectionFromPathname(pathname: string): AppSection {
   if (pathname.startsWith("/groups")) {
     return "groups";
-  }
-
-  if (pathname.startsWith("/friends")) {
-    return "friends";
   }
 
   if (pathname.startsWith("/activity")) {
@@ -54,5 +30,20 @@ export function getSectionFromPathname(pathname: string): AppSection {
     return "account";
   }
 
-  return "dashboard";
+  return "home";
+}
+
+/** Group id for routes under /groups/[groupId], otherwise null. */
+export function getGroupIdFromPathname(pathname: string): string | null {
+  const segments = pathname.split("/").filter(Boolean);
+
+  if (segments[0] !== "groups" || !segments[1]) {
+    return null;
+  }
+
+  return segments[1];
+}
+
+export function isExpenseComposerRoute(pathname: string) {
+  return /^\/groups\/[^/]+\/expenses\//.test(pathname);
 }

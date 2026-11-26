@@ -644,6 +644,74 @@ export const getSettingsOverview = query({
   },
 });
 
+export const listPeopleBalances = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (user === null) {
+      return [];
+    }
+
+    const groups = await getActiveGroupRecords(ctx, user._id);
+    type PersonEntry = {
+      userId: Id<"users">;
+      currency: string;
+      balanceCents: number;
+      groups: Array<{ groupId: Id<"groups">; groupName: string; balanceCents: number }>;
+    };
+    const people = new Map<string, PersonEntry>();
+
+    // Only groups where the viewer is not settled can contain debts that involve them.
+    for (const record of groups.filter((item) => item.balanceCents !== 0)) {
+      const snapshots = await getGroupBalanceSnapshots(ctx, record.group._id);
+
+      for (const transfer of simplifyDebts(snapshots)) {
+        const involvesViewer = transfer.fromUserId === user._id || transfer.toUserId === user._id;
+        if (!involvesViewer) {
+          continue;
+        }
+
+        const counterpartyId = transfer.fromUserId === user._id ? transfer.toUserId : transfer.fromUserId;
+        // Positive: the counterparty owes the viewer.
+        const signedCents = transfer.toUserId === user._id ? transfer.amountCents : -transfer.amountCents;
+        const key = `${counterpartyId}:${record.group.currency}`;
+        const entry = people.get(key) ?? {
+          userId: counterpartyId,
+          currency: record.group.currency,
+          balanceCents: 0,
+          groups: [],
+        };
+
+        entry.balanceCents += signedCents;
+        entry.groups.push({
+          groupId: record.group._id,
+          groupName: record.group.name,
+          balanceCents: signedCents,
+        });
+        people.set(key, entry);
+      }
+    }
+
+    const entries = [...people.values()].filter((entry) => entry.balanceCents !== 0);
+    const counterparties = await Promise.all(entries.map((entry) => ctx.db.get(entry.userId)));
+
+    return entries
+      .map((entry, index) => {
+        const counterparty = counterparties[index];
+
+        return {
+          ...entry,
+          name: counterparty?.name ?? "Former member",
+          imageUrl: counterparty?.imageUrl,
+          groups: entry.groups.sort(
+            (left, right) => Math.abs(right.balanceCents) - Math.abs(left.balanceCents),
+          ),
+        };
+      })
+      .sort((left, right) => Math.abs(right.balanceCents) - Math.abs(left.balanceCents));
+  },
+});
+
 export const getDashboardSummary = query({
   args: {},
   handler: async (ctx) => {

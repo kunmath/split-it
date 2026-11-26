@@ -24,6 +24,8 @@ export const create = mutation({
   args: {
     groupId: v.id("groups"),
     toUserId: v.id("users"),
+    /** Defaults to the current user. Set it to record a payment the current user received. */
+    fromUserId: v.optional(v.id("users")),
     amountCents: v.number(),
     note: v.optional(v.string()),
   },
@@ -31,14 +33,23 @@ export const create = mutation({
     const access = await requireGroupMember(ctx, args.groupId);
     assertGroupIsActive(access.group);
 
-    if (args.toUserId === access.user._id) {
+    const fromUserId = args.fromUserId ?? access.user._id;
+
+    // Members may only record payments they are a party to: either they paid,
+    // or they are the recipient confirming money they received.
+    if (fromUserId !== access.user._id && args.toUserId !== access.user._id) {
+      throw new ConvexError("You can only record payments you sent or received");
+    }
+
+    if (args.toUserId === fromUserId) {
       throw new ConvexError("You cannot settle a payment with yourself");
     }
 
+    const counterpartyId = fromUserId === access.user._id ? args.toUserId : fromUserId;
     const counterpartyMembership = await ctx.db
       .query("groupMembers")
       .withIndex("by_group_user", (q) =>
-        q.eq("groupId", args.groupId).eq("userId", args.toUserId),
+        q.eq("groupId", args.groupId).eq("userId", counterpartyId),
       )
       .unique();
 
@@ -54,7 +65,7 @@ export const create = mutation({
       groupId: args.groupId,
       description: "Settlement",
       amountCents,
-      paidBy: access.user._id,
+      paidBy: fromUserId,
       splitType: "exact",
       kind: "settlement",
       expenseAt: now,
@@ -73,7 +84,7 @@ export const create = mutation({
       groupId: args.groupId,
       kind: "settlement",
       amountCents,
-      paidBy: access.user._id,
+      paidBy: fromUserId,
       shares: [{ userId: args.toUserId, shareCents: amountCents }],
       direction: 1,
     });
@@ -84,7 +95,7 @@ export const create = mutation({
         groupId: args.groupId,
         description: "Settlement",
         amountCents,
-        paidBy: access.user._id,
+        paidBy: fromUserId,
         kind: "settlement",
       },
       shares: [{ userId: args.toUserId, shareCents: amountCents }],
