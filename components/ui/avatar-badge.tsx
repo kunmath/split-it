@@ -37,7 +37,7 @@ export function AvatarBadge({
         <p className="font-headline text-sm font-semibold text-on-surface">{name}</p>
         {note ? <p className="text-xs text-on-surface-variant">{note}</p> : null}
         {chip ? (
-          <span className="inline-flex rounded-full bg-white/6 px-2 py-1 text-[0.65rem] uppercase tracking-[0.18em] text-on-surface-variant">
+          <span className="inline-flex rounded-full bg-white/6 px-2 py-1 text-xs font-medium text-on-surface-variant">
             {chip}
           </span>
         ) : null}

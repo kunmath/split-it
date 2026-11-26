@@ -26,7 +26,7 @@ export default function PublicError({
       title="This page hit an unexpected problem"
       subtitle="Retry the route or head back to a stable Split-It surface."
       footer={
-        <div className="text-center text-xs uppercase tracking-[0.2em] text-on-surface-variant">
+        <div className="text-center text-xs font-medium text-on-surface-variant">
           fallback surface
         </div>
       }

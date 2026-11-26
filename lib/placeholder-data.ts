@@ -65,8 +65,8 @@ export type SettingsAction = {
 };
 
 export const dashboardSummary: SummaryCard[] = [
-  { label: "Overall you are owed", value: 1240.5, tone: "positive", detail: "+12% this month" },
-  { label: "Total you owe", value: 342.15, tone: "negative", detail: "-5% this month" },
+  { label: "Overall you are owed", value: 1240.5, tone: "positive", detail: "Across your active groups" },
+  { label: "Total you owe", value: 342.15, tone: "negative", detail: "Across your active groups" },
 ];
 
 export const dashboardGroups: GroupPlaceholder[] = [
@@ -169,6 +169,18 @@ export const groupExpenses: ExpensePlaceholder[] = [
   },
 ];
 
+// Demo activity is dated relative to "now" so day grouping (Today / Yesterday) shows up.
+function hoursAgo(hours: number) {
+  return Date.now() - hours * 60 * 60 * 1000;
+}
+
+function daysAgo(days: number, hourOfDay: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  date.setHours(hourOfDay, 0, 0, 0);
+  return date.getTime();
+}
+
 export const activityFeed: ActivityPlaceholder[] = [
   {
     id: "activity-reykjavik-flights",
@@ -178,7 +190,7 @@ export const activityFeed: ActivityPlaceholder[] = [
     groupIconKey: "plane",
     description: "Reykjavik Flights",
     amountCents: 124_000,
-    expenseAt: new Date("2024-10-24T09:00:00.000Z").getTime(),
+    expenseAt: hoursAgo(2),
     kind: "expense",
     paidByName: "Sarah Jenkins",
     paidByCurrentUser: false,
@@ -195,7 +207,7 @@ export const activityFeed: ActivityPlaceholder[] = [
     groupIconKey: "utensils",
     description: "Dinner at Grillmarkaðurinn",
     amountCents: 32_050,
-    expenseAt: new Date("2024-10-24T07:30:00.000Z").getTime(),
+    expenseAt: hoursAgo(5),
     kind: "expense",
     paidByName: "Marcus Vale",
     paidByCurrentUser: false,
@@ -212,7 +224,7 @@ export const activityFeed: ActivityPlaceholder[] = [
     groupIconKey: "mountain",
     description: "Rental Car Deposit",
     amountCents: 50_000,
-    expenseAt: new Date("2024-10-22T12:00:00.000Z").getTime(),
+    expenseAt: daysAgo(1, 13),
     kind: "expense",
     paidByName: "You",
     paidByCurrentUser: true,
@@ -229,7 +241,7 @@ export const activityFeed: ActivityPlaceholder[] = [
     groupIconKey: "cart",
     description: "Groceries for Cabin",
     amountCents: 18_520,
-    expenseAt: new Date("2024-10-22T08:30:00.000Z").getTime(),
+    expenseAt: daysAgo(1, 9),
     kind: "expense",
     paidByName: "Elena Rodriguez",
     paidByCurrentUser: false,
@@ -246,7 +258,7 @@ export const activityFeed: ActivityPlaceholder[] = [
     groupIconKey: "home",
     description: "Settlement",
     amountCents: 35_000,
-    expenseAt: new Date("2024-10-20T16:00:00.000Z").getTime(),
+    expenseAt: daysAgo(3, 16),
     kind: "settlement",
     paidByName: "You",
     paidByCurrentUser: true,
@@ -263,7 +275,7 @@ export const activityFeed: ActivityPlaceholder[] = [
     groupIconKey: "utensils",
     description: "Sushi with Team",
     amountCents: 18_000,
-    expenseAt: new Date("2024-10-18T18:30:00.000Z").getTime(),
+    expenseAt: daysAgo(6, 19),
     kind: "expense",
     paidByName: "You",
     paidByCurrentUser: true,

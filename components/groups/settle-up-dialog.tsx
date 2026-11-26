@@ -2,12 +2,14 @@
 
 import { useMutation } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
-import { ArrowRightLeft, HandCoins } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowDownLeft, ArrowUpRight, Check, Plus } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
 
+import { getShortName } from "@/components/groups/group-types";
 import { Button } from "@/components/ui/button";
-import { FilledInput } from "@/components/ui/filled-input";
+import { Money } from "@/components/ui/money";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { api } from "@/convex/_generated/api";
 import { formatMoneyFromCents } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -15,14 +17,21 @@ import { cn } from "@/lib/utils";
 export type SettleUpMember = {
   id: string;
   name: string;
+  imageUrl?: string;
   isCurrentUser: boolean;
 };
 
 export type SettleUpSuggestion = {
   counterpartyId: string;
   counterpartyName: string;
+  counterpartyImageUrl?: string;
   amountCents: number;
   direction: "youPay" | "youReceive";
+};
+
+export type SettleUpPreset = {
+  counterpartyId: string;
+  direction: SettleUpSuggestion["direction"];
 };
 
 type SettleUpDialogProps = {
@@ -32,6 +41,8 @@ type SettleUpDialogProps = {
   groupCurrency: string;
   members: SettleUpMember[];
   suggestions: SettleUpSuggestion[];
+  /** Preselect a counterparty (and the matching suggestion amount, if any) when the dialog opens. */
+  preset?: SettleUpPreset | null;
   isMock?: boolean;
 };
 
@@ -39,6 +50,8 @@ type CreateSettlementArgs = FunctionArgs<typeof api.settlements.create>;
 type CreateSettlement = (
   args: CreateSettlementArgs,
 ) => Promise<FunctionReturnType<typeof api.settlements.create>>;
+
+type Direction = SettleUpSuggestion["direction"];
 
 const AMOUNT_PATTERN = /^\d+(?:\.\d{1,2})?$/;
 
@@ -55,6 +68,18 @@ function parseAmountToCents(value: string) {
     return null;
   }
   return totalCents;
+}
+
+function getCurrencySymbol(currency: string) {
+  try {
+    return (
+      new Intl.NumberFormat("en-IN", { style: "currency", currency })
+        .formatToParts(0)
+        .find((part) => part.type === "currency")?.value ?? currency
+    );
+  } catch {
+    return currency;
+  }
 }
 
 export function SettleUpDialog({
@@ -74,6 +99,11 @@ function LiveSettleUpDialog(props: Omit<SettleUpDialogProps, "isMock">) {
   return <SettleUpDialogScene {...props} createSettlement={createSettlement} />;
 }
 
+const DIRECTION_OPTIONS: Array<{ value: Direction; label: string; Icon: typeof ArrowUpRight }> = [
+  { value: "youPay", label: "I paid someone", Icon: ArrowUpRight },
+  { value: "youReceive", label: "Someone paid me", Icon: ArrowDownLeft },
+];
+
 function SettleUpDialogScene({
   open,
   onClose,
@@ -81,23 +111,28 @@ function SettleUpDialogScene({
   groupCurrency,
   members,
   suggestions,
+  preset,
   isMock = false,
   createSettlement,
 }: SettleUpDialogProps & {
   createSettlement?: CreateSettlement;
 }) {
+  const amountId = useId();
+  const noteId = useId();
+  const memberLabelId = useId();
+  const currentUser = useMemo(() => members.find((member) => member.isCurrentUser), [members]);
   const otherMembers = useMemo(
     () => members.filter((member) => !member.isCurrentUser),
     [members],
   );
-  const payableSuggestions = useMemo(
-    () => suggestions.filter((suggestion) => suggestion.direction === "youPay"),
-    [suggestions],
-  );
+  const allNames = members.map((member) => member.name);
+  const shortName = (name: string) => getShortName(name, allNames);
 
-  const [toUserId, setToUserId] = useState<string>("");
+  const [direction, setDirection] = useState<Direction>("youPay");
+  const [counterpartyId, setCounterpartyId] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
   const [note, setNote] = useState<string>("");
+  const [showNote, setShowNote] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -108,25 +143,56 @@ function SettleUpDialogScene({
     setError(null);
     setIsSubmitting(false);
     setNote("");
-    if (payableSuggestions.length > 0) {
-      const first = payableSuggestions[0]!;
-      setToUserId(first.counterpartyId);
-      setAmount((first.amountCents / 100).toFixed(2));
-    } else if (otherMembers.length > 0) {
-      setToUserId(otherMembers[0]!.id);
-      setAmount("");
+    setShowNote(false);
+
+    const presetSuggestion = preset
+      ? suggestions.find(
+          (suggestion) =>
+            suggestion.counterpartyId === preset.counterpartyId &&
+            suggestion.direction === preset.direction,
+        )
+      : undefined;
+    const initial =
+      presetSuggestion ??
+      (preset ? undefined : suggestions.find((suggestion) => suggestion.direction === "youPay") ?? suggestions[0]);
+
+    if (initial) {
+      setDirection(initial.direction);
+      setCounterpartyId(initial.counterpartyId);
+      setAmount((initial.amountCents / 100).toFixed(2));
     } else {
-      setToUserId("");
+      setDirection(preset?.direction ?? "youPay");
+      setCounterpartyId(preset?.counterpartyId ?? "");
       setAmount("");
     }
-    // Intentionally only fires when the dialog transitions to open so the user's
-    // manual recipient/amount edits aren't overwritten. Suggestions and member
-    // list are captured at the moment of opening.
+    // Only reset when the dialog transitions to open so the user's edits aren't
+    // overwritten by live query updates while it is showing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const handleSuggestionClick = (suggestion: SettleUpSuggestion) => {
-    setToUserId(suggestion.counterpartyId);
+  const directionSuggestions = suggestions.filter((suggestion) => suggestion.direction === direction);
+  const amountCents = parseAmountToCents(amount);
+  const counterparty = otherMembers.find((member) => member.id === counterpartyId);
+  const isPaying = direction === "youPay";
+  const currencySymbol = getCurrencySymbol(groupCurrency);
+
+  const changeDirection = (next: Direction) => {
+    if (next === direction) {
+      return;
+    }
+    setDirection(next);
+    setError(null);
+    const match = suggestions.find((suggestion) => suggestion.direction === next);
+    if (match) {
+      setCounterpartyId(match.counterpartyId);
+      setAmount((match.amountCents / 100).toFixed(2));
+    } else {
+      setAmount("");
+    }
+  };
+
+  const applySuggestion = (suggestion: SettleUpSuggestion) => {
+    setCounterpartyId(suggestion.counterpartyId);
     setAmount((suggestion.amountCents / 100).toFixed(2));
     setError(null);
   };
@@ -136,28 +202,41 @@ function SettleUpDialogScene({
       return;
     }
     if (!createSettlement) {
-      setError("Settle Up requires a live Convex connection.");
+      setError("Recording a payment needs a live account connection.");
       return;
     }
-    if (!toUserId) {
-      setError("Select who you paid.");
+    if (!counterpartyId) {
+      setError(isPaying ? "Select who you paid." : "Select who paid you.");
       return;
     }
-    const amountCents = parseAmountToCents(amount);
     if (amountCents === null) {
       setError("Enter a valid amount greater than zero.");
+      return;
+    }
+    if (!isPaying && !currentUser) {
+      setError("Could not identify your membership in this group.");
       return;
     }
 
     setIsSubmitting(true);
     setError(null);
     try {
-      await createSettlement({
-        groupId: groupId as CreateSettlementArgs["groupId"],
-        toUserId: toUserId as CreateSettlementArgs["toUserId"],
-        amountCents,
-        note: note.trim() || undefined,
-      });
+      await createSettlement(
+        isPaying
+          ? {
+              groupId: groupId as CreateSettlementArgs["groupId"],
+              toUserId: counterpartyId as CreateSettlementArgs["toUserId"],
+              amountCents,
+              note: note.trim() || undefined,
+            }
+          : {
+              groupId: groupId as CreateSettlementArgs["groupId"],
+              fromUserId: counterpartyId as CreateSettlementArgs["toUserId"],
+              toUserId: currentUser!.id as CreateSettlementArgs["toUserId"],
+              amountCents,
+              note: note.trim() || undefined,
+            },
+      );
       setAmount("");
       setNote("");
       onClose();
@@ -170,154 +249,230 @@ function SettleUpDialogScene({
     }
   };
 
+  const submitLabel = isSubmitting
+    ? "Recording…"
+    : amountCents !== null
+      ? `Record ${formatMoneyFromCents(amountCents, groupCurrency)} payment`
+      : "Record payment";
+
+  const summary =
+    counterparty && amountCents !== null
+      ? isPaying
+        ? `You paid ${shortName(counterparty.name)} ${formatMoneyFromCents(amountCents, groupCurrency)}`
+        : `${shortName(counterparty.name)} paid you ${formatMoneyFromCents(amountCents, groupCurrency)}`
+      : null;
+
   return (
     <ResponsiveDialog
       open={open}
       onClose={onClose}
-      eyebrow="Settle Up"
-      title="Record a payment"
-      description="Log a payment you made outside the app (cash, UPI, Venmo, etc.) to update balances."
+      title="Settle up"
+      description="Record cash, UPI or bank transfers."
     >
-      <div className="space-y-6">
-        {suggestions.length > 0 ? (
-          <div className="space-y-3">
-            <p className="text-[0.68rem] uppercase tracking-[0.22em] text-on-surface-variant">
-              Suggested settlements
-            </p>
-            <div className="space-y-2">
-              {suggestions.map((suggestion) => {
-                const isPayable = suggestion.direction === "youPay";
+      <form
+        className="space-y-5"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void handleSubmit();
+        }}
+      >
+        <div
+          role="radiogroup"
+          aria-label="Payment direction"
+          className="grid grid-cols-2 gap-1 rounded-2xl bg-surface-container-lowest p-1 ring-1 ring-white/5"
+        >
+          {DIRECTION_OPTIONS.map(({ value, label, Icon }) => {
+            const active = value === direction;
+            return (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => changeDirection(value)}
+                className={cn(
+                  "flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                  active
+                    ? "bg-surface-container-high text-on-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    : "text-on-surface-variant hover:text-on-surface",
+                )}
+              >
+                <Icon className={cn("h-4 w-4", active && (value === "youPay" ? "text-secondary" : "text-primary"))} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {directionSuggestions.length > 0 ? (
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold text-on-surface-variant">Suggested</h3>
+            <ul className="space-y-2">
+              {directionSuggestions.map((suggestion) => {
+                const selected =
+                  suggestion.counterpartyId === counterpartyId &&
+                  amountCents === suggestion.amountCents;
                 return (
-                  <button
-                    key={`${suggestion.counterpartyId}-${suggestion.direction}`}
-                    type="button"
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    disabled={!isPayable}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-4 rounded-[1.25rem] border border-white/6 bg-surface-container-low px-4 py-3 text-left transition",
-                      isPayable
-                        ? "hover:border-primary/40 hover:bg-surface-container-high"
-                        : "cursor-not-allowed opacity-70",
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "flex h-10 w-10 items-center justify-center rounded-xl",
-                          isPayable
-                            ? "bg-secondary/12 text-secondary"
-                            : "bg-primary/12 text-primary",
-                        )}
-                      >
-                        {isPayable ? (
-                          <HandCoins className="h-4.5 w-4.5" />
-                        ) : (
-                          <ArrowRightLeft className="h-4.5 w-4.5" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-on-surface">
-                          {isPayable
-                            ? `You owe ${suggestion.counterpartyName}`
-                            : `${suggestion.counterpartyName} owes you`}
-                        </p>
-                        <p className="text-xs text-on-surface-variant">
-                          {isPayable
-                            ? "Tap to prefill amount"
-                            : "They should record this payment"}
-                        </p>
-                      </div>
-                    </div>
-                    <span
+                  <li key={`${suggestion.counterpartyId}-${suggestion.direction}`}>
+                    <button
+                      type="button"
+                      onClick={() => applySuggestion(suggestion)}
+                      aria-pressed={selected}
                       className={cn(
-                        "font-headline text-lg font-bold tracking-tight",
-                        isPayable ? "text-secondary" : "text-primary",
+                        "flex min-h-13 w-full items-center gap-3 rounded-2xl px-3 py-1.5 text-left ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                        selected
+                          ? "bg-primary/10 ring-primary/40"
+                          : "bg-surface-container-low ring-white/5 hover:bg-surface-container-high",
                       )}
                     >
-                      {formatMoneyFromCents(suggestion.amountCents, groupCurrency)}
-                    </span>
+                      <UserAvatar
+                        name={suggestion.counterpartyName}
+                        imageUrl={suggestion.counterpartyImageUrl}
+                        className="h-9 w-9 text-xs"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-on-surface">
+                          {isPaying
+                            ? `You owe ${shortName(suggestion.counterpartyName)}`
+                            : `${shortName(suggestion.counterpartyName)} owes you`}
+                        </span>
+                      </span>
+                      <Money
+                        cents={suggestion.amountCents}
+                        currency={groupCurrency}
+                        tone={isPaying ? "negative" : "positive"}
+                        className="font-headline text-base font-bold"
+                      />
+                      {selected ? <Check aria-hidden="true" className="h-4 w-4 text-primary" /> : null}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : (
+          <p className="rounded-2xl bg-surface-container-low px-4 py-3 text-sm text-on-surface-variant">
+            {isPaying
+              ? "You don't owe anyone here right now. You can still record a payment."
+              : "No one owes you here right now. You can still record a payment."}
+          </p>
+        )}
+
+        <section className="space-y-2">
+          <h3 id={memberLabelId} className="text-xs font-semibold text-on-surface-variant">
+            {isPaying ? "Who did you pay?" : "Who paid you?"}
+          </h3>
+          {otherMembers.length > 0 ? (
+            <div role="radiogroup" aria-labelledby={memberLabelId} className="flex flex-wrap gap-2">
+              {otherMembers.map((member) => {
+                const selected = member.id === counterpartyId;
+                return (
+                  <button
+                    key={member.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => {
+                      setCounterpartyId(member.id);
+                      setError(null);
+                    }}
+                    className={cn(
+                      "flex min-h-11 items-center gap-2 rounded-full py-1 pl-1 pr-3.5 text-sm font-medium ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                      selected
+                        ? "bg-primary/12 text-on-surface ring-primary/50"
+                        : "bg-surface-container-low text-on-surface-variant ring-white/6 hover:text-on-surface",
+                    )}
+                  >
+                    <UserAvatar name={member.name} imageUrl={member.imageUrl} className="h-8 w-8 text-[0.65rem]" />
+                    {shortName(member.name)}
+                    {selected ? <Check aria-hidden="true" className="h-3.5 w-3.5 text-primary" /> : null}
                   </button>
                 );
               })}
             </div>
-          </div>
-        ) : (
-          <div className="rounded-[1.25rem] border border-white/6 bg-surface-container-low px-4 py-4 text-sm text-on-surface-variant">
-            No outstanding debts detected. You can still record a manual payment below.
-          </div>
-        )}
+          ) : (
+            <p className="text-sm text-on-surface-variant">Invite someone to this group to record payments.</p>
+          )}
+        </section>
 
-        <div className="space-y-4">
-          <label className="block space-y-2">
-            <span className="block text-xs font-medium uppercase tracking-[0.2em] text-on-surface-variant">
-              Paid to
-            </span>
-            <span className="flex min-h-14 items-center gap-3 rounded-[1.25rem] bg-surface-container-lowest px-4 ring-1 ring-white/5 transition focus-within:ring-primary/40">
-              <select
-                value={toUserId}
-                onChange={(event) => {
-                  setToUserId(event.target.value);
-                  setError(null);
-                }}
-                className="w-full border-none bg-transparent text-sm text-on-surface focus:outline-none"
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor={amountId} className="block text-xs font-semibold text-on-surface-variant">
+              Amount
+            </label>
+            {showNote ? null : (
+              <button
+                type="button"
+                onClick={() => setShowNote(true)}
+                className="-my-3 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-xs font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
               >
-                <option value="" disabled>
-                  Select a member
-                </option>
-                {otherMembers.map((member) => (
-                  <option key={member.id} value={member.id}>
-                    {member.name}
-                  </option>
-                ))}
-              </select>
+                <Plus aria-hidden="true" className="h-3.5 w-3.5" />
+                Add a note
+              </button>
+            )}
+          </div>
+          <div className="flex min-h-14 items-center gap-2 rounded-2xl bg-surface-container-lowest px-4 ring-1 ring-white/5 transition focus-within:ring-primary/50">
+            <span aria-hidden="true" className="font-headline text-xl font-bold text-on-surface-variant">
+              {currencySymbol}
             </span>
-          </label>
-
-          <FilledInput
-            label={`Amount (${groupCurrency})`}
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            min="0"
-            placeholder="0.00"
-            value={amount}
-            onChange={(event) => {
-              setAmount(event.target.value);
-              setError(null);
-            }}
-            prefix={<span className="text-sm">{groupCurrency}</span>}
-          />
-
-          <FilledInput
-            label="Note (optional)"
-            type="text"
-            placeholder="e.g., UPI transfer for last weekend"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            maxLength={200}
-          />
-
-          {error ? (
-            <p className="text-sm text-error" role="alert">
-              {error}
-            </p>
-          ) : null}
+            <input
+              id={amountId}
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder="0.00"
+              value={amount}
+              aria-invalid={error && amountCents === null ? true : undefined}
+              onChange={(event) => {
+                setAmount(event.target.value.replace(/[^\d.]/g, ""));
+                setError(null);
+              }}
+              className="w-full min-w-0 border-none bg-transparent font-headline text-2xl font-bold tabular-nums text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none"
+            />
+          </div>
         </div>
 
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Button variant="ghost" size="lg" onClick={onClose} disabled={isSubmitting}>
-            Cancel
-          </Button>
+        {showNote ? (
+          <div className="space-y-2">
+            <label htmlFor={noteId} className="block text-xs font-semibold text-on-surface-variant">
+              Note (optional)
+            </label>
+            <input
+              id={noteId}
+              type="text"
+              placeholder="e.g. UPI for groceries"
+              value={note}
+              maxLength={200}
+              autoFocus
+              onChange={(event) => setNote(event.target.value)}
+              className="min-h-12 w-full rounded-2xl bg-surface-container-lowest px-4 text-sm text-on-surface ring-1 ring-white/5 placeholder:text-on-surface-variant/70 focus:outline-none focus:ring-primary/50"
+            />
+          </div>
+        ) : null}
+
+        {error ? (
+          <p className="rounded-2xl bg-error/10 px-4 py-3 text-sm text-error" role="alert">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="sticky bottom-0 -mx-5 -mb-5 space-y-2 bg-[linear-gradient(180deg,rgba(28,27,27,0.6),rgba(28,27,27,0.98)_16px)] px-5 pb-5 pt-4 md:static md:mx-0 md:mb-0 md:bg-none md:p-0">
           <Button
+            type="submit"
             variant="primary"
             size="lg"
-            onClick={handleSubmit}
-            disabled={isSubmitting || isMock}
+            fullWidth
+            disabled={isSubmitting || isMock || otherMembers.length === 0}
           >
-            {isSubmitting ? "Recording..." : "Record payment"}
+            {submitLabel}
           </Button>
+          <p className="text-center text-xs text-on-surface-variant" aria-live="polite">
+            {isMock
+              ? "Demo data — payments can't be recorded here."
+              : summary ?? "Balances update for everyone as soon as it's recorded."}
+          </p>
         </div>
-      </div>
+      </form>
     </ResponsiveDialog>
   );
 }

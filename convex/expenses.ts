@@ -1,3 +1,4 @@
+import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -6,8 +7,10 @@ import { logExpenseEvent } from "./lib/activityEvents";
 import { applyExpenseToAggregates } from "./lib/balances";
 import {
   getCurrentUserExpenseNetCents,
+  getExpenseIconKey,
   getGroupExpenseRecords,
 } from "./lib/expenseHelpers";
+import { resolveGroupIconKey } from "./lib/groupIcons";
 import { splitByShares, splitEvenly } from "./lib/money";
 import {
   requireExpenseEditPermission,
@@ -510,6 +513,80 @@ export const listForGroup = query({
             shareCents: share.shareCents,
             isCurrentUser: share.userId === access.user._id,
           })),
+        };
+      }),
+    };
+  },
+});
+
+/**
+ * One page of a group's ledger, newest first, read straight from the
+ * by_group_date index so long histories never load in a single query.
+ */
+export const listPageForGroup = query({
+  args: {
+    groupId: v.id("groups"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const access = await requireGroupMember(ctx, args.groupId);
+    const groupIconKey = resolveGroupIconKey(access.group);
+
+    const result = await ctx.db
+      .query("expenses")
+      .withIndex("by_group_date", (q) => q.eq("groupId", args.groupId))
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    const shares = await Promise.all(
+      result.page.map((expense) =>
+        ctx.db
+          .query("expenseShares")
+          .withIndex("by_expense", (q) => q.eq("expenseId", expense._id))
+          .collect(),
+      ),
+    );
+
+    const userIds = new Set<Id<"users">>();
+    result.page.forEach((expense, index) => {
+      userIds.add(expense.paidBy);
+      for (const share of shares[index] ?? []) {
+        userIds.add(share.userId);
+      }
+    });
+    const users = await Promise.all([...userIds].map((userId) => ctx.db.get(userId)));
+    const nameLookup = new Map<Id<"users">, string>();
+    for (const user of users) {
+      if (user !== null) {
+        nameLookup.set(user._id, user.name);
+      }
+    }
+
+    return {
+      ...result,
+      page: result.page.map((expense, index) => {
+        const record = { expense, shares: shares[index] ?? [] };
+        const settlementRecipientId =
+          expense.kind === "settlement" ? (record.shares[0]?.userId ?? null) : null;
+
+        return {
+          id: expense._id,
+          description: expense.description,
+          amountCents: expense.amountCents,
+          expenseAt: expense.expenseAt,
+          paidByName: nameLookup.get(expense.paidBy) ?? "Group member",
+          paidByCurrentUser: expense.paidBy === access.user._id,
+          currentUserNetCents: getCurrentUserExpenseNetCents(record, access.user._id),
+          splitType: expense.splitType,
+          kind: expense.kind ?? ("expense" as const),
+          participantCount: record.shares.length,
+          iconKey: getExpenseIconKey(expense.description, groupIconKey),
+          counterpartyName:
+            settlementRecipientId === null
+              ? null
+              : (nameLookup.get(settlementRecipientId) ?? "Group member"),
+          counterpartyIsCurrentUser:
+            settlementRecipientId !== null && settlementRecipientId === access.user._id,
         };
       }),
     };

@@ -26,7 +26,7 @@ export function PublicShell({
           <Link href="/dashboard" className="font-headline text-2xl font-extrabold tracking-tight text-primary">
             split-it
           </Link>
-          <div className="hidden items-center gap-6 text-xs uppercase tracking-[0.2em] text-on-surface-variant md:flex">
+          <div className="hidden items-center gap-6 text-xs font-medium text-on-surface-variant md:flex">
             <span>Privacy</span>
             <span>Support</span>
           </div>
@@ -36,7 +36,7 @@ export function PublicShell({
           <div className="grid w-full items-center gap-12 xl:grid-cols-[1.1fr_0.9fr]">
             <div className="hidden max-w-xl space-y-8 xl:block">
               <div className="space-y-4">
-                <p className="text-xs uppercase tracking-[0.28em] text-primary">{eyebrow}</p>
+                <p className="text-xs font-medium text-primary">{eyebrow}</p>
                 <h1 className="font-headline text-6xl font-extrabold tracking-tight text-on-surface">
                   Shared expenses with editorial gravity.
                 </h1>
@@ -46,14 +46,14 @@ export function PublicShell({
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <SurfaceCard variant="low" className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">
+                  <p className="text-xs font-medium text-on-surface-variant">
                     tonal layers
                   </p>
                   <p className="font-headline text-3xl font-bold text-primary">$12,480</p>
                   <p className="text-sm text-on-surface-variant">Premium depth with no hard dividers.</p>
                 </SurfaceCard>
                 <SurfaceCard variant="low" className="space-y-2">
-                  <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">
+                  <p className="text-xs font-medium text-on-surface-variant">
                     responsive shell
                   </p>
                   <p className="font-headline text-3xl font-bold text-secondary">390 → 1440</p>
@@ -67,7 +67,7 @@ export function PublicShell({
             <div className="mx-auto w-full max-w-xl">
               <SurfaceCard variant="glass" className="rounded-[2.25rem] p-6 shadow-[0_24px_90px_rgba(0,0,0,0.24)] sm:p-8">
                 <div className="space-y-2 text-center sm:text-left">
-                  <p className="text-xs uppercase tracking-[0.22em] text-primary">{eyebrow}</p>
+                  <p className="text-xs font-medium text-primary">{eyebrow}</p>
                   <h2 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface">
                     {title}
                   </h2>

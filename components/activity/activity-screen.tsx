@@ -1,194 +1,33 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { HandCoins } from "lucide-react";
 import Link from "next/link";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { usePlaceholderMode } from "@/components/providers/app-providers";
+import { MobileTopBar } from "@/components/shell/mobile-top-bar";
 import { PageContainer } from "@/components/shell/page-container";
 import { buttonVariants } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
-import { SurfaceCard } from "@/components/ui/surface-card";
+import { SkeletonBlock } from "@/components/ui/skeletons";
 import { api } from "@/convex/_generated/api";
-import { getExpenseIconKey } from "@/lib/expense-icons";
-import { formatMoneyFromCents, formatSignedMoneyFromCents } from "@/lib/format";
-import { iconMap } from "@/lib/icon-map";
-import { activityFeed, type ActivityPlaceholder } from "@/lib/placeholder-data";
+import { activityFeed } from "@/lib/placeholder-data";
 import { cn } from "@/lib/utils";
 
-type ActivityItem = ActivityPlaceholder & {
-  action?: "created" | "updated" | "deleted";
-  expenseId?: string | null;
-  actorName?: string;
-  actorIsCurrentUser?: boolean;
-  previousDescription?: string | null;
-  previousAmountCents?: number | null;
-};
-
-type ActivityDayGroup = {
-  key: string;
-  label: string;
-  items: ActivityItem[];
-};
-
-function formatDayLabel(timestamp: number) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "2-digit",
-  }).format(timestamp);
-}
-
-function formatDayKey(timestamp: number) {
-  const date = new Date(timestamp);
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
-
-function formatDesktopDate(timestamp: number) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-  }).format(timestamp);
-}
-
-function groupActivitiesByDay(activities: ActivityItem[]): ActivityDayGroup[] {
-  const groups = new Map<string, ActivityDayGroup>();
-
-  for (const activity of activities) {
-    const key = formatDayKey(activity.expenseAt);
-    const existingGroup = groups.get(key);
-
-    if (existingGroup) {
-      existingGroup.items.push(activity);
-      continue;
-    }
-
-    groups.set(key, {
-      key,
-      label: formatDayLabel(activity.expenseAt),
-      items: [activity],
-    });
-  }
-
-  return Array.from(groups.values());
-}
-
-function buildActivityHref(activity: ActivityItem) {
-  const expenseId = activity.expenseId ?? activity.id;
-
-  if (activity.kind === "settlement" || activity.action === "deleted" || !expenseId) {
-    return `/groups/${activity.groupId}`;
-  }
-
-  return `/groups/${activity.groupId}/expenses/${expenseId}/edit`;
-}
-
-function buildActionSuffix(activity: ActivityItem) {
-  if (activity.action === "updated") {
-    return " (edited)";
-  }
-
-  if (activity.action === "deleted") {
-    return " (deleted)";
-  }
-
-  return "";
-}
-
-function buildActionByline(activity: ActivityItem) {
-  if (activity.action !== "updated" && activity.action !== "deleted") {
-    return null;
-  }
-
-  const actorLabel = activity.actorIsCurrentUser ? "you" : activity.actorName ?? "a member";
-
-  return activity.action === "updated"
-    ? `Edited by ${actorLabel}`
-    : `Deleted by ${actorLabel}`;
-}
-
-function buildSettlementTitle(activity: ActivityItem) {
-  const counterpartyLabel = activity.counterpartyName ?? "a member";
-
-  if (activity.paidByCurrentUser) {
-    return `You paid ${counterpartyLabel}`;
-  }
-
-  if (activity.counterpartyIsCurrentUser) {
-    return `${activity.paidByName} paid you`;
-  }
-
-  return `${activity.paidByName} paid ${counterpartyLabel}`;
-}
-
-function buildMobileMeta(activity: ActivityItem) {
-  const byline = buildActionByline(activity);
-
-  if (byline !== null) {
-    return `${byline} • ${activity.groupName}`;
-  }
-
-  if (activity.kind === "settlement") {
-    if (activity.paidByCurrentUser) {
-      return `Settlement recorded • ${activity.groupName}`;
-    }
-
-    if (activity.counterpartyIsCurrentUser) {
-      return `Settlement received • ${activity.groupName}`;
-    }
-
-    return `Settlement between members • ${activity.groupName}`;
-  }
-
-  return `Paid by ${activity.paidByName} • ${activity.groupName}`;
-}
-
-function buildDesktopDetail(activity: ActivityItem) {
-  const byline = buildActionByline(activity);
-
-  if (byline !== null) {
-    return byline;
-  }
-
-  if (activity.kind === "settlement") {
-    if (activity.paidByCurrentUser) {
-      return "Settlement recorded";
-    }
-
-    if (activity.counterpartyIsCurrentUser) {
-      return "Settlement received";
-    }
-
-    return "Settlement between members";
-  }
-
-  return `${activity.participantCount} participant${activity.participantCount === 1 ? "" : "s"}`;
-}
-
-function getAmountTone(valueCents: number) {
-  if (valueCents > 0) {
-    return "positive" as const;
-  }
-
-  if (valueCents < 0) {
-    return "negative" as const;
-  }
-
-  return "neutral" as const;
-}
-
-function mapMockActivities(): ActivityItem[] {
-  return activityFeed;
-}
+import {
+  ACTIVITY_FILTERS,
+  type ActivityFilter,
+  type ActivityItem,
+  groupActivitiesByDay,
+  matchesFilter,
+} from "./activity-model";
+import { ActivityRow } from "./activity-row";
 
 export function ActivityScreen() {
   const { mode } = usePlaceholderMode();
 
   if (mode !== "live") {
-    return <ActivityScene activities={mapMockActivities()} isMock />;
+    return <ActivityScene activities={activityFeed} />;
   }
 
   return <LiveActivityScreen />;
@@ -196,273 +35,159 @@ export function ActivityScreen() {
 
 function LiveActivityScreen() {
   const currentUser = useQuery(api.users.current);
-  const activities = useQuery(
-    api.activity.listForCurrentUser,
-    currentUser ? {} : "skip",
-  );
+  const activities = useQuery(api.activity.listForCurrentUser, currentUser ? {} : "skip");
 
   if (currentUser === null) {
     return (
-      <PageContainer className="space-y-6">
+      <ActivityFrame>
         <ScreenState
           state="loading"
-          title="Syncing your workspace"
-          description="Your account is authenticated, but the ledger record is still finishing setup. Refresh in a moment if this state persists."
+          title="Finishing setup"
+          description="Your account is signed in and still syncing. Refresh in a moment if this persists."
         />
-      </PageContainer>
+      </ActivityFrame>
     );
   }
 
   if (currentUser === undefined || activities === undefined) {
     return (
-      <PageContainer className="space-y-6">
-        <ScreenState
-          state="loading"
-          title="Loading activity"
-          description="Pulling the latest transactions you were part of across every active group."
-        />
-      </PageContainer>
-    );
-  }
-
-  if (activities.length === 0) {
-    return (
-      <PageContainer className="space-y-6">
-        <ScreenState
-          state="empty"
-          title="No activity yet"
-          description="Expenses and settlements from the groups you join will appear here once you are part of a recorded transaction."
-          actions={
-            <Link
-              href="/groups"
-              className={buttonVariants({ variant: "primary", size: "lg" })}
-            >
-              Browse Groups
-            </Link>
-          }
-        />
-      </PageContainer>
+      <ActivityFrame>
+        <ActivitySkeleton />
+      </ActivityFrame>
     );
   }
 
   return <ActivityScene activities={activities} />;
 }
 
-function ActivityScene({
-  activities,
-  isMock = false,
-}: {
-  activities: ActivityItem[];
-  isMock?: boolean;
-}) {
+function ActivityFrame({ children }: { children: ReactNode }) {
   return (
-    <PageContainer className="page-glow relative space-y-5 sm:space-y-8 lg:space-y-10">
-      <section className="space-y-3">
-        <p className="hidden text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant sm:block">
-          Activity
+    <PageContainer size="narrow">
+      <MobileTopBar variant="tab" title="Activity" />
+      <header className="mb-6 hidden lg:block">
+        <h1 className="font-headline text-3xl font-bold tracking-tight text-on-surface">Activity</h1>
+        <p className="mt-1 text-sm text-on-surface-variant">
+          Expenses and payments you were part of, across all your groups.
         </p>
-        <div className="space-y-2 lg:flex lg:items-end lg:justify-between lg:gap-6 lg:space-y-0">
-          <div>
-            <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
-              Activity Feed
-            </h1>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-on-surface-variant sm:mt-3 sm:text-sm sm:leading-7">
-              Recent transactions across all groups
-            </p>
-          </div>
-          <div className="hidden rounded-full border border-white/6 bg-surface-container-low px-4 py-2 text-xs uppercase tracking-[0.22em] text-on-surface-variant sm:inline-block">
-            Latest 20 involved transactions
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-3 sm:space-y-5">
-        <div className="flex items-center justify-between gap-4">
-          <p className="text-xs text-on-surface-variant sm:text-sm">
-            Showing the latest 20 transactions you were involved in.
-            {isMock ? " Mock data preview." : ""}
-          </p>
-          <div className="hidden text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-on-surface-variant lg:block">
-            {activities.length} visible
-          </div>
-        </div>
-
-        <MobileActivityList activities={activities} />
-        <DesktopActivityTable activities={activities} />
-      </section>
+      </header>
+      {children}
     </PageContainer>
   );
 }
 
-function MobileActivityList({ activities }: { activities: ActivityItem[] }) {
-  const dayGroups = groupActivitiesByDay(activities);
+function ActivityScene({ activities }: { activities: ActivityItem[] }) {
+  const [filter, setFilter] = useState<ActivityFilter>("all");
+  const dayGroups = useMemo(
+    () => groupActivitiesByDay(activities.filter((activity) => matchesFilter(activity, filter))),
+    [activities, filter],
+  );
+
+  if (activities.length === 0) {
+    return (
+      <ActivityFrame>
+        <ScreenState
+          state="empty"
+          title="No activity yet"
+          description="Expenses and payments from your groups will show up here."
+          actions={
+            <Link href="/groups" className={buttonVariants({ variant: "primary" })}>
+              Go to groups
+            </Link>
+          }
+        />
+      </ActivityFrame>
+    );
+  }
 
   return (
-    <div className="space-y-5 lg:hidden">
-      {dayGroups.map((dayGroup) => (
-        <section key={dayGroup.key} className="space-y-2.5">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-            {dayGroup.label}
-          </p>
-          <div className="space-y-2">
-            {dayGroup.items.map((activity) => (
-              <MobileActivityRow key={activity.id} activity={activity} />
+    <ActivityFrame>
+      <div role="group" aria-label="Filter activity" className="mb-4 flex gap-2">
+        {ACTIVITY_FILTERS.map((option) => {
+          const active = option.value === filter;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              aria-pressed={active}
+              onClick={() => setFilter(option.value)}
+              className={cn(
+                "relative h-9 rounded-full px-4 text-sm font-medium transition after:absolute after:inset-x-0 after:-inset-y-1 after:content-['']",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                active
+                  ? "bg-on-surface text-surface"
+                  : "bg-surface-container-high text-on-surface-variant hover:text-on-surface",
+              )}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {dayGroups.length === 0 ? (
+        <p className="rounded-3xl bg-surface-container-low px-5 py-8 text-center text-sm text-on-surface-variant">
+          {filter === "payments" ? "No payments recorded yet." : "No expenses recorded yet."}
+        </p>
+      ) : (
+        <div className="space-y-6">
+          {dayGroups.map((dayGroup) => (
+            <section key={dayGroup.key} aria-labelledby={`activity-day-${dayGroup.key}`} className="space-y-2">
+              <h2
+                id={`activity-day-${dayGroup.key}`}
+                className="px-1 text-sm font-semibold text-on-surface-variant"
+              >
+                {dayGroup.label}
+              </h2>
+              <ul className="divide-y divide-white/[0.06] overflow-hidden rounded-3xl bg-surface-container-low">
+                {dayGroup.items.map((activity) => (
+                  <li key={activity.id}>
+                    <ActivityRow activity={activity} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+          {filter === "all" ? (
+            <p className="px-1 pb-2 text-center text-xs text-on-surface-variant">
+              Showing your {activities.length} most recent transactions.
+            </p>
+          ) : null}
+        </div>
+      )}
+    </ActivityFrame>
+  );
+}
+
+function ActivitySkeleton() {
+  return (
+    <div role="status" aria-label="Loading activity" className="space-y-6">
+      <div className="flex gap-2">
+        <SkeletonBlock className="h-9 w-14 rounded-full" />
+        <SkeletonBlock className="h-9 w-24 rounded-full" />
+        <SkeletonBlock className="h-9 w-24 rounded-full" />
+      </div>
+      {[3, 2].map((rows, groupIndex) => (
+        <div key={groupIndex} className="space-y-2">
+          <SkeletonBlock className="h-4 w-20 rounded-md" />
+          <div className="space-y-1 rounded-3xl bg-surface-container-low p-2">
+            {Array.from({ length: rows }, (_, index) => (
+              <div key={index} className="flex items-center gap-3 px-2 py-2.5">
+                <SkeletonBlock className="h-11 w-11 shrink-0 rounded-xl" />
+                <div className="flex-1 space-y-2">
+                  <SkeletonBlock className="h-4 w-4/5 rounded-md" />
+                  <SkeletonBlock className="h-3 w-2/5 rounded-md" />
+                </div>
+                <div className="space-y-2">
+                  <SkeletonBlock className="ml-auto h-3 w-12 rounded-md" />
+                  <SkeletonBlock className="h-4 w-16 rounded-md" />
+                </div>
+              </div>
             ))}
           </div>
-        </section>
+        </div>
       ))}
+      <span className="sr-only">Loading…</span>
     </div>
-  );
-}
-
-function MobileActivityRow({ activity }: { activity: ActivityItem }) {
-  const isSettlement = activity.kind === "settlement";
-  const Icon = isSettlement
-    ? HandCoins
-    : iconMap[getExpenseIconKey(activity.description, activity.groupIconKey)];
-  const amountTone = isSettlement ? "positive" : getAmountTone(activity.currentUserNetCents);
-  const detailLabel = isSettlement ? "Payment" : "Total";
-
-  return (
-    <Link
-      href={buildActivityHref(activity)}
-      className="group block rounded-[1.35rem] bg-surface-container-low px-3.5 py-3 transition hover:bg-surface-container-high"
-    >
-      <div className="flex items-center gap-3 sm:gap-4">
-        <div
-          className={cn(
-            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-container-highest",
-            isSettlement ? "text-primary" : "text-on-surface-variant",
-          )}
-        >
-          <Icon className="h-5 w-5" strokeWidth={2.1} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate font-headline text-base font-bold tracking-tight text-on-surface">
-                {isSettlement ? buildSettlementTitle(activity) : activity.description}
-                {buildActionSuffix(activity)}
-              </p>
-              <p className="mt-1 truncate text-xs text-on-surface-variant">
-                {buildMobileMeta(activity)}
-              </p>
-            </div>
-
-            <div className="shrink-0 text-right">
-              <p
-                className={cn(
-                  "font-headline text-lg font-bold tracking-tight",
-                  amountTone === "positive" && "text-primary",
-                  amountTone === "negative" && "text-secondary",
-                  amountTone === "neutral" && "text-on-surface",
-                )}
-              >
-                {isSettlement
-                  ? formatMoneyFromCents(activity.amountCents, activity.groupCurrency)
-                  : formatSignedMoneyFromCents(
-                      activity.currentUserNetCents,
-                      activity.groupCurrency,
-                    )}
-              </p>
-              <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
-                {detailLabel}:{" "}
-                {formatMoneyFromCents(activity.amountCents, activity.groupCurrency)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function DesktopActivityTable({ activities }: { activities: ActivityItem[] }) {
-  return (
-    <div className="hidden space-y-3 lg:block">
-      <SurfaceCard
-        variant="low"
-        className="rounded-[1.8rem] border border-white/[0.03] bg-surface-container-low/70 p-3 shadow-[0_22px_42px_rgba(0,0,0,0.22)] backdrop-blur-2xl"
-      >
-        <div className="space-y-2">
-          {activities.map((activity) => (
-            <DesktopActivityRow key={activity.id} activity={activity} />
-          ))}
-        </div>
-      </SurfaceCard>
-    </div>
-  );
-}
-
-function DesktopActivityRow({ activity }: { activity: ActivityItem }) {
-  const isSettlement = activity.kind === "settlement";
-  const Icon = isSettlement
-    ? HandCoins
-    : iconMap[getExpenseIconKey(activity.description, activity.groupIconKey)];
-  const amountTone = isSettlement ? "positive" : getAmountTone(activity.currentUserNetCents);
-  const detailLabel = isSettlement ? "Payment" : "Total";
-
-  return (
-    <Link
-      href={buildActivityHref(activity)}
-      className="group block rounded-[1.45rem] bg-surface-container-high px-5 py-4 transition hover:bg-surface-bright/80"
-    >
-      <div className="flex items-start gap-4">
-        <div className="w-[64px] shrink-0 pt-0.5 text-sm text-on-surface-variant transition group-hover:text-on-surface">
-          {formatDesktopDate(activity.expenseAt)}
-        </div>
-        <div
-          className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-container-lowest ring-1 ring-white/5",
-            isSettlement ? "text-primary" : "text-on-surface-variant",
-          )}
-        >
-          <Icon className="h-5 w-5" strokeWidth={2.1} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-6">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-4.5">
-                <p className="truncate text-[1rem] font-semibold text-on-surface">
-                  {isSettlement ? buildSettlementTitle(activity) : activity.description}
-                  {buildActionSuffix(activity)}
-                </p>
-                <span className="inline-flex max-w-full truncate rounded-full border border-white/[0.04] bg-white/[0.03] px-3 py-1 text-[0.64rem] font-medium uppercase tracking-[0.16em] text-on-surface-variant/80">
-                  {activity.groupName}
-                </span>
-              </div>
-              <p className="mt-1 text-xs text-on-surface-variant">
-                {buildDesktopDetail(activity)}
-              </p>
-            </div>
-
-            <div className="shrink-0 text-right">
-              <div className="flex items-baseline justify-end gap-3">
-                <p
-                  className={cn(
-                    "font-headline text-lg font-bold tracking-tight",
-                    amountTone === "positive" && "text-primary",
-                    amountTone === "negative" && "text-secondary",
-                    amountTone === "neutral" && "text-on-surface",
-                  )}
-                >
-                  {isSettlement
-                    ? formatMoneyFromCents(activity.amountCents, activity.groupCurrency)
-                    : formatSignedMoneyFromCents(
-                        activity.currentUserNetCents,
-                        activity.groupCurrency,
-                      )}
-                </p>
-                <p className="text-[10px] uppercase tracking-[0.18em] text-on-surface-variant">
-                  {detailLabel}:{" "}
-                  {formatMoneyFromCents(activity.amountCents, activity.groupCurrency)}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Link>
   );
 }

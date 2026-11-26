@@ -23,36 +23,30 @@ export function StatCard({
   className,
 }: StatCardProps) {
   return (
-    <SurfaceCard variant="high" className={cn("min-h-44 space-y-8 rounded-[2.25rem] p-7", className)}>
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 text-on-surface-variant">
-        {icon}
-      </div>
-      <div className="space-y-3">
-        <p className="text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant">{label}</p>
-        <div className="flex flex-wrap items-end gap-2">
+    <SurfaceCard variant="low" className={cn("space-y-3 rounded-3xl p-5", className)}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-medium text-on-surface-variant">{label}</p>
+        {icon ? (
           <span
-            className={cn(
-              "font-headline text-4xl font-extrabold tracking-tight sm:text-5xl",
-              tone === "positive" && "text-primary",
-              tone === "negative" && "text-secondary",
-              tone === "neutral" && "text-on-surface",
-            )}
+            aria-hidden="true"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.05] text-on-surface-variant"
           >
-            {value}
+            {icon}
           </span>
-          {detail ? (
-            <span
-              className={cn(
-                "pb-2 text-sm",
-                tone === "positive" && "text-primary/70",
-                tone === "negative" && "text-secondary/70",
-                tone === "neutral" && "text-on-surface-variant",
-              )}
-            >
-              {detail}
-            </span>
-          ) : null}
-        </div>
+        ) : null}
+      </div>
+      <div className="space-y-1">
+        <p
+          className={cn(
+            "font-headline text-3xl font-bold tracking-tight tabular-nums",
+            tone === "positive" && "text-primary",
+            tone === "negative" && "text-secondary",
+            tone === "neutral" && "text-on-surface",
+          )}
+        >
+          {value}
+        </p>
+        {detail ? <p className="text-xs leading-5 text-on-surface-variant">{detail}</p> : null}
       </div>
     </SurfaceCard>
   );

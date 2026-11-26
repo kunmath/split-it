@@ -55,7 +55,7 @@ export function AuthShell({ children, footer, mode }: AuthShellProps) {
               {footer ? <div className="mt-10 text-center text-sm text-on-surface-variant">{footer}</div> : null}
             </section>
 
-            <div className="mt-7 space-y-6 text-[0.64rem] uppercase tracking-[0.22em] text-on-surface-variant/42 sm:mt-8">
+            <div className="mt-7 space-y-6 text-xs font-medium text-on-surface-variant sm:mt-8">
               <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
                 <span className="inline-flex items-center gap-2">
                   <LockKeyhole className="h-3.5 w-3.5" />

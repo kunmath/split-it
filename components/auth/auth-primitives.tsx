@@ -56,7 +56,7 @@ export function AuthDivider() {
   return (
     <div className="flex items-center gap-4 py-1">
       <div className="h-px flex-1 bg-white/8" />
-      <span className="text-[0.64rem] font-semibold uppercase tracking-[0.28em] text-on-surface-variant/70">
+      <span className="text-xs font-semibold text-on-surface-variant">
         Or email
       </span>
       <div className="h-px flex-1 bg-white/8" />

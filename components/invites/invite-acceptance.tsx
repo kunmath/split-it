@@ -76,7 +76,7 @@ function MockInviteAcceptance({ token }: InviteAcceptanceProps) {
             <Users className="h-5 w-5" />
           </div>
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.24em] text-primary">Invite Preview</p>
+            <p className="text-xs font-medium text-primary">Invite Preview</p>
             <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">Shared getaway</h2>
             <p className="text-sm leading-6 text-on-surface-variant">
               Valid invite links become available once Clerk and Convex are configured together.
@@ -198,7 +198,7 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
             <Users className="h-5 w-5" />
           </div>
           <div className="min-w-0 space-y-2">
-            <p className="text-xs uppercase tracking-[0.24em] text-primary">Secure Invite</p>
+            <p className="text-xs font-medium text-primary">Secure Invite</p>
             <div className="space-y-1">
               <h2 className="font-headline text-2xl font-bold tracking-tight text-on-surface">
                 {invite.groupName}
@@ -213,7 +213,7 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-[1.25rem] bg-surface-container-lowest/80 px-4 py-3">
-            <p className="text-[0.62rem] uppercase tracking-[0.22em] text-on-surface-variant">Status</p>
+            <p className="text-xs font-medium text-on-surface-variant">Status</p>
             <p className="mt-2 font-headline text-lg font-bold text-on-surface">
               {invite.inviteStatus === "pending"
                 ? "Open"
@@ -223,13 +223,13 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
             </p>
           </div>
           <div className="rounded-[1.25rem] bg-surface-container-lowest/80 px-4 py-3">
-            <p className="text-[0.62rem] uppercase tracking-[0.22em] text-on-surface-variant">Expires</p>
+            <p className="text-xs font-medium text-on-surface-variant">Expires</p>
             <p className="mt-2 font-headline text-lg font-bold text-on-surface">
               {formatExpiryLabel(invite.expiresAt)}
             </p>
           </div>
           <div className="rounded-[1.25rem] bg-surface-container-lowest/80 px-4 py-3">
-            <p className="text-[0.62rem] uppercase tracking-[0.22em] text-on-surface-variant">Access</p>
+            <p className="text-xs font-medium text-on-surface-variant">Access</p>
             <p className="mt-2 font-headline text-lg font-bold text-on-surface">
               {memberJoined ? "Active" : isSignedIn ? "Ready" : "Sign in"}
             </p>
@@ -237,7 +237,7 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
         </div>
 
         <div className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.22em] text-on-surface-variant">Current Members</p>
+          <p className="text-xs font-medium text-on-surface-variant">Current Members</p>
           <div className="flex flex-wrap gap-2">
             {invite.memberPreview.map((member) => (
               <div
@@ -256,7 +256,7 @@ function LiveInviteAcceptance({ token }: InviteAcceptanceProps) {
         <div className="rounded-[1.35rem] border border-white/6 bg-white/[0.03] px-4 py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-2">
-              <p className="text-xs uppercase tracking-[0.22em] text-primary">Join rules</p>
+              <p className="text-xs font-medium text-primary">Join rules</p>
               <p className="text-sm leading-6 text-on-surface-variant">
                 This is a single-use invite link. Once one person joins, the token closes and the owner can generate a fresh one.
               </p>

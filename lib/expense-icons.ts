@@ -36,7 +36,7 @@ export function getExpenseIconKey(
   }
 
   if (
-    normalized.includes("grocery") ||
+    normalized.includes("grocer") ||
     normalized.includes("market") ||
     normalized.includes("supermarket") ||
     normalized.includes("bonus") ||

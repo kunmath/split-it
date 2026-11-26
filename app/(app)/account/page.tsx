@@ -1,10 +1,5 @@
-import { AccountProfileForm } from "@/components/profile/profile-form";
-import { PageContainer } from "@/components/shell/page-container";
+import { AccountScreen } from "@/components/profile/account-screen";
 
 export default function AccountPage() {
-  return (
-    <PageContainer className="space-y-8">
-      <AccountProfileForm />
-    </PageContainer>
-  );
+  return <AccountScreen />;
 }

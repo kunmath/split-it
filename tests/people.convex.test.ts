@@ -67,6 +67,57 @@ describe("groups.listPeopleBalances", () => {
   });
 });
 
+describe("expenses.listPageForGroup", () => {
+  it("pages newest-first with viewer-relative wording fields", async () => {
+    const { asAlice, asBob, groupId, aliceId, bobId } = await setUpGroup();
+
+    for (let index = 0; index < 3; index += 1) {
+      await asAlice.mutation(api.expenses.createExpense, {
+        groupId,
+        description: `Expense ${index}`,
+        amountCents: 1000,
+        paidBy: aliceId,
+        splitType: "equal",
+        participantIds: [aliceId, bobId],
+        expenseAt: 1_000 + index,
+      });
+    }
+
+    const first = await asBob.query(api.expenses.listPageForGroup, {
+      groupId,
+      paginationOpts: { numItems: 2, cursor: null },
+    });
+    expect(first.page.map((expense) => expense.description)).toEqual(["Expense 2", "Expense 1"]);
+    expect(first.page[0]).toMatchObject({
+      paidByName: "Alice",
+      paidByCurrentUser: false,
+      currentUserNetCents: -500,
+      participantCount: 2,
+    });
+    expect(first.isDone).toBe(false);
+
+    const second = await asBob.query(api.expenses.listPageForGroup, {
+      groupId,
+      paginationOpts: { numItems: 2, cursor: first.continueCursor },
+    });
+    expect(second.page.map((expense) => expense.description)).toEqual(["Expense 0"]);
+    expect(second.isDone).toBe(true);
+  });
+
+  it("rejects non-members", async () => {
+    const { t, groupId } = await setUpGroup();
+    const asStranger = t.withIdentity({ subject: "user_stranger", email: "s@example.com", name: "Stranger" });
+    await asStranger.mutation(api.users.storeCurrentUser, {});
+
+    await expect(
+      asStranger.query(api.expenses.listPageForGroup, {
+        groupId,
+        paginationOpts: { numItems: 5, cursor: null },
+      }),
+    ).rejects.toThrow();
+  });
+});
+
 describe("settlements.create with fromUserId", () => {
   it("lets the recipient record a payment they received", async () => {
     const { asAlice, groupId, aliceId, bobId } = await setUpGroup();
