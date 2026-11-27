@@ -120,6 +120,10 @@ function SettleUpDialogScene({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submittingRef = useRef(false);
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
   const { direction, counterpartyId, amount, showOthers } = selection;
 
   useEffect(() => {
@@ -203,6 +207,10 @@ function SettleUpDialogScene({
       const message =
         caught instanceof Error ? caught.message : "Could not record settlement.";
       setError(message);
+      if (!openRef.current) {
+        // The sheet was dismissed while recording; don't let the failure go unnoticed.
+        showToast(`Payment not recorded — ${message}`);
+      }
     } finally {
       submittingRef.current = false;
       setIsSubmitting(false);

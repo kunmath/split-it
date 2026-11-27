@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { HandCoins, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getMockEntryDetail } from "@/components/groups/group-mock-data";
 import { getShortName, type GroupEntryDetail, type GroupExpense } from "@/components/groups/group-types";
@@ -125,6 +125,9 @@ export function LiveGroupEntrySheet({ entryId, summary, groupId, groupIconKey, c
   );
 }
 
+/** Entries with a delete in flight, shared across sheet remounts. */
+const deletingEntryIds = new Set<string>();
+
 function EntrySheetFrame({
   entryId,
   entry,
@@ -144,7 +147,14 @@ function EntrySheetFrame({
   onDelete: () => Promise<void>;
 }) {
   const [confirming, setConfirming] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(() => (entry ? deletingEntryIds.has(entry.id) : false));
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const [error, setError] = useState<string | null>(null);
 
   if (!entry) {
@@ -183,13 +193,26 @@ function EntrySheetFrame({
   const noun = isSettlement ? "settlement" : "expense";
 
   const handleDelete = async () => {
+    // Module-level lock: the sheet may be dismissed and reopened (remounted) while a delete is pending.
+    if (deletingEntryIds.has(entry.id)) {
+      return;
+    }
+    deletingEntryIds.add(entry.id);
     setIsDeleting(true);
     setError(null);
     try {
       await onDelete();
     } catch (deleteError) {
-      setError(getErrorMessage(deleteError, `Couldn't delete this ${noun}. Please try again.`));
-      setIsDeleting(false);
+      const message = getErrorMessage(deleteError, `Couldn't delete this ${noun}. Please try again.`);
+      if (mountedRef.current) {
+        setError(message);
+        setIsDeleting(false);
+      } else {
+        // The user already dismissed the sheet; surface the failure where they are.
+        showToast(message);
+      }
+    } finally {
+      deletingEntryIds.delete(entry.id);
     }
   };
 
@@ -197,12 +220,9 @@ function EntrySheetFrame({
     return (
       <ResponsiveDialog
         open
-        // Back / X on the confirm returns to the entry details, like "Keep it".
-        onClose={() => {
-          if (!isDeleting) {
-            setConfirming(false);
-          }
-        }}
+        // Back / X on the confirm returns to the entry details, like "Keep it". While a delete is
+        // pending they dismiss the sheet entirely, so a stalled request never traps the user.
+        onClose={isDeleting ? onClose : () => setConfirming(false)}
         tone="danger"
         size="compact"
         title={`Delete this ${noun}?`}
