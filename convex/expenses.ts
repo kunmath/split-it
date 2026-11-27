@@ -11,7 +11,7 @@ import {
   getGroupExpenseRecords,
 } from "./lib/expenseHelpers";
 import { resolveGroupIconKey } from "./lib/groupIcons";
-import { splitByShares, splitEvenly } from "./lib/money";
+import { splitBySharesInKeyOrder, splitEvenly } from "./lib/money";
 import {
   requireExpenseEditPermission,
   requireGroupMember,
@@ -292,9 +292,9 @@ async function buildValidatedShareRows(
     normalizedShares.map((share) => share.userId),
   );
 
-  const shareCents = splitByShares(
+  const shareCents = splitBySharesInKeyOrder(
     amountCents,
-    normalizedShares.map((share) => share.share),
+    normalizedShares.map((share) => ({ key: share.userId, share: share.share })),
   );
   const shareRows: ShareRow[] = normalizedShares.map((share, index) => ({
     userId: share.userId,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fromCents, splitByShares, splitEvenly, toCents } from "../convex/lib/money";
+import { fromCents, splitByShares, splitBySharesInKeyOrder, splitEvenly, toCents } from "../convex/lib/money";
 
 describe("toCents", () => {
   it("converts whole and fractional amounts", () => {
@@ -99,5 +99,23 @@ describe("splitByShares", () => {
     expect(() => splitByShares(100, [1, 0])).toThrow();
     expect(() => splitByShares(100, [1, -2])).toThrow();
     expect(() => splitByShares(100, [1, Number.NaN])).toThrow();
+  });
+});
+
+describe("splitBySharesInKeyOrder", () => {
+  it("gives leftover cents by key, not by listing order", () => {
+    const forward = splitBySharesInKeyOrder(100, [
+      { key: "a", share: 1 },
+      { key: "b", share: 1 },
+      { key: "c", share: 1 },
+    ]);
+    const shuffled = splitBySharesInKeyOrder(100, [
+      { key: "c", share: 1 },
+      { key: "a", share: 1 },
+      { key: "b", share: 1 },
+    ]);
+
+    expect(forward).toEqual([34, 33, 33]);
+    expect(shuffled).toEqual([33, 34, 33]);
   });
 });

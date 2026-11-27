@@ -120,6 +120,30 @@ describe("composer model", () => {
     }
   });
 
+  it("re-saves an unchanged shares edit with the same cents whatever order the viewer lists members in", () => {
+    // ₹1.00 split 1:1:1 leaves one cent over; it lands on the first user id, not the first listed member.
+    const saved = [
+      { userId: "c", shareCents: 33 },
+      { userId: "a", shareCents: 34 },
+      { userId: "b", shareCents: 33 },
+    ];
+    expect(buildSharesPreview(100, [
+      { userId: "c", share: 1 },
+      { userId: "a", share: 1 },
+      { userId: "b", share: 1 },
+    ])).toEqual(new Map([["c", 33], ["a", 34], ["b", 33]]));
+
+    for (const viewerOrder of [members, [...members].reverse()]) {
+      const inputs = buildInitialShareInputs(viewerOrder, saved);
+      const rows = viewerOrder.map((member) => ({ userId: member.id, share: Number(inputs[member.id]) }));
+      const preview = buildSharesPreview(100, rows);
+
+      for (const share of saved) {
+        expect(preview.get(share.userId)).toBe(share.shareCents);
+      }
+    }
+  });
+
   it("only accepts whole plain numbers as share weights", () => {
     expect(parseShareInput("2")).toBe(2);
     expect(parseShareInput(" 0.5 ")).toBe(0.5);

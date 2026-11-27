@@ -1,5 +1,5 @@
 // Relative imports keep this module loadable from vitest, which has no "@/" alias.
-import { splitByShares } from "../../convex/lib/money";
+import { splitByShares, splitBySharesInKeyOrder } from "../../convex/lib/money";
 import { getExpenseIconKey, type ExpenseIconKey } from "../../lib/expense-icons";
 import { formatMoneyFromCents } from "../../lib/format";
 
@@ -202,9 +202,9 @@ export function buildSharesPreview(totalCents: number, rows: ShareDraft[]) {
     return preview;
   }
 
-  const cents = splitByShares(
+  const cents = splitBySharesInKeyOrder(
     totalCents,
-    rows.map((row) => row.share),
+    rows.map((row) => ({ key: row.userId, share: row.share })),
   );
 
   rows.forEach((row, index) => {
@@ -333,10 +333,14 @@ export function buildInitialShareInputs(
     inputs[member.id] = "1";
   }
 
-  // For edits, reconstruct small ratios from persisted shareCents
+  // For edits, reconstruct small ratios from persisted shareCents. The backend splits in user-id order,
+  // so reconstruct in that order too; then an unchanged edit re-saves exactly the same cents.
   if (shares.length > 0) {
-    const weights = reconstructShareWeights(shares.map((share) => share.shareCents));
-    shares.forEach((share, index) => {
+    const ordered = [...shares].sort((left, right) =>
+      left.userId < right.userId ? -1 : left.userId > right.userId ? 1 : 0,
+    );
+    const weights = reconstructShareWeights(ordered.map((share) => share.shareCents));
+    ordered.forEach((share, index) => {
       inputs[share.userId] = String(weights[index]);
     });
   }

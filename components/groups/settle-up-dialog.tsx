@@ -135,7 +135,10 @@ function SettleUpDialogScene({
   const [note, setNote] = useState<string>("");
   const [showNote, setShowNote] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [duplicate, setDuplicate] = useState<DuplicateSettlementErrorData | null>(null);
+  // The payment a duplicate warning belongs to; it only shows while the draft still describes that payment.
+  const [duplicate, setDuplicate] = useState<
+    (DuplicateSettlementErrorData & { direction: SettleUpDirection; counterpartyId: string; amountCents: number }) | null
+  >(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const openRef = useRef(open);
@@ -251,7 +254,7 @@ function SettleUpDialogScene({
             : "Could not record settlement.";
       if (isSameOpening()) {
         if (duplicateData) {
-          setDuplicate(duplicateData);
+          setDuplicate({ ...duplicateData, direction, counterpartyId, amountCents });
         } else {
           setError(message);
         }
@@ -490,11 +493,15 @@ function SettleUpDialogScene({
           </p>
         ) : null}
 
-        {duplicate && counterparty && amountCents !== null ? (
+        {duplicate &&
+        counterparty &&
+        duplicate.direction === direction &&
+        duplicate.counterpartyId === counterpartyId &&
+        duplicate.amountCents === amountCents ? (
           <div className="space-y-3 rounded-2xl bg-secondary/10 px-4 py-3 text-sm text-on-surface" role="alert">
             <p>
               {shortName(counterparty.name)} already recorded{" "}
-              <Money cents={amountCents} currency={groupCurrency} className="font-semibold" />{" "}
+              <Money cents={duplicate.amountCents} currency={groupCurrency} className="font-semibold" />{" "}
               {isPaying ? "from you" : "to you"} on {formatRecordedDate(duplicate.recordedAt)}. Record it only if this
               is a separate payment.
             </p>
