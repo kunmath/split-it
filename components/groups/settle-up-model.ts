@@ -33,7 +33,7 @@ export type SettleUpState = {
 const AMOUNT_PATTERN = /^\d+(?:\.\d{1,2})?$/;
 
 export function parseAmountToCents(value: string) {
-  const trimmed = value.trim();
+  const trimmed = normalizeAmountInput(value);
   if (!trimmed || !AMOUNT_PATTERN.test(trimmed)) {
     return null;
   }
@@ -154,7 +154,7 @@ export function applySuggestion(state: SettleUpState, suggestion: SettleUpSugges
 /**
  * Strips a leading currency symbol and complete digit grouping ("₹1,200.5" → "1200.5", "1,20,000" → "120000").
  * Returns null for anything the stripping would change the meaning of, such as a sign ("-12.50"), a comma
- * that isn't grouping ("12,50"), or grouping still being typed ("12,"), so those stay as typed and invalid.
+ * that isn't grouping ("12,50"), or grouping still being typed ("12,").
  */
 export function normalizeAmountInput(value: string) {
   const unprefixed = value.trim().replace(/^\p{Sc}\s*/u, "");
@@ -170,11 +170,16 @@ export function normalizeAmountInput(value: string) {
   return null;
 }
 
+/** Digit grouping that is valid so far but whose last group is still being typed, e.g. "1,2" or "1,234,5". */
+export function isAmountInputIncomplete(value: string) {
+  return /^\d{1,3}(?:,\d{2,3})*,\d{0,3}$/.test(value.trim().replace(/^\p{Sc}\s*/u, ""));
+}
+
 export function typeAmount(state: SettleUpState, value: string): SettleUpState {
   return {
     ...state,
-    // Unsupported input is kept as typed so it reads as invalid instead of silently becoming another amount.
-    amount: normalizeAmountInput(value) ?? value,
+    // Kept exactly as typed (grouping included); parseAmountToCents decides whether it's a valid amount.
+    amount: value,
     typedFor: state.counterpartyId
       ? { counterpartyId: state.counterpartyId, direction: state.direction }
       : null,

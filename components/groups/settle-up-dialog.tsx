@@ -12,6 +12,7 @@ import {
   changeDirection,
   getOverpayment,
   initialSettleUpState,
+  isAmountInputIncomplete,
   normalizeAmountInput,
   parseAmountToCents,
   selectPerson,
@@ -180,7 +181,8 @@ function SettleUpDialogScene({
   const currencySymbol = getCurrencySymbol(groupCurrency);
 
   const overpayment = getOverpayment(selection, suggestions);
-  const amountUnreadable = amount.trim() !== "" && normalizeAmountInput(amount) === null;
+  const amountUnreadable =
+    amount.trim() !== "" && normalizeAmountInput(amount) === null && !isAmountInputIncomplete(amount);
 
   const handleSubmit = async ({ confirmDuplicate = false }: { confirmDuplicate?: boolean } = {}) => {
     // A ref, not state: it survives the sheet closing/reopening and blocks a double tap in the same frame.

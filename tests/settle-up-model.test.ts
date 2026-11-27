@@ -5,6 +5,7 @@ import {
   changeDirection,
   getOverpayment,
   initialSettleUpState,
+  isAmountInputIncomplete,
   parseAmountToCents,
   normalizeAmountInput,
   selectPerson,
@@ -107,40 +108,54 @@ describe("settle-up model", () => {
     expect(state).toMatchObject({ counterpartyId: "jordan", amount: "320.00", typedFor: null });
   });
 
-  it("strips a currency symbol and digit grouping from typed amounts", () => {
+  it("reads a currency symbol and digit grouping in typed amounts", () => {
     const state = typeAmount(initialSettleUpState([youOweMarcus]), "₹1,200.5");
 
-    expect(state.amount).toBe("1200.5");
+    expect(state.amount).toBe("₹1,200.5");
     expect(parseAmountToCents(state.amount)).toBe(120_050);
-    expect(typeAmount(state, "1,20,000").amount).toBe("120000");
+    expect(parseAmountToCents("1,20,000")).toBe(12_000_000);
   });
 
-  it("keeps a comma typed one character at a time, so 12,50 never becomes 1250", () => {
+  const typeEachCharacter = (text: string) => {
     let state = initialSettleUpState([]);
-    let typed = "";
 
-    for (const character of "12,50") {
-      typed = state.amount + character;
+    for (const character of text) {
+      const typed = state.amount + character;
       state = typeAmount(state, typed);
       expect(state.amount).toBe(typed);
     }
 
-    expect(parseAmountToCents(state.amount)).toBeNull();
+    return state;
+  };
 
-    // Completing valid grouping still normalizes it.
-    state = typeAmount(state, "12,500");
-    expect(state.amount).toBe("12500");
+  it("keeps a comma typed one character at a time, so 12,50 never becomes 1250", () => {
+    const state = typeEachCharacter("12,50");
+
+    expect(isAmountInputIncomplete(state.amount)).toBe(true);
+    expect(parseAmountToCents(state.amount)).toBeNull();
+    expect(parseAmountToCents(typeAmount(state, "12,500").amount)).toBe(1_250_000);
+  });
+
+  it("keeps several comma groups while they are typed one character at a time", () => {
+    const state = typeEachCharacter("1,234,567.89");
+
+    expect(state.amount).toBe("1,234,567.89");
+    expect(parseAmountToCents(state.amount)).toBe(123_456_789);
+    expect(isAmountInputIncomplete("1,234,5")).toBe(true);
   });
 
   it("keeps amounts that stripping would change as typed, so they stay invalid", () => {
     const state = initialSettleUpState([youOweMarcus]);
 
-    for (const value of ["-12.50", "12,50", "12a"]) {
+    for (const value of ["-12.50", "12,50", "12a", "1234,567"]) {
       const next = typeAmount(state, value);
       expect(next.amount).toBe(value);
       expect(normalizeAmountInput(value)).toBeNull();
       expect(parseAmountToCents(next.amount)).toBeNull();
     }
+
+    expect(isAmountInputIncomplete("-12.50")).toBe(false);
+    expect(isAmountInputIncomplete("12a")).toBe(false);
   });
 
   it("reports how far an amount goes past the debt in the selected direction", () => {
