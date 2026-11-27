@@ -113,7 +113,23 @@ describe("settle-up model", () => {
     expect(state.amount).toBe("1200.5");
     expect(parseAmountToCents(state.amount)).toBe(120_050);
     expect(typeAmount(state, "1,20,000").amount).toBe("120000");
-    expect(typeAmount(state, "12,").amount).toBe("12");
+  });
+
+  it("keeps a comma typed one character at a time, so 12,50 never becomes 1250", () => {
+    let state = initialSettleUpState([]);
+    let typed = "";
+
+    for (const character of "12,50") {
+      typed = state.amount + character;
+      state = typeAmount(state, typed);
+      expect(state.amount).toBe(typed);
+    }
+
+    expect(parseAmountToCents(state.amount)).toBeNull();
+
+    // Completing valid grouping still normalizes it.
+    state = typeAmount(state, "12,500");
+    expect(state.amount).toBe("12500");
   });
 
   it("keeps amounts that stripping would change as typed, so they stay invalid", () => {

@@ -152,12 +152,12 @@ export function applySuggestion(state: SettleUpState, suggestion: SettleUpSugges
 }
 
 /**
- * Strips a leading currency symbol and digit grouping ("₹1,200.5" → "1200.5", "1,20,000" → "120000").
- * A trailing comma is dropped as grouping still being typed. Returns null for anything the stripping
- * would change the meaning of, such as a sign ("-12.50") or a comma that isn't grouping ("12,50").
+ * Strips a leading currency symbol and complete digit grouping ("₹1,200.5" → "1200.5", "1,20,000" → "120000").
+ * Returns null for anything the stripping would change the meaning of, such as a sign ("-12.50"), a comma
+ * that isn't grouping ("12,50"), or grouping still being typed ("12,"), so those stay as typed and invalid.
  */
 export function normalizeAmountInput(value: string) {
-  const unprefixed = value.trim().replace(/^\p{Sc}\s*/u, "").replace(/,$/, "");
+  const unprefixed = value.trim().replace(/^\p{Sc}\s*/u, "");
 
   if (/^\d*(?:\.\d*)?$/.test(unprefixed)) {
     return unprefixed;

@@ -6,7 +6,6 @@ import { applyExpenseToAggregates } from "./lib/balances";
 import { requireGroupMember } from "./lib/permissions";
 import {
   DUPLICATE_SETTLEMENT_ERROR,
-  DUPLICATE_SETTLEMENT_WINDOW_MS,
   type DuplicateSettlementErrorData,
 } from "./lib/settlementDuplicates";
 import { assertGroupIsActive, validateAmountCents } from "./lib/validate";
@@ -73,19 +72,20 @@ export const create = mutation({
 
     if (!args.confirmDuplicate) {
       // The payer and the recipient can each record the same transfer ("I paid" / "they paid me").
-      // A matching payment the other party recorded recently is most likely that transfer, so ask first.
+      // Any matching payment the other party recorded may be that transfer, however long ago, so ask
+      // first; a genuinely separate payment of the same amount goes through once confirmed.
       const sameAmount = await ctx.db
         .query("expenses")
         .withIndex("by_group_amount", (q) =>
           q.eq("groupId", args.groupId).eq("amountCents", amountCents),
         )
+        .order("desc")
         .collect();
       const candidates = sameAmount.filter(
         (expense) =>
           expense.kind === "settlement" &&
           expense.paidBy === fromUserId &&
-          expense.createdBy === counterpartyId &&
-          expense._creationTime >= now - DUPLICATE_SETTLEMENT_WINDOW_MS,
+          expense.createdBy === counterpartyId,
       );
 
       for (const candidate of candidates) {

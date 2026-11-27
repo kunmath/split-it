@@ -73,7 +73,12 @@ function getCurrencySymbol(currency: string) {
 }
 
 function formatRecordedDate(timestamp: number) {
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(timestamp);
+  const sameYear = new Date(timestamp).getFullYear() === new Date().getFullYear();
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+  }).format(timestamp);
 }
 
 export function SettleUpDialog({
