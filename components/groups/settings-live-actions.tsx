@@ -3,13 +3,14 @@
 import { useConvex, useMutation, useQuery } from "convex/react";
 import { Copy, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { startTransition, useState, type FormEvent } from "react";
+import { startTransition, useRef, useState, type FormEvent } from "react";
 
 import { dangerButtonClass, SettingsNotice } from "@/components/groups/settings-list";
 import { Button } from "@/components/ui/button";
 import { FilledInput } from "@/components/ui/filled-input";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { SkeletonBlock } from "@/components/ui/skeletons";
+import { showToast } from "@/components/ui/toast";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -39,7 +40,13 @@ export function useGroupSettingsActions({ groupId, groupName, isOwner }: Options
   const archiveGroup = useMutation(api.groups.archive);
   const typedGroupId = groupId as Id<"groups">;
 
-  const [openDialog, setOpenDialog] = useState<"archive" | "invite" | "rename" | null>(null);
+  const [openDialog, setOpenDialogState] = useState<"archive" | "invite" | "rename" | null>(null);
+  // Bumped whenever a dialog opens or closes, so a request only updates the dialog session that started it.
+  const dialogSessionRef = useRef(0);
+  const setOpenDialog = (next: "archive" | "invite" | "rename" | null) => {
+    dialogSessionRef.current += 1;
+    setOpenDialogState(next);
+  };
   const [renameDraft, setRenameDraft] = useState(groupName);
   const [renameError, setRenameError] = useState<string | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -102,14 +109,22 @@ export function useGroupSettingsActions({ groupId, groupName, isOwner }: Options
 
   async function handleRename(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const session = dialogSessionRef.current;
     setIsRenaming(true);
     setRenameError(null);
 
     try {
       await renameGroup({ groupId: typedGroupId, name: renameDraft });
-      closeDialog();
+      if (dialogSessionRef.current === session) {
+        closeDialog();
+      }
     } catch (error) {
-      setRenameError(getErrorMessage(error));
+      const message = getErrorMessage(error);
+      if (dialogSessionRef.current === session) {
+        setRenameError(message);
+      } else {
+        showToast(`Group not renamed — ${message}`);
+      }
     } finally {
       setIsRenaming(false);
     }

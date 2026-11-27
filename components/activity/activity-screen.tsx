@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import Link from "next/link";
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { getMockGroupSceneData } from "@/components/groups/group-mock-data";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
@@ -82,11 +82,40 @@ function ActivityFrame({ children }: { children: ReactNode }) {
   );
 }
 
+function getLocalDayStart() {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
+}
+
+/** Start of the local day, updated at midnight so "Today"/"Yesterday" headings roll over. */
+function useLocalDayStart() {
+  const [dayStart, setDayStart] = useState(getLocalDayStart);
+
+  useEffect(() => {
+    const nextMidnight = new Date(dayStart);
+    nextMidnight.setDate(nextMidnight.getDate() + 1);
+    const timeout = window.setTimeout(
+      () => setDayStart(getLocalDayStart()),
+      Math.max(0, nextMidnight.getTime() - Date.now()) + 1_000,
+    );
+
+    return () => window.clearTimeout(timeout);
+  }, [dayStart]);
+
+  return dayStart;
+}
+
 function ActivityScene({ activities }: { activities: ActivityItem[] }) {
   const [filter, setFilter] = useState<ActivityFilter>("all");
+  const dayStart = useLocalDayStart();
   const dayGroups = useMemo(
-    () => groupActivitiesByDay(activities.filter((activity) => matchesFilter(activity, filter))),
-    [activities, filter],
+    () =>
+      groupActivitiesByDay(
+        activities.filter((activity) => matchesFilter(activity, filter)),
+        dayStart,
+      ),
+    [activities, filter, dayStart],
   );
 
   if (activities.length === 0) {
