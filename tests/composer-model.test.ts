@@ -134,12 +134,20 @@ describe("composer model", () => {
     ])).toEqual(new Map([["c", 33], ["a", 34], ["b", 33]]));
 
     for (const viewerOrder of [members, [...members].reverse()]) {
-      const inputs = buildInitialShareInputs(viewerOrder, saved);
-      const rows = viewerOrder.map((member) => ({ userId: member.id, share: Number(inputs[member.id]) }));
-      const preview = buildSharesPreview(100, rows);
+      // The second saved split put the extra cent on "c" (listed first when it was saved); only reconstructing
+      // in user-id order finds weights that keep it there.
+      for (const savedSplit of [saved, [
+        { userId: "c", shareCents: 34 },
+        { userId: "a", shareCents: 33 },
+        { userId: "b", shareCents: 33 },
+      ]]) {
+        const inputs = buildInitialShareInputs(viewerOrder, savedSplit);
+        const rows = viewerOrder.map((member) => ({ userId: member.id, share: Number(inputs[member.id]) }));
+        const preview = buildSharesPreview(100, rows);
 
-      for (const share of saved) {
-        expect(preview.get(share.userId)).toBe(share.shareCents);
+        for (const share of savedSplit) {
+          expect(preview.get(share.userId)).toBe(share.shareCents);
+        }
       }
     }
   });
