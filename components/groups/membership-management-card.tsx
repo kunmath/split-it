@@ -100,7 +100,7 @@ export function useMembershipManagement({ currency, groupId, groupName }: Member
               <dd className="flex items-center gap-1.5 font-semibold text-on-surface">
                 {memberStanding.label}
                 {member.balanceCents !== 0 ? (
-                  <Money cents={member.balanceCents} currency={currency} tone={memberStanding.tone} />
+                  <Money cents={member.balanceCents} currency={currency} />
                 ) : null}
               </dd>
             </div>

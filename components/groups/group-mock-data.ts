@@ -164,6 +164,8 @@ function buildMockGroup(
   const createdAt = listed ? now - 60 * DAY : fallback.createdAt;
   const memberIdAt = (index: number) => `mock-member-${people[index]!.name.split(" ")[0]!.toLowerCase()}`;
   const entryDetails: GroupEntryDetail[] = [];
+  // Net position each member accumulates from the ledger entries below.
+  const ledgerNet = new Array<number>(people.length).fill(0);
 
   const recentExpenses: GroupExpense[] = seeds
     .filter((seed) => !(seed.settlement && others === 0))
@@ -185,6 +187,8 @@ function buildMockGroup(
       };
 
       if (seed.settlement) {
+        ledgerNet[payer]! += amountCents;
+        ledgerNet[0]! -= amountCents;
         entryDetails.push({
           ...detailBase,
           kind: "settlement",
@@ -229,6 +233,10 @@ function buildMockGroup(
       }));
       const viewerShare = shares.find((share) => share.isCurrentUser)?.shareCents ?? 0;
       const currentUserNetCents = (payer === 0 ? amountCents : 0) - viewerShare;
+      ledgerNet[payer]! += amountCents;
+      participants.forEach((person, position) => {
+        ledgerNet[person]! -= shares[position]!.shareCents;
+      });
 
       entryDetails.push({
         ...detailBase,
@@ -254,6 +262,19 @@ function buildMockGroup(
         iconKey: seed.iconKey,
       };
     });
+
+  recentExpenses.push(
+    ...buildReconcilingEntries({
+      groupId,
+      people,
+      residual: people.map((person, index) => person.balanceCents - ledgerNet[index]!),
+      oldestHoursAgo: Math.max(0, ...seeds.map((seed) => seed.hoursAgo)),
+      at,
+      memberIdAt,
+      paidCents,
+      entryDetails,
+    }),
+  );
 
   const members: GroupMember[] = people.map((person, index) => ({
     id: memberIdAt(index),
@@ -318,4 +339,103 @@ function buildMockGroup(
   };
 
   return { scene, entryDetails };
+}
+
+const RECONCILING_DESCRIPTIONS = ["Move-in costs", "Furniture – IKEA", "Deposit top-up", "Shared kitchenware"];
+
+/**
+ * Older exact-split entries that close any gap between the generated ledger and the
+ * balances shown on Home, so every demo group's rows add up to its balances exactly.
+ */
+function buildReconcilingEntries({
+  groupId,
+  people,
+  residual,
+  oldestHoursAgo,
+  at,
+  memberIdAt,
+  paidCents,
+  entryDetails,
+}: {
+  groupId: string;
+  people: Array<{ name: string }>;
+  residual: number[];
+  oldestHoursAgo: number;
+  at: (hoursAgo: number) => number;
+  memberIdAt: (index: number) => string;
+  paidCents: number[];
+  entryDetails: GroupEntryDetail[];
+}): GroupExpense[] {
+  const remaining = [...residual];
+  const debtors = remaining
+    .map((value, index) => ({ index, value }))
+    .filter((entry) => entry.value < 0);
+  const entries: GroupExpense[] = [];
+
+  remaining.forEach((creditorAmount, payer) => {
+    if (creditorAmount <= 0) {
+      return;
+    }
+
+    let left = creditorAmount;
+    const shares: GroupEntryDetail["shares"] = [];
+    for (const debtor of debtors) {
+      if (left === 0) {
+        break;
+      }
+      const take = Math.min(left, -debtor.value);
+      if (take <= 0) {
+        continue;
+      }
+      debtor.value += take;
+      left -= take;
+      shares.push({
+        userId: memberIdAt(debtor.index),
+        name: people[debtor.index]!.name,
+        shareCents: take,
+        isCurrentUser: debtor.index === 0,
+      });
+    }
+
+    const order = entries.length;
+    const id = `mock-reconcile-${order}`;
+    const description = RECONCILING_DESCRIPTIONS[order % RECONCILING_DESCRIPTIONS.length]!;
+    const amountCents = creditorAmount;
+    const expenseAt = at(oldestHoursAgo + 48 + order * 30);
+    const viewerShare = shares.find((share) => share.isCurrentUser)?.shareCents ?? 0;
+    const currentUserNetCents = (payer === 0 ? amountCents : 0) - viewerShare;
+    paidCents[payer]! += amountCents;
+
+    entryDetails.push({
+      id,
+      groupId,
+      description,
+      amountCents,
+      expenseAt,
+      notes: null,
+      paidBy: { id: memberIdAt(payer), name: people[payer]!.name, isCurrentUser: payer === 0 },
+      canEdit: true,
+      kind: "expense",
+      splitType: "exact",
+      shares,
+      currentUserNetCents,
+    });
+    entries.push({
+      id,
+      description,
+      amountCents,
+      expenseAt,
+      paidByName: people[payer]!.name,
+      paidByCurrentUser: payer === 0,
+      currentUserNetCents,
+      splitType: "exact",
+      kind: "expense",
+      counterpartyName: null,
+      counterpartyIsCurrentUser: false,
+      participantCount: shares.length,
+      iconKey: "home",
+    });
+  });
+
+  return entries;
 }
