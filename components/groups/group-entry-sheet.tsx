@@ -213,7 +213,7 @@ function EntrySheetFrame({
         }
       >
         <div className="grid grid-cols-2 gap-2">
-          <Button variant="ghost" size="lg" onClick={() => setConfirming(false)} data-autofocus>
+          <Button variant="ghost" size="lg" onClick={() => setConfirming(false)} disabled={isDeleting} data-autofocus>
             Keep it
           </Button>
           <Button

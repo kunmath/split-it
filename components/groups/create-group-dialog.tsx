@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import type { CreateGroupDraft } from "@/components/groups/group-list-data";
@@ -36,28 +36,34 @@ function getErrorMessage(error: unknown) {
 }
 
 /**
- * Open/close state for the create-group dialog. A `?create=1` link opens it; the param is stripped
- * from the URL on arrival (before the dialog pushes its history entry), so closing never rewrites
+ * Open/close state for the create-group dialog. Every visit to a `?create=1` URL opens it; the param
+ * is stripped on arrival (before the dialog pushes its history entry), so closing never rewrites
  * history and Back can't land on a URL that reopens the dialog.
  */
 export function useCreateGroupDialog(initialOpen: boolean) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(initialOpen);
-  const [lastInitialOpen, setLastInitialOpen] = useState(initialOpen);
+  const searchParams = useSearchParams();
+  const linkSearch = searchParams.get("create") === "1" ? searchParams.toString() : null;
+  const [open, setOpen] = useState(initialOpen || linkSearch !== null);
+  const [consumedSearch, setConsumedSearch] = useState(linkSearch);
 
   // Re-open when navigating to `?create=1` while this screen is already mounted.
-  if (initialOpen !== lastInitialOpen) {
-    setLastInitialOpen(initialOpen);
-    if (initialOpen) {
+  if (linkSearch !== consumedSearch) {
+    setConsumedSearch(linkSearch);
+    if (linkSearch !== null) {
       setOpen(true);
     }
   }
 
   useEffect(() => {
-    if (initialOpen) {
-      window.history.replaceState(null, "", pathname);
+    if (linkSearch === null) {
+      return;
     }
-  }, [initialOpen, pathname]);
+    const next = new URLSearchParams(linkSearch);
+    next.delete("create");
+    const query = next.toString();
+    window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
+  }, [linkSearch, pathname]);
 
   return { open, openDialog: () => setOpen(true), close: () => setOpen(false) };
 }

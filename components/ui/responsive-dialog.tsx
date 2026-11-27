@@ -100,16 +100,22 @@ export function ResponsiveDialog({
         (element) => element.offsetParent !== null,
       );
       if (focusable.length === 0) {
+        event.preventDefault();
         return;
       }
 
       const first = focusable[0]!;
       const last = focusable[focusable.length - 1]!;
+      const active = document.activeElement;
+      // The panel itself holds focus right after opening (and focus can drift outside); treat both
+      // as the edge of the list so Tab / Shift+Tab never reach the page behind the dialog.
+      const atStart = active === first || active === panel || !panel.contains(active);
+      const atEnd = active === last || active === panel || !panel.contains(active);
 
-      if (event.shiftKey && document.activeElement === first) {
+      if (event.shiftKey && atStart) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
+      } else if (!event.shiftKey && atEnd) {
         event.preventDefault();
         first.focus();
       }

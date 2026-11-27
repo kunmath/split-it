@@ -66,8 +66,6 @@ function getCurrencySymbol(currency: string) {
   }
 }
 
-function ignoreClose() {}
-
 export function SettleUpDialog({
   isMock = false,
   ...props
@@ -223,9 +221,10 @@ function SettleUpDialogScene({
   return (
     <ResponsiveDialog
       open={open}
-      // While a payment is recording, every dismiss path (X, Back, swipe, Escape) is ignored so the
-      // sheet can't be closed and reopened into a second submission.
-      onClose={isSubmitting ? ignoreClose : onClose}
+      // Closing stays possible while a payment records (a stalled save on a flaky connection must not
+      // trap the user); the in-flight ref still blocks a second submission if the sheet is reopened,
+      // and the success toast confirms the payment wherever the user is.
+      onClose={onClose}
       className="scroll-pb-36"
       title="Settle up"
       description="Record cash, UPI or bank transfers."
