@@ -1,7 +1,7 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
 
 import type { CreateGroupDraft } from "@/components/groups/group-list-data";
 import { Button } from "@/components/ui/button";
@@ -36,11 +36,11 @@ function getErrorMessage(error: unknown) {
 }
 
 /**
- * Open/close state for the create-group dialog. Opens when the page was reached with `?create=1`
- * and strips that param again on close so a refresh doesn't reopen it.
+ * Open/close state for the create-group dialog. A `?create=1` link opens it; the param is stripped
+ * from the URL on arrival (before the dialog pushes its history entry), so closing never rewrites
+ * history and Back can't land on a URL that reopens the dialog.
  */
 export function useCreateGroupDialog(initialOpen: boolean) {
-  const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(initialOpen);
   const [lastInitialOpen, setLastInitialOpen] = useState(initialOpen);
@@ -53,14 +53,13 @@ export function useCreateGroupDialog(initialOpen: boolean) {
     }
   }
 
-  function close() {
-    setOpen(false);
+  useEffect(() => {
     if (initialOpen) {
-      router.replace(pathname, { scroll: false });
+      window.history.replaceState(null, "", pathname);
     }
-  }
+  }, [initialOpen, pathname]);
 
-  return { open, openDialog: () => setOpen(true), close };
+  return { open, openDialog: () => setOpen(true), close: () => setOpen(false) };
 }
 
 type CreateGroupDialogProps = {

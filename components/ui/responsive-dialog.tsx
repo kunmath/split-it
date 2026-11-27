@@ -76,9 +76,9 @@ export function ResponsiveDialog({
     document.body.style.overflow = "hidden";
 
     const panel = panelRef.current;
-    const autoFocusTarget =
-      panel?.querySelector<HTMLElement>("[data-autofocus]") ??
-      panel?.querySelector<HTMLElement>(FOCUSABLE);
+    // Focus an explicit [data-autofocus] field, else the dialog itself (announced via its label),
+    // so the close button doesn't open with a focus ring.
+    const autoFocusTarget = panel?.querySelector<HTMLElement>("[data-autofocus]") ?? panel;
     autoFocusTarget?.focus({ preventScroll: true });
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -169,6 +169,7 @@ export function ResponsiveDialog({
         >
           <SurfaceCard
             ref={panelRef}
+            tabIndex={-1}
             variant={tone === "danger" ? "high" : "hero"}
             role="dialog"
             aria-modal="true"
@@ -180,7 +181,7 @@ export function ResponsiveDialog({
                 : undefined
             }
             className={cn(
-              "relative max-h-[85dvh] overflow-y-auto overscroll-contain rounded-[1.75rem] shadow-[0_24px_90px_rgba(0,0,0,0.34)] md:rounded-[2rem]",
+              "relative max-h-[85dvh] overflow-y-auto outline-none overscroll-contain rounded-[1.75rem] shadow-[0_24px_90px_rgba(0,0,0,0.34)] md:rounded-[2rem]",
               compact ? "p-4 md:p-6" : "p-5 md:p-7",
               tone === "danger" &&
                 "bg-[radial-gradient(circle_at_top_right,rgba(255,181,158,0.12),transparent_34%),linear-gradient(180deg,rgba(42,42,42,0.98),rgba(28,27,27,1))]",

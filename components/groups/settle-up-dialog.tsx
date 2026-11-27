@@ -3,7 +3,7 @@
 import { useMutation } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { ArrowDownLeft, ArrowUpRight, Check, ChevronDown, Plus } from "lucide-react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { getShortName } from "@/components/groups/group-types";
 import {
@@ -66,6 +66,8 @@ function getCurrencySymbol(currency: string) {
   }
 }
 
+function ignoreClose() {}
+
 export function SettleUpDialog({
   isMock = false,
   ...props
@@ -119,6 +121,7 @@ function SettleUpDialogScene({
   const [showNote, setShowNote] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const { direction, counterpartyId, amount, showOthers } = selection;
 
   useEffect(() => {
@@ -126,7 +129,6 @@ function SettleUpDialogScene({
       return;
     }
     setError(null);
-    setIsSubmitting(false);
     setNote("");
     setShowNote(false);
     setSelection(initialSettleUpState(suggestions, preset));
@@ -154,7 +156,8 @@ function SettleUpDialogScene({
   const overpayment = getOverpayment(selection, suggestions);
 
   const handleSubmit = async () => {
-    if (isSubmitting) {
+    // A ref, not state: it survives the sheet closing/reopening and blocks a double tap in the same frame.
+    if (submittingRef.current) {
       return;
     }
     if (!createSettlement) {
@@ -174,6 +177,7 @@ function SettleUpDialogScene({
       return;
     }
 
+    submittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -202,6 +206,7 @@ function SettleUpDialogScene({
         caught instanceof Error ? caught.message : "Could not record settlement.";
       setError(message);
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -218,7 +223,10 @@ function SettleUpDialogScene({
   return (
     <ResponsiveDialog
       open={open}
-      onClose={onClose}
+      // While a payment is recording, every dismiss path (X, Back, swipe, Escape) is ignored so the
+      // sheet can't be closed and reopened into a second submission.
+      onClose={isSubmitting ? ignoreClose : onClose}
+      className="scroll-pb-36"
       title="Settle up"
       description="Record cash, UPI or bank transfers."
     >

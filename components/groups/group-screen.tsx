@@ -3,8 +3,8 @@
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { HandCoins, Settings, Users } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { usePathname, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { GroupBalanceStrip } from "@/components/groups/group-balance-strip";
 import { GroupBalancesSheet, GroupMemberBalanceList } from "@/components/groups/group-balances-sheet";
@@ -162,6 +162,18 @@ function LiveGroupScreen({ groupId }: GroupScreenProps) {
   return <GroupScene group={groupSceneData} pager={pager} />;
 }
 
+type LinkedSheets = { entryId: string | null; settle: boolean; withId: string | null };
+
+function readLinkedSheets(searchParams: URLSearchParams | ReadonlyURLSearchParams): LinkedSheets {
+  const settle = searchParams.get("settle") === "1";
+
+  return {
+    entryId: searchParams.get("entry"),
+    settle,
+    withId: settle ? searchParams.get("with") : null,
+  };
+}
+
 function GroupScene({
   group,
   isMock = false,
@@ -171,38 +183,54 @@ function GroupScene({
   isMock?: boolean;
   pager?: GroupExpensePager;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const shouldAutoOpen = searchParams.get("settle") === "1";
-  const withParam = searchParams.get("with");
   const [localSettleOpen, setLocalSettleOpen] = useState(false);
   const [localPreset, setLocalPreset] = useState<SettleUpPreset | null>(null);
   const [balancesOpen, setBalancesOpen] = useState(false);
   const [openEntry, setOpenEntry] = useState<GroupExpense | null>(null);
-  const isSettleOpen = shouldAutoOpen || localSettleOpen;
-  // `?entry=<id>` deep-links to one ledger entry (e.g. from Activity).
-  const entryParam = searchParams.get("entry");
-  // Hides the linked entry right away on close, before router.replace drops the param.
-  const [dismissedEntryParam, setDismissedEntryParam] = useState<string | null>(null);
-  if (dismissedEntryParam !== null && entryParam !== dismissedEntryParam) {
-    setDismissedEntryParam(null);
+
+  // Deep links (`?entry=<id>` from Activity, `?settle=1&with=<id>` from People) are consumed on
+  // arrival: copied into local state and stripped from the URL before any sheet opens. Closing a
+  // sheet then never rewrites history, so Back can't land on a URL that reopens it.
+  const linkSearch = searchParams.has("entry") || searchParams.get("settle") === "1" ? searchParams.toString() : null;
+  const [linked, setLinked] = useState<LinkedSheets>(() => readLinkedSheets(searchParams));
+  const [consumedSearch, setConsumedSearch] = useState<string | null>(linkSearch);
+  if (linkSearch !== consumedSearch) {
+    setConsumedSearch(linkSearch);
+    if (linkSearch !== null) {
+      setLinked(readLinkedSheets(searchParams));
+    }
   }
-  const linkedEntryId = entryParam !== dismissedEntryParam ? entryParam : null;
+
+  useEffect(() => {
+    if (linkSearch === null) {
+      return;
+    }
+    const next = new URLSearchParams(linkSearch);
+    next.delete("entry");
+    next.delete("settle");
+    next.delete("with");
+    const query = next.toString();
+    window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
+  }, [linkSearch, pathname]);
+
+  const isSettleOpen = localSettleOpen || linked.settle;
+  const linkedEntryId = linked.entryId;
   const entryId = openEntry?.id ?? linkedEntryId;
   const entrySummary =
     openEntry ?? group.recentExpenses.find((expense) => expense.id === linkedEntryId) ?? null;
 
-  const urlPreset: SettleUpPreset | null =
-    shouldAutoOpen && withParam
+  const linkedPreset: SettleUpPreset | null =
+    linked.settle && linked.withId
       ? {
-          counterpartyId: withParam,
+          counterpartyId: linked.withId,
           direction:
-            group.suggestedSettlements.find((suggestion) => suggestion.counterpartyId === withParam)
+            group.suggestedSettlements.find((suggestion) => suggestion.counterpartyId === linked.withId)
               ?.direction ?? "youPay",
         }
       : null;
-  const settlePreset = localSettleOpen ? localPreset : urlPreset;
+  const settlePreset = localSettleOpen ? localPreset : linkedPreset;
 
   const canSettle = group.memberCount > 1;
   const settingsHref = `/groups/${group.groupId}/settings`;
@@ -215,23 +243,11 @@ function GroupScene({
   };
   const closeSettle = () => {
     setLocalSettleOpen(false);
-    if (shouldAutoOpen) {
-      const next = new URLSearchParams(searchParams.toString());
-      next.delete("settle");
-      next.delete("with");
-      const query = next.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname);
-    }
+    setLinked((current) => ({ ...current, settle: false, withId: null }));
   };
   const closeEntry = () => {
     setOpenEntry(null);
-    if (entryParam) {
-      setDismissedEntryParam(entryParam);
-      const next = new URLSearchParams(searchParams.toString());
-      next.delete("entry");
-      const query = next.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
-    }
+    setLinked((current) => ({ ...current, entryId: null }));
   };
 
   return (

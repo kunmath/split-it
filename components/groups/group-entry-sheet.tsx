@@ -78,6 +78,7 @@ export function MockGroupEntrySheet({ entryId, summary, groupId, groupIconKey, c
   return (
     <EntrySheetFrame
       key={entryId ?? "closed"}
+      entryId={entryId}
       entry={summary ?? (detail ? summaryFromDetail(detail, groupIconKey) : null)}
       detail={detail}
       groupId={groupId}
@@ -106,6 +107,7 @@ export function LiveGroupEntrySheet({ entryId, summary, groupId, groupIconKey, c
   return (
     <EntrySheetFrame
       key={entryId ?? "closed"}
+      entryId={entryId}
       entry={entry}
       detail={detail}
       groupId={groupId}
@@ -124,6 +126,7 @@ export function LiveGroupEntrySheet({ entryId, summary, groupId, groupIconKey, c
 }
 
 function EntrySheetFrame({
+  entryId,
   entry,
   detail,
   groupId,
@@ -131,6 +134,7 @@ function EntrySheetFrame({
   onClose,
   onDelete,
 }: {
+  entryId: string | null;
   entry: GroupExpense | null;
   /** undefined while loading, null when the entry no longer exists. */
   detail: GroupEntryDetail | null | undefined;
@@ -144,7 +148,35 @@ function EntrySheetFrame({
   const [error, setError] = useState<string | null>(null);
 
   if (!entry) {
-    return null;
+    if (!entryId) {
+      return null;
+    }
+
+    // A deep link (e.g. from Activity) whose row isn't loaded yet, or no longer exists.
+    const missing = detail === null;
+    return (
+      <ResponsiveDialog
+        open
+        onClose={onClose}
+        size="compact"
+        title={missing ? "Entry not available" : "Loading entry…"}
+        description={
+          missing ? "It may have been deleted, or you no longer have access to it." : undefined
+        }
+      >
+        {missing ? (
+          <Button variant="ghost" fullWidth onClick={onClose}>
+            Close
+          </Button>
+        ) : (
+          <div className="space-y-3" aria-busy="true">
+            <SkeletonBlock className="h-10 w-2/3 rounded-xl" />
+            <SkeletonBlock className="h-4 w-1/2 rounded-md" />
+            <SkeletonBlock className="h-24 w-full rounded-2xl" />
+          </div>
+        )}
+      </ResponsiveDialog>
+    );
   }
 
   const isSettlement = entry.kind === "settlement";
@@ -165,7 +197,12 @@ function EntrySheetFrame({
     return (
       <ResponsiveDialog
         open
-        onClose={onClose}
+        // Back / X on the confirm returns to the entry details, like "Keep it".
+        onClose={() => {
+          if (!isDeleting) {
+            setConfirming(false);
+          }
+        }}
         tone="danger"
         size="compact"
         title={`Delete this ${noun}?`}

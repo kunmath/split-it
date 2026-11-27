@@ -8,7 +8,7 @@ import {
   ReceiptText,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { ComposerDateSheet } from "@/components/expenses/composer-date-sheet";
 import { ComposerHeader } from "@/components/expenses/composer-header";
@@ -67,13 +67,20 @@ export function ExpenseComposerScene({ data, onSaveExpense, onDeleteExpense }: E
     leaveComposer();
   }
 
-  // System Back on a dirty draft asks before discarding (sheets above it close first).
-  const handleGuardPop = useCallback(() => {
-    if (!isBusy) {
-      setOpenSheet("discard");
+  // The composer owns a history entry from mount, so it always sits *below* any sheet opened later:
+  // Back closes the top sheet first, then lands here — a dirty draft asks before discarding, a clean
+  // one simply leaves.
+  const handleGuardPop = () => {
+    if (isBusy) {
+      return;
     }
-  }, [isBusy]);
-  useHistoryLayer(guardDraft && openSheet !== "discard", handleGuardPop);
+    if (state.isDirty) {
+      setOpenSheet("discard");
+      return;
+    }
+    leaveComposer();
+  };
+  useHistoryLayer(!leaving && openSheet !== "discard", handleGuardPop);
 
   useEffect(() => {
     if (!guardDraft) {
