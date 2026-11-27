@@ -4,6 +4,10 @@ import { mutation } from "./_generated/server";
 import { logExpenseEvent } from "./lib/activityEvents";
 import { applyExpenseToAggregates } from "./lib/balances";
 import { requireGroupMember } from "./lib/permissions";
+import {
+  DUPLICATE_SETTLEMENT_ERROR,
+  type DuplicateSettlementErrorData,
+} from "./lib/settlementDuplicates";
 import { assertGroupIsActive, validateAmountCents } from "./lib/validate";
 
 function sanitizeNote(value: string | undefined) {
@@ -24,21 +28,37 @@ export const create = mutation({
   args: {
     groupId: v.id("groups"),
     toUserId: v.id("users"),
+    /** Defaults to the current user. Set it to record a payment the current user received. */
+    fromUserId: v.optional(v.id("users")),
     amountCents: v.number(),
     note: v.optional(v.string()),
+    /**
+     * Records the payment even though the other party already recorded one like it recently.
+     * Without it, that case is rejected so both people can't log the same transfer.
+     */
+    confirmDuplicate: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const access = await requireGroupMember(ctx, args.groupId);
     assertGroupIsActive(access.group);
 
-    if (args.toUserId === access.user._id) {
+    const fromUserId = args.fromUserId ?? access.user._id;
+
+    // Members may only record payments they are a party to: either they paid,
+    // or they are the recipient confirming money they received.
+    if (fromUserId !== access.user._id && args.toUserId !== access.user._id) {
+      throw new ConvexError("You can only record payments you sent or received");
+    }
+
+    if (args.toUserId === fromUserId) {
       throw new ConvexError("You cannot settle a payment with yourself");
     }
 
+    const counterpartyId = fromUserId === access.user._id ? args.toUserId : fromUserId;
     const counterpartyMembership = await ctx.db
       .query("groupMembers")
       .withIndex("by_group_user", (q) =>
-        q.eq("groupId", args.groupId).eq("userId", args.toUserId),
+        q.eq("groupId", args.groupId).eq("userId", counterpartyId),
       )
       .unique();
 
@@ -50,11 +70,45 @@ export const create = mutation({
     const note = sanitizeNote(args.note);
     const now = Date.now();
 
+    if (!args.confirmDuplicate) {
+      // The payer and the recipient can each record the same transfer ("I paid" / "they paid me").
+      // Any matching payment the other party recorded may be that transfer, however long ago, so ask
+      // first; a genuinely separate payment of the same amount goes through once confirmed.
+      const sameAmount = await ctx.db
+        .query("expenses")
+        .withIndex("by_group_amount", (q) =>
+          q.eq("groupId", args.groupId).eq("amountCents", amountCents),
+        )
+        .order("desc")
+        .collect();
+      const candidates = sameAmount.filter(
+        (expense) =>
+          expense.kind === "settlement" &&
+          expense.paidBy === fromUserId &&
+          expense.createdBy === counterpartyId,
+      );
+
+      for (const candidate of candidates) {
+        const shares = await ctx.db
+          .query("expenseShares")
+          .withIndex("by_expense", (q) => q.eq("expenseId", candidate._id))
+          .collect();
+
+        if (shares.some((share) => share.userId === args.toUserId)) {
+          throw new ConvexError({
+            code: DUPLICATE_SETTLEMENT_ERROR,
+            message: "The other person already recorded this payment",
+            recordedAt: candidate.expenseAt,
+          } satisfies DuplicateSettlementErrorData);
+        }
+      }
+    }
+
     const expenseId = await ctx.db.insert("expenses", {
       groupId: args.groupId,
       description: "Settlement",
       amountCents,
-      paidBy: access.user._id,
+      paidBy: fromUserId,
       splitType: "exact",
       kind: "settlement",
       expenseAt: now,
@@ -73,7 +127,7 @@ export const create = mutation({
       groupId: args.groupId,
       kind: "settlement",
       amountCents,
-      paidBy: access.user._id,
+      paidBy: fromUserId,
       shares: [{ userId: args.toUserId, shareCents: amountCents }],
       direction: 1,
     });
@@ -84,7 +138,7 @@ export const create = mutation({
         groupId: args.groupId,
         description: "Settlement",
         amountCents,
-        paidBy: access.user._id,
+        paidBy: fromUserId,
         kind: "settlement",
       },
       shares: [{ userId: args.toUserId, shareCents: amountCents }],

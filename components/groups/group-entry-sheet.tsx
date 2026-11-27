@@ -1,0 +1,439 @@
+"use client";
+
+import { useMutation, useQuery } from "convex/react";
+import { HandCoins, Pencil, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+
+import { getMockEntryDetail } from "@/components/groups/group-mock-data";
+import { getShortName, type GroupEntryDetail, type GroupExpense } from "@/components/groups/group-types";
+import { getErrorMessage } from "@/components/groups/settings-helpers";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Money } from "@/components/ui/money";
+import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
+import { SkeletonBlock } from "@/components/ui/skeletons";
+import { showToast } from "@/components/ui/toast";
+import { UserAvatar } from "@/components/ui/user-avatar";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { getExpenseIconKey } from "@/lib/expense-icons";
+import { iconMap } from "@/lib/icon-map";
+import type { IconKey } from "@/lib/placeholder-data";
+import { cn } from "@/lib/utils";
+
+const fullDateFormat = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+const splitTypeLabel: Record<GroupEntryDetail["splitType"], string> = {
+  equal: "Split equally",
+  exact: "Split by exact amounts",
+  shares: "Split by shares",
+};
+
+const dangerButtonClass =
+  "border-secondary/40 bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary";
+
+type EntrySheetProps = {
+  /** The entry to show; null when the sheet is closed. */
+  entryId: string | null;
+  /**
+   * The tapped ledger row; its summary renders instantly while the detail loads. Deep links to
+   * entries that aren't in the loaded ledger page have none and wait for the detail instead.
+   */
+  summary: GroupExpense | null;
+  groupId: string;
+  groupIconKey: IconKey;
+  currency: string;
+  onClose: () => void;
+};
+
+/** Rebuilds a ledger row from the detail, for deep links that arrive without one. */
+function summaryFromDetail(detail: GroupEntryDetail, groupIconKey: IconKey): GroupExpense {
+  const recipient = detail.kind === "settlement" ? detail.shares[0] : undefined;
+
+  return {
+    id: detail.id,
+    description: detail.description,
+    amountCents: detail.amountCents,
+    expenseAt: detail.expenseAt,
+    paidByName: detail.paidBy.name,
+    paidByCurrentUser: detail.paidBy.isCurrentUser,
+    currentUserNetCents: detail.currentUserNetCents,
+    splitType: detail.splitType,
+    kind: detail.kind,
+    counterpartyName: recipient?.name ?? null,
+    counterpartyIsCurrentUser: recipient?.isCurrentUser ?? false,
+    participantCount: detail.shares.length,
+    iconKey: getExpenseIconKey(detail.description, groupIconKey),
+  };
+}
+
+export function MockGroupEntrySheet({ entryId, summary, groupId, groupIconKey, currency, onClose }: EntrySheetProps) {
+  const detail = entryId ? getMockEntryDetail(groupId, entryId) : null;
+
+  return (
+    <EntrySheetFrame
+      key={entryId ?? "closed"}
+      entryId={entryId}
+      entry={summary ?? (detail ? summaryFromDetail(detail, groupIconKey) : null)}
+      detail={detail}
+      groupId={groupId}
+      currency={currency}
+      onClose={onClose}
+      onDelete={async () => {
+        showToast("Demo data – nothing was deleted");
+        onClose();
+      }}
+    />
+  );
+}
+
+export function LiveGroupEntrySheet({ entryId, summary, groupId, groupIconKey, currency, onClose }: EntrySheetProps) {
+  const result = useQuery(api.expenses.getEntryDetail, entryId ? { expenseId: entryId } : "skip");
+  const deleteExpense = useMutation(api.expenses.deleteExpense);
+  // Entries from another group (e.g. a hand-edited link) are treated as unavailable here.
+  const detail: GroupEntryDetail | null | undefined =
+    result === undefined
+      ? undefined
+      : result === null || String(result.groupId) !== groupId
+        ? null
+        : { ...result, groupId: String(result.groupId) };
+  const entry = summary ?? (detail ? summaryFromDetail(detail, groupIconKey) : null);
+
+  return (
+    <EntrySheetFrame
+      key={entryId ?? "closed"}
+      entryId={entryId}
+      entry={entry}
+      detail={detail}
+      groupId={groupId}
+      currency={currency}
+      onClose={onClose}
+      onDelete={async () => {
+        if (!entry) {
+          return;
+        }
+        await deleteExpense({ expenseId: entry.id as Id<"expenses"> });
+        showToast(entry.kind === "settlement" ? "Settlement deleted" : "Expense deleted");
+        onClose();
+      }}
+    />
+  );
+}
+
+/** Entries with a delete in flight, shared across sheet remounts. */
+const deletingEntryIds = new Set<string>();
+
+function EntrySheetFrame({
+  entryId,
+  entry,
+  detail,
+  groupId,
+  currency,
+  onClose,
+  onDelete,
+}: {
+  entryId: string | null;
+  entry: GroupExpense | null;
+  /** undefined while loading, null when the entry no longer exists. */
+  detail: GroupEntryDetail | null | undefined;
+  groupId: string;
+  currency: string;
+  onClose: () => void;
+  onDelete: () => Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(() => (entry ? deletingEntryIds.has(entry.id) : false));
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!entry) {
+    if (!entryId) {
+      return null;
+    }
+
+    // A deep link (e.g. from Activity) whose row isn't loaded yet, or no longer exists.
+    const missing = detail === null;
+    return (
+      <ResponsiveDialog
+        open
+        onClose={onClose}
+        size="compact"
+        title={missing ? "Entry not available" : "Loading entry…"}
+        description={
+          missing ? "It may have been deleted, or you no longer have access to it." : undefined
+        }
+      >
+        {missing ? (
+          <Button variant="ghost" fullWidth onClick={onClose}>
+            Close
+          </Button>
+        ) : (
+          <div className="space-y-3" aria-busy="true">
+            <SkeletonBlock className="h-10 w-2/3 rounded-xl" />
+            <SkeletonBlock className="h-4 w-1/2 rounded-md" />
+            <SkeletonBlock className="h-24 w-full rounded-2xl" />
+          </div>
+        )}
+      </ResponsiveDialog>
+    );
+  }
+
+  const isSettlement = entry.kind === "settlement";
+  const noun = isSettlement ? "settlement" : "expense";
+
+  const handleDelete = async () => {
+    // Module-level lock: the sheet may be dismissed and reopened (remounted) while a delete is pending.
+    if (deletingEntryIds.has(entry.id)) {
+      return;
+    }
+    deletingEntryIds.add(entry.id);
+    setIsDeleting(true);
+    setError(null);
+    try {
+      await onDelete();
+    } catch (deleteError) {
+      const message = getErrorMessage(deleteError, `Couldn't delete this ${noun}. Please try again.`);
+      if (mountedRef.current) {
+        setError(message);
+        setIsDeleting(false);
+      } else {
+        // The user already dismissed the sheet; surface the failure where they are.
+        showToast(message);
+      }
+    } finally {
+      deletingEntryIds.delete(entry.id);
+    }
+  };
+
+  if (confirming) {
+    return (
+      <ResponsiveDialog
+        open
+        // Back / X on the confirm returns to the entry details, like "Keep it". While a delete is
+        // pending they dismiss the sheet entirely, so a stalled request never traps the user.
+        onClose={isDeleting ? onClose : () => setConfirming(false)}
+        tone="danger"
+        size="compact"
+        title={`Delete this ${noun}?`}
+        description={
+          isSettlement
+            ? "The payment will be removed and both balances will go back to what they were."
+            : "It will be removed from the group and everyone's balances will update."
+        }
+      >
+        <div className="grid grid-cols-2 gap-2">
+          <Button variant="ghost" size="lg" onClick={() => setConfirming(false)} disabled={isDeleting} data-autofocus>
+            Keep it
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            disabled={isDeleting}
+            aria-busy={isDeleting}
+            onClick={handleDelete}
+            className={dangerButtonClass}
+          >
+            {isDeleting ? "Deleting…" : "Delete"}
+          </Button>
+        </div>
+        {error ? (
+          <p role="alert" className="text-sm text-secondary">
+            {error}
+          </p>
+        ) : null}
+      </ResponsiveDialog>
+    );
+  }
+
+  return (
+    <ResponsiveDialog
+      open
+      onClose={onClose}
+      title={isSettlement ? "Settlement" : entry.description}
+    >
+      {isSettlement ? (
+        <SettlementBody entry={entry} detail={detail} currency={currency} />
+      ) : (
+        <ExpenseBody entry={entry} detail={detail} currency={currency} />
+      )}
+
+      {detail === null ? (
+        <p className="rounded-2xl bg-white/4 px-4 py-3 text-sm text-on-surface-variant">
+          This {noun} was deleted or is no longer available.
+        </p>
+      ) : null}
+
+      {detail?.notes ? (
+        <div className="rounded-2xl bg-surface-container-high px-4 py-3">
+          <p className="text-xs font-semibold text-on-surface-variant">Note</p>
+          <p className="mt-1 whitespace-pre-line text-sm text-on-surface">{detail.notes}</p>
+        </div>
+      ) : null}
+
+      {detail?.canEdit ? (
+        <div className={cn("grid gap-2", isSettlement ? "grid-cols-1" : "grid-cols-2")}>
+          {isSettlement ? null : (
+            <Link
+              href={`/groups/${groupId}/expenses/${entry.id}/edit`}
+              className={buttonVariants({ variant: "primary", size: "lg" })}
+            >
+              <Pencil aria-hidden="true" className="h-4 w-4" />
+              Edit
+            </Link>
+          )}
+          <Button variant="ghost" size="lg" onClick={() => setConfirming(true)} className={dangerButtonClass}>
+            <Trash2 aria-hidden="true" className="h-4 w-4" />
+            Delete
+          </Button>
+        </div>
+      ) : detail ? (
+        <p className="text-xs text-on-surface-variant">
+          Only the person who added this {noun} or the group owner can change it.
+        </p>
+      ) : null}
+    </ResponsiveDialog>
+  );
+}
+
+function SettlementBody({
+  entry,
+  detail,
+  currency,
+}: {
+  entry: GroupExpense;
+  detail: GroupEntryDetail | null | undefined;
+  currency: string;
+}) {
+  const payerName = detail?.paidBy.name ?? entry.paidByName;
+  const recipientName = detail?.shares[0]?.name ?? entry.counterpartyName ?? "a member";
+  const names = [payerName, recipientName];
+  const payer = entry.paidByCurrentUser ? "You" : getShortName(payerName, names);
+  const recipient = entry.counterpartyIsCurrentUser ? "you" : getShortName(recipientName, names);
+
+  return (
+    <div className="flex items-center gap-3 rounded-2xl bg-primary/[0.06] p-4 ring-1 ring-inset ring-primary/10">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+        <HandCoins aria-hidden="true" className="h-5 w-5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-base text-on-surface">
+          <span className="font-semibold">{payer}</span> paid <span className="font-semibold">{recipient}</span>{" "}
+          <Money cents={entry.amountCents} currency={currency} className="font-headline font-bold" />
+        </p>
+        <p className="mt-0.5 text-xs text-on-surface-variant">{fullDateFormat.format(entry.expenseAt)}</p>
+      </div>
+    </div>
+  );
+}
+
+function describeNet(netCents: number, paidByViewer: boolean) {
+  if (netCents > 0) {
+    return { label: "you lent", tone: "positive" as const };
+  }
+  if (netCents < 0) {
+    return { label: "you borrowed", tone: "negative" as const };
+  }
+  return { label: paidByViewer ? "you paid only your share" : "you're not involved", tone: "neutral" as const };
+}
+
+function ExpenseBody({
+  entry,
+  detail,
+  currency,
+}: {
+  entry: GroupExpense;
+  detail: GroupEntryDetail | null | undefined;
+  currency: string;
+}) {
+  const Icon = iconMap[entry.iconKey];
+  const payerName = detail?.paidBy.name ?? entry.paidByName;
+  const payer = entry.paidByCurrentUser
+    ? "You"
+    : getShortName(payerName, detail?.shares.map((share) => share.name) ?? [payerName]);
+  const netCents = detail?.currentUserNetCents ?? entry.currentUserNetCents;
+  const net = describeNet(netCents, entry.paidByCurrentUser);
+  const splitType = detail?.splitType ?? entry.splitType;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/6 text-on-surface-variant">
+          <Icon aria-hidden="true" className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-headline text-3xl font-bold tracking-tight text-on-surface">
+            <Money cents={entry.amountCents} currency={currency} />
+          </p>
+          <p className="mt-0.5 text-xs text-on-surface-variant">{fullDateFormat.format(entry.expenseAt)}</p>
+        </div>
+      </div>
+
+      <div className="space-y-1 text-sm text-on-surface">
+        <p>
+          <span className="font-semibold">{payer}</span> paid{" "}
+          <Money cents={entry.amountCents} currency={currency} className="font-semibold" />
+        </p>
+        <p className={cn(net.tone === "positive" && "text-primary", net.tone === "negative" && "text-secondary", net.tone === "neutral" && "text-on-surface-variant")}>
+          {net.label}
+          {net.tone !== "neutral" ? (
+            <>
+              {" "}
+              <Money cents={netCents} currency={currency} className="font-semibold" />
+            </>
+          ) : null}
+        </p>
+      </div>
+
+      <section aria-label="Shares">
+        <p className="text-xs font-semibold text-on-surface-variant">
+          {splitTypeLabel[splitType]}
+          {detail ? ` · ${detail.shares.length} ${detail.shares.length === 1 ? "person" : "people"}` : null}
+        </p>
+        {detail === undefined ? (
+          <div className="mt-2 space-y-3" aria-busy="true" aria-label="Loading shares">
+            {Array.from({ length: Math.min(entry.participantCount || 2, 4) }, (_, index) => (
+              <div key={index} className="flex items-center gap-3">
+                <SkeletonBlock className="h-8 w-8 shrink-0 rounded-full" />
+                <SkeletonBlock className="h-4 flex-1 rounded-md" />
+                <SkeletonBlock className="h-4 w-16 rounded-md" />
+              </div>
+            ))}
+          </div>
+        ) : detail ? (
+          <ul className="mt-1 divide-y divide-white/5">
+            {detail.shares.map((share) => {
+              const isPayer = share.userId === detail.paidBy.id;
+              return (
+                <li key={share.userId} className="flex min-h-11 items-center gap-3 py-1.5">
+                  <UserAvatar name={share.name} imageUrl={share.imageUrl} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-on-surface">
+                      {share.isCurrentUser ? "You" : share.name}
+                    </p>
+                    {isPayer ? <p className="text-xs text-on-surface-variant">paid the bill</p> : null}
+                  </div>
+                  <Money
+                    cents={share.shareCents}
+                    currency={currency}
+                    className="shrink-0 text-sm font-semibold text-on-surface"
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
+      </section>
+    </div>
+  );
+}

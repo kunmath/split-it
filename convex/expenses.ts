@@ -1,3 +1,4 @@
+import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 
 import type { Doc, Id } from "./_generated/dataModel";
@@ -6,9 +7,11 @@ import { logExpenseEvent } from "./lib/activityEvents";
 import { applyExpenseToAggregates } from "./lib/balances";
 import {
   getCurrentUserExpenseNetCents,
+  getExpenseIconKey,
   getGroupExpenseRecords,
 } from "./lib/expenseHelpers";
-import { splitByShares, splitEvenly } from "./lib/money";
+import { resolveGroupIconKey } from "./lib/groupIcons";
+import { splitBySharesInKeyOrder, splitEvenly } from "./lib/money";
 import {
   requireExpenseEditPermission,
   requireGroupMember,
@@ -289,9 +292,9 @@ async function buildValidatedShareRows(
     normalizedShares.map((share) => share.userId),
   );
 
-  const shareCents = splitByShares(
+  const shareCents = splitBySharesInKeyOrder(
     amountCents,
-    normalizedShares.map((share) => share.share),
+    normalizedShares.map((share) => ({ key: share.userId, share: share.share })),
   );
   const shareRows: ShareRow[] = normalizedShares.map((share, index) => ({
     userId: share.userId,
@@ -512,6 +515,161 @@ export const listForGroup = query({
           })),
         };
       }),
+    };
+  },
+});
+
+/**
+ * One page of a group's ledger, newest first, read straight from the
+ * by_group_date index so long histories never load in a single query.
+ */
+export const listPageForGroup = query({
+  args: {
+    groupId: v.id("groups"),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    const access = await requireGroupMember(ctx, args.groupId);
+    const groupIconKey = resolveGroupIconKey(access.group);
+
+    const result = await ctx.db
+      .query("expenses")
+      .withIndex("by_group_date", (q) => q.eq("groupId", args.groupId))
+      .order("desc")
+      .paginate(args.paginationOpts);
+
+    const shares = await Promise.all(
+      result.page.map((expense) =>
+        ctx.db
+          .query("expenseShares")
+          .withIndex("by_expense", (q) => q.eq("expenseId", expense._id))
+          .collect(),
+      ),
+    );
+
+    const userIds = new Set<Id<"users">>();
+    result.page.forEach((expense, index) => {
+      userIds.add(expense.paidBy);
+      for (const share of shares[index] ?? []) {
+        userIds.add(share.userId);
+      }
+    });
+    const users = await Promise.all([...userIds].map((userId) => ctx.db.get(userId)));
+    const nameLookup = new Map<Id<"users">, string>();
+    for (const user of users) {
+      if (user !== null) {
+        nameLookup.set(user._id, user.name);
+      }
+    }
+
+    return {
+      ...result,
+      page: result.page.map((expense, index) => {
+        const record = { expense, shares: shares[index] ?? [] };
+        const settlementRecipientId =
+          expense.kind === "settlement" ? (record.shares[0]?.userId ?? null) : null;
+
+        return {
+          id: expense._id,
+          description: expense.description,
+          amountCents: expense.amountCents,
+          expenseAt: expense.expenseAt,
+          paidByName: nameLookup.get(expense.paidBy) ?? "Group member",
+          paidByCurrentUser: expense.paidBy === access.user._id,
+          currentUserNetCents: getCurrentUserExpenseNetCents(record, access.user._id),
+          splitType: expense.splitType,
+          kind: expense.kind ?? ("expense" as const),
+          participantCount: record.shares.length,
+          iconKey: getExpenseIconKey(expense.description, groupIconKey),
+          counterpartyName:
+            settlementRecipientId === null
+              ? null
+              : (nameLookup.get(settlementRecipientId) ?? "Group member"),
+          counterpartyIsCurrentUser:
+            settlementRecipientId !== null && settlementRecipientId === access.user._id,
+        };
+      }),
+    };
+  },
+});
+
+/**
+ * Read-only view of a single ledger entry (expense or settlement) for any
+ * active member of its group. `canEdit` mirrors requireExpenseEditPermission.
+ * Returns null for unknown ids, deleted entries and viewers without access, so
+ * deep links render a clean "unavailable" state instead of throwing.
+ */
+export const getEntryDetail = query({
+  args: {
+    expenseId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const expenseId = ctx.db.normalizeId("expenses", args.expenseId);
+    const expense = expenseId === null ? null : await ctx.db.get(expenseId);
+
+    if (expense === null) {
+      return null;
+    }
+
+    let access: Awaited<ReturnType<typeof requireGroupMember>>;
+    try {
+      access = await requireGroupMember(ctx, expense.groupId);
+    } catch (error) {
+      if (error instanceof ConvexError) {
+        return null;
+      }
+      throw error;
+    }
+
+    const shares = await ctx.db
+      .query("expenseShares")
+      .withIndex("by_expense", (q) => q.eq("expenseId", expense._id))
+      .collect();
+
+    const userIds = new Set<Id<"users">>([expense.paidBy, ...shares.map((share) => share.userId)]);
+    const users = await Promise.all([...userIds].map((userId) => ctx.db.get(userId)));
+    const userLookup = new Map<Id<"users">, Doc<"users">>();
+    for (const user of users) {
+      if (user !== null) {
+        userLookup.set(user._id, user);
+      }
+    }
+    const nameOf = (userId: Id<"users">) => userLookup.get(userId)?.name ?? "Former member";
+    const imageOf = (userId: Id<"users">) => userLookup.get(userId)?.imageUrl;
+
+    const shareRows = shares
+      .map((share) => ({
+        userId: share.userId,
+        name: nameOf(share.userId),
+        imageUrl: imageOf(share.userId),
+        shareCents: share.shareCents,
+        isCurrentUser: share.userId === access.user._id,
+      }))
+      .sort((left, right) => {
+        if (left.isCurrentUser !== right.isCurrentUser) {
+          return left.isCurrentUser ? -1 : 1;
+        }
+        return right.shareCents - left.shareCents || left.name.localeCompare(right.name);
+      });
+
+    return {
+      id: expense._id,
+      groupId: expense.groupId,
+      description: expense.description,
+      amountCents: expense.amountCents,
+      expenseAt: expense.expenseAt,
+      kind: expense.kind ?? ("expense" as const),
+      splitType: expense.splitType,
+      notes: expense.notes ?? null,
+      paidBy: {
+        id: expense.paidBy,
+        name: nameOf(expense.paidBy),
+        imageUrl: imageOf(expense.paidBy),
+        isCurrentUser: expense.paidBy === access.user._id,
+      },
+      shares: shareRows,
+      currentUserNetCents: getCurrentUserExpenseNetCents({ expense, shares }, access.user._id),
+      canEdit: expense.createdBy === access.user._id || access.membership.role === "owner",
     };
   },
 });

@@ -1,67 +1,83 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
-import { SurfaceCard } from "@/components/ui/surface-card";
+import type { GroupListItem } from "@/components/groups/group-list-data";
+import { Money, toneTextClass, toneFromCents } from "@/components/ui/money";
+import { SkeletonBlock } from "@/components/ui/skeletons";
 import { iconMap } from "@/lib/icon-map";
-import type { IconKey, StatTone } from "@/lib/placeholder-data";
 import { cn } from "@/lib/utils";
 
-type CompactGroupCardProps = {
-  href: string;
-  icon: IconKey;
-  name: string;
-  memberLabel: string;
-  balanceLabel: string;
-  balanceTone: StatTone;
-  highlighted?: boolean;
-};
+/** Inset list container shared by Home and Groups. Rows are separated by hairlines. */
+export function GroupList({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <ul className={cn("divide-y divide-white/5 overflow-hidden rounded-3xl bg-surface-container-low", className)}>
+      {children}
+    </ul>
+  );
+}
 
-export function CompactGroupCard({
-  href,
-  icon,
-  name,
-  memberLabel,
-  balanceLabel,
-  balanceTone,
-  highlighted = false,
-}: CompactGroupCardProps) {
-  const Icon = iconMap[icon];
+export function GroupRow({ group, highlighted = false }: { group: GroupListItem; highlighted?: boolean }) {
+  const Icon = iconMap[group.icon] ?? iconMap.home;
+  const tone = toneFromCents(group.balanceCents);
 
   return (
-    <Link href={href} className="group block sm:hidden">
-      <SurfaceCard
-        variant="high"
+    <li>
+      <Link
+        href={group.href}
         className={cn(
-          "rounded-[1.25rem] p-3 transition duration-200 hover:bg-surface-bright",
-          highlighted && "ring-1 ring-primary/45 shadow-[0_22px_50px_rgba(78,222,163,0.14)]",
+          "flex min-h-[4.5rem] items-center gap-3 px-4 py-3 transition hover:bg-white/4 focus-visible:bg-white/4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/60",
+          highlighted && "bg-primary/8",
         )}
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.85rem] bg-surface-container-low text-on-surface-variant">
-            <Icon
-              className={cn(
-                "h-4.5 w-4.5",
-                balanceTone === "negative" ? "text-secondary" : "text-primary",
-              )}
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="truncate font-headline text-base font-bold tracking-tight text-on-surface">
-              {name}
-            </h3>
-            <p className="truncate text-xs text-on-surface-variant">{memberLabel}</p>
-          </div>
-          <span
-            className={cn(
-              "max-w-28 shrink-0 truncate rounded-full px-2.5 py-1 font-headline text-sm font-bold",
-              balanceTone === "positive" && "bg-primary/12 text-primary",
-              balanceTone === "negative" && "bg-secondary/14 text-secondary",
-              balanceTone === "neutral" && "bg-white/6 text-on-surface-variant",
-            )}
-          >
-            {balanceLabel}
+        <span
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-surface-container-high",
+            tone === "neutral" ? "text-on-surface-variant" : toneTextClass[tone],
+          )}
+        >
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-headline text-base font-semibold text-on-surface">{group.name}</span>
+          <span className="block truncate text-xs text-on-surface-variant">
+            {group.memberCount} {group.memberCount === 1 ? "member" : "members"}
+            {highlighted ? " · just created" : ""}
           </span>
-        </div>
-      </SurfaceCard>
-    </Link>
+        </span>
+
+        {tone === "neutral" ? (
+          <span className="shrink-0 text-sm text-on-surface-variant">settled up</span>
+        ) : (
+          <span className="shrink-0 text-right">
+            <span className={cn("block text-xs", toneTextClass[tone])}>
+              {tone === "positive" ? "you're owed" : "you owe"}
+            </span>
+            <Money
+              cents={group.balanceCents}
+              currency={group.currency}
+              tone={tone}
+              className="block font-headline text-base font-bold"
+            />
+          </span>
+        )}
+      </Link>
+    </li>
+  );
+}
+
+export function GroupRowSkeleton() {
+  return (
+    <li className="flex min-h-[4.5rem] items-center gap-3 px-4 py-3">
+      <SkeletonBlock className="h-11 w-11 shrink-0 rounded-xl" />
+      <span className="flex-1 space-y-2">
+        <SkeletonBlock className="h-4 w-32 rounded-md" />
+        <SkeletonBlock className="h-3 w-20 rounded-md" />
+      </span>
+      <span className="space-y-2">
+        <SkeletonBlock className="ml-auto h-3 w-12 rounded-md" />
+        <SkeletonBlock className="h-4 w-20 rounded-md" />
+      </span>
+    </li>
   );
 }

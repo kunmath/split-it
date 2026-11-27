@@ -88,3 +88,31 @@ export function splitByShares(totalCents: number, shares: readonly number[]) {
 
   return result;
 }
+
+/**
+ * splitByShares, computed in ascending key order so a leftover cent never depends on the order the
+ * caller listed participants in. Results line up with `entries`.
+ */
+export function splitBySharesInKeyOrder(
+  totalCents: number,
+  entries: readonly { key: string; share: number }[],
+) {
+  const order = entries
+    .map((_, index) => index)
+    .sort((left, right) => {
+      const leftKey = entries[left]!.key;
+      const rightKey = entries[right]!.key;
+      return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+    });
+  const sortedCents = splitByShares(
+    totalCents,
+    order.map((index) => entries[index]!.share),
+  );
+  const result: number[] = new Array(entries.length);
+
+  order.forEach((entryIndex, sortedIndex) => {
+    result[entryIndex] = sortedCents[sortedIndex]!;
+  });
+
+  return result;
+}

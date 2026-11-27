@@ -1,60 +1,35 @@
 "use client";
 
-import { useConvex, useMutation, useQuery } from "convex/react";
-import type { CSSProperties, FormEvent, ReactNode } from "react";
-import {
-  ChevronRight,
-  Copy,
-  Download,
-  Mail,
-  Pencil,
-  TrendingDown,
-  TrendingUp,
-  Trash2,
-  UserPlus,
-  Users,
-  Wallet,
-} from "lucide-react";
+import { getMockGroupSceneData } from "@/components/groups/group-mock-data";
+import { useQuery } from "convex/react";
+import { ArrowLeft, Coins, Download, LogOut, Pencil, Trash2, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { startTransition, useState } from "react";
+import type { ReactNode } from "react";
 
-import { MembershipManagementCard } from "@/components/groups/membership-management-card";
+import { useMembershipManagement } from "@/components/groups/membership-management-card";
+import { SettingsNotice, SettingsRow, SettingsSection } from "@/components/groups/settings-list";
+import { useGroupSettingsActions } from "@/components/groups/settings-live-actions";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
+import { MobileTopBar } from "@/components/shell/mobile-top-bar";
 import { PageContainer } from "@/components/shell/page-container";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { FilledInput } from "@/components/ui/filled-input";
-import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
+import { buttonVariants } from "@/components/ui/button";
+import { describeBalance, Money } from "@/components/ui/money";
 import { ScreenState } from "@/components/ui/screen-state";
-import { SurfaceCard } from "@/components/ui/surface-card";
+import { SkeletonBlock } from "@/components/ui/skeletons";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { looksLikeConvexId } from "@/lib/convex-ids";
-import { formatMoneyFromCents, formatSignedMoneyFromCents } from "@/lib/format";
-import { getGroupDetail, memberBalances as mockMemberBalances } from "@/lib/placeholder-data";
-import { cn, getInitials } from "@/lib/utils";
+
+import { describeMemberBalance, type SettingsMember } from "./settings-helpers";
 
 type GroupSettingsScreenProps = {
   groupId: string;
 };
 
-type GroupSettingsBalanceMember = {
-  id: string;
-  name: string;
-  email: string;
-  imageUrl?: string;
-  role: "member" | "owner";
-  isCurrentUser: boolean;
-  joinedAt: number | null;
-  paidCents: number;
-  owedCents: number;
-  balanceCents: number;
-};
-
 type GroupSettingsSceneData = {
   groupId: string;
   groupName: string;
-  groupDescription?: string;
   groupCurrency: string;
   memberCount: number;
   expenseCount: number;
@@ -63,241 +38,38 @@ type GroupSettingsSceneData = {
   currentUserPaidCents: number;
   currentUserOwedCents: number;
   viewerRole: "owner" | "member";
-  memberBalances: GroupSettingsBalanceMember[];
+  memberBalances: SettingsMember[];
 };
 
-type ExpenseExportRow = {
-  amount: string;
-  currency: string;
-  description: string;
-  expense_date: string;
-  group_name: string;
-  kind: "expense" | "settlement";
-  notes: string;
-  paid_by: string;
-  participant_count: number;
-  participants: string;
-  split_summary: string;
-  split_type: "equal" | "exact" | "shares";
+type SceneActions = {
+  onRename?: () => void;
+  onInvite?: () => void;
+  onExport?: () => void;
+  isExporting?: boolean;
+  exportError?: string | null;
+  onArchive?: () => void;
+  onLeave?: () => void;
+  onOpenMember?: (member: SettingsMember) => void;
 };
-
-const CSV_COLUMNS = [
-  "group_name",
-  "currency",
-  "expense_date",
-  "kind",
-  "description",
-  "amount",
-  "paid_by",
-  "split_type",
-  "participant_count",
-  "participants",
-  "split_summary",
-  "notes",
-] as const;
-
-const SETTINGS_ACTIONS = [
-  {
-    label: "Edit Group Name",
-    Icon: Pencil,
-    tone: "default",
-  },
-  {
-    label: "Add Members",
-    Icon: UserPlus,
-    tone: "default",
-  },
-  {
-    label: "Export CSV",
-    Icon: Download,
-    tone: "default",
-  },
-  {
-    label: "Delete Group",
-    Icon: Trash2,
-    tone: "danger",
-  },
-] as const;
 
 function getMockGroupSettingsData(groupId: string): GroupSettingsSceneData {
-  const group = getGroupDetail(groupId);
-  const currentUserBalance =
-    mockMemberBalances.find((member) => member.name === "Jordan Dale")?.amount ??
-    group.standing;
-  const memberBalances = mockMemberBalances
-    .filter((member) => member.name !== "Jordan Dale")
-    .map((member, index) => ({
-      id: `mock-member-balance-${index + 1}`,
-      name: member.name,
-      email: `${member.name.toLowerCase().replace(/\s+/g, ".")}@example.com`,
-      imageUrl: undefined,
-      role: "member" as const,
-      isCurrentUser: false,
-      joinedAt: null,
-      paidCents: member.amount > 0 ? Math.round(member.amount * 180) : Math.round(Math.abs(member.amount) * 30),
-      owedCents: member.amount > 0 ? Math.round(member.amount * 80) : Math.round(Math.abs(member.amount) * 130),
-      balanceCents: Math.round(member.amount * 100),
-    }));
+  // Same demo people and balances as the group detail screen.
+  const scene = getMockGroupSceneData(groupId);
+  const viewer = scene.members.find((member) => member.isCurrentUser);
 
   return {
     groupId,
-    groupName: group.title,
-    groupDescription: group.description,
-    groupCurrency: group.currency,
-    memberCount: memberBalances.length + 1,
-    expenseCount: 5,
-    totalSpendCents: Math.round(group.spend * 100),
-    currentUserBalanceCents: Math.round(currentUserBalance * 100),
-    currentUserPaidCents: Math.round(group.youAreOwed * 100),
-    currentUserOwedCents: Math.round(group.youOwe * 100),
+    groupName: scene.groupName,
+    groupCurrency: scene.groupCurrency,
+    memberCount: scene.memberCount,
+    expenseCount: scene.expenseCount,
+    totalSpendCents: scene.insights.totalSpendCents,
+    currentUserBalanceCents: viewer?.balanceCents ?? 0,
+    currentUserPaidCents: viewer?.paidCents ?? 0,
+    currentUserOwedCents: viewer?.owedCents ?? 0,
     viewerRole: "owner",
-    memberBalances,
+    memberBalances: scene.members.filter((member) => !member.isCurrentUser),
   };
-}
-
-function getGroupSupportText(
-  description: string | undefined,
-  memberCount: number,
-  expenseCount: number,
-) {
-  const trimmedDescription = description?.trim();
-
-  if (trimmedDescription) {
-    return trimmedDescription;
-  }
-
-  return `${memberCount} member${memberCount === 1 ? "" : "s"} and ${expenseCount} entr${expenseCount === 1 ? "y" : "ies"} in the ledger.`;
-}
-
-function buildAvatarStyle(imageUrl: string | undefined): CSSProperties | undefined {
-  const trimmedImageUrl = imageUrl?.trim();
-
-  if (!trimmedImageUrl) {
-    return undefined;
-  }
-
-  return {
-    backgroundImage: `url("${trimmedImageUrl}")`,
-    backgroundPosition: "center",
-    backgroundSize: "cover",
-  };
-}
-
-function getNetTone(balanceCents: number) {
-  if (balanceCents > 0) {
-    return "positive" as const;
-  }
-
-  if (balanceCents < 0) {
-    return "negative" as const;
-  }
-
-  return "neutral" as const;
-}
-
-function getMemberDescriptor(member: GroupSettingsBalanceMember, currency: string) {
-  if (member.balanceCents > 0) {
-    return {
-      chip: member.paidCents > 0 ? `Fronted ${formatMoneyFromCents(member.paidCents, currency)}` : "Is owed",
-      label: "Owed",
-      tone: "positive" as const,
-      valueLabel: formatSignedMoneyFromCents(member.balanceCents, currency),
-    };
-  }
-
-  if (member.balanceCents < 0) {
-    return {
-      chip: "Needs to settle up",
-      label: "Owes",
-      tone: "negative" as const,
-      valueLabel: formatSignedMoneyFromCents(member.balanceCents, currency),
-    };
-  }
-
-  return {
-    chip: "Settled",
-    label: "Balance",
-    tone: "neutral" as const,
-    valueLabel: formatMoneyFromCents(0, currency),
-  };
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return "Unable to complete that settings action right now.";
-}
-
-function formatInviteExpiry(expiresAt: number) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(expiresAt);
-}
-
-function getInviteBaseUrl() {
-  const configuredBaseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-
-  if (configuredBaseUrl) {
-    return configuredBaseUrl.replace(/\/+$/, "");
-  }
-
-  if (typeof window !== "undefined") {
-    return window.location.origin;
-  }
-
-  return "";
-}
-
-function buildInviteLink(token: string) {
-  const baseUrl = getInviteBaseUrl();
-
-  return baseUrl ? `${baseUrl}/invites/${token}` : `/invites/${token}`;
-}
-
-function slugifyGroupName(value: string) {
-  const slug = value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-  return slug || "group";
-}
-
-function formatExportDate(value: number) {
-  return new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(value);
-}
-
-function createExportFileName(groupName: string, generatedAt: number) {
-  return `split-it-${slugifyGroupName(groupName)}-expenses-${formatExportDate(generatedAt)}.csv`;
-}
-
-function escapeCsvField(value: string | number) {
-  const text = String(value);
-
-  if (/[",\n]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
-
-  return text;
-}
-
-function buildExpenseExportCsv(rows: ExpenseExportRow[]) {
-  return [
-    CSV_COLUMNS.join(","),
-    ...rows.map((row) =>
-      CSV_COLUMNS.map((column) => escapeCsvField(row[column])).join(","),
-    ),
-  ].join("\n");
 }
 
 export function GroupSettingsScreen({ groupId }: GroupSettingsScreenProps) {
@@ -310,6 +82,35 @@ export function GroupSettingsScreen({ groupId }: GroupSettingsScreenProps) {
   return <LiveGroupSettingsScreen groupId={groupId} />;
 }
 
+function SettingsFrame({
+  groupId,
+  groupName,
+  children,
+}: {
+  groupId: string;
+  groupName?: string;
+  children: ReactNode;
+}) {
+  const groupHref = `/groups/${groupId}`;
+
+  return (
+    <PageContainer size="content">
+      <MobileTopBar title="Group settings" subtitle={groupName} backFallbackHref={groupHref} />
+      <header className="mb-8 hidden lg:block">
+        <Link
+          href={groupHref}
+          className="-ml-2 inline-flex min-h-11 items-center gap-1.5 rounded-full px-2 text-sm text-on-surface-variant transition hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {groupName ?? "Back to group"}
+        </Link>
+        <h1 className="mt-1 font-headline text-3xl font-bold tracking-tight text-on-surface">Group settings</h1>
+      </header>
+      {children}
+    </PageContainer>
+  );
+}
+
 function LiveGroupSettingsScreen({ groupId }: GroupSettingsScreenProps) {
   const currentUser = useQuery(api.users.current);
   const hasValidGroupId = looksLikeConvexId(groupId);
@@ -318,1119 +119,360 @@ function LiveGroupSettingsScreen({ groupId }: GroupSettingsScreenProps) {
     currentUser && hasValidGroupId ? { groupId: groupId as Id<"groups"> } : "skip",
   );
 
-  if (!hasValidGroupId) {
+  if (!hasValidGroupId || settingsOverview === null) {
     return (
-      <PageContainer className="space-y-6">
+      <SettingsFrame groupId={groupId}>
         <ScreenState
           state="unavailable"
           title="Group unavailable"
-          description="This group route is invalid or no longer points at an active ledger."
-          icon={<Users className="h-7 w-7 text-secondary" />}
+          description="You don't have access to this group, or it's no longer active."
+          icon={<Users />}
           actions={
-            <Link href="/groups" className={buttonVariants({ variant: "primary", size: "lg" })}>
+            <Link href="/groups" className={buttonVariants({ variant: "primary" })}>
               Back to groups
             </Link>
           }
         />
-      </PageContainer>
-    );
-  }
-
-  if (currentUser === undefined) {
-    return (
-      <PageContainer className="flex min-h-[60vh] items-center justify-center">
-        <ScreenState
-          state="loading"
-          title="Loading group totals"
-          description="Pulling the spend summary, member balances, and settings actions into place."
-        />
-      </PageContainer>
+      </SettingsFrame>
     );
   }
 
   if (currentUser === null) {
     return (
-      <PageContainer className="space-y-6">
+      <SettingsFrame groupId={groupId}>
         <ScreenState
           state="loading"
-          title="Syncing your workspace"
-          description="Your account is authenticated, but the ledger record is still finishing setup. Refresh in a moment if this state persists."
+          title="Finishing setup"
+          description="Your account is signed in and still syncing. Refresh in a moment if this persists."
         />
-      </PageContainer>
+      </SettingsFrame>
     );
   }
 
-  if (settingsOverview === undefined) {
+  if (currentUser === undefined || settingsOverview === undefined) {
     return (
-      <PageContainer className="flex min-h-[60vh] items-center justify-center">
-        <ScreenState
-          state="loading"
-          title="Loading group totals"
-          description="Pulling the spend summary, member balances, and settings actions into place."
-        />
-      </PageContainer>
-    );
-  }
-
-  if (settingsOverview === null) {
-    return (
-      <PageContainer className="space-y-6">
-        <ScreenState
-          state="unavailable"
-          title="Group unavailable"
-          description="You do not have access to this group, or it is no longer active."
-          icon={<Users className="h-7 w-7 text-secondary" />}
-          actions={
-            <Link href="/dashboard" className={buttonVariants({ variant: "primary", size: "lg" })}>
-              Back to dashboard
-            </Link>
-          }
-        />
-      </PageContainer>
+      <SettingsFrame groupId={groupId}>
+        <GroupSettingsSkeleton />
+      </SettingsFrame>
     );
   }
 
   return (
-    <GroupSettingsScene
+    <LiveGroupSettingsScene
       group={{
         ...settingsOverview,
         groupId: String(settingsOverview.groupId),
-        memberBalances: settingsOverview.memberBalances.map((member) => ({
-          ...member,
-          id: String(member.id),
-        })),
+        memberBalances: settingsOverview.memberBalances.map((member) => ({ ...member, id: String(member.id) })),
       }}
-      actions={
-        <div className="space-y-6">
-          <LiveSettingsActionsCard
-            groupCurrency={settingsOverview.groupCurrency}
-            groupId={String(settingsOverview.groupId)}
-            groupName={settingsOverview.groupName}
-            viewerRole={settingsOverview.viewerRole}
-          />
-          <MembershipManagementCard
-            currency={settingsOverview.groupCurrency}
-            currentUserBalanceCents={settingsOverview.currentUserBalanceCents}
-            groupId={settingsOverview.groupId}
-            groupName={settingsOverview.groupName}
-            viewerRole={settingsOverview.viewerRole}
-            members={settingsOverview.memberBalances.map((member) => ({
-              id: member.id,
-              name: member.name,
-              balanceCents: member.balanceCents,
-            }))}
-          />
-        </div>
-      }
     />
   );
 }
 
-function GroupSettingsScene({
-  actions,
-  group,
-  isMock = false,
-}: {
-  actions?: ReactNode;
-  group: GroupSettingsSceneData;
-  isMock?: boolean;
-}) {
-  const youAreOwedCents = Math.max(group.currentUserBalanceCents, 0);
-  const youOweCents = Math.abs(Math.min(group.currentUserBalanceCents, 0));
+function LiveGroupSettingsScene({ group }: { group: GroupSettingsSceneData }) {
+  const isOwner = group.viewerRole === "owner";
+  const actions = useGroupSettingsActions({ groupId: group.groupId, groupName: group.groupName, isOwner });
+  const membership = useMembershipManagement({
+    currency: group.groupCurrency,
+    groupId: group.groupId,
+    groupName: group.groupName,
+  });
 
   return (
-    <PageContainer className="page-glow relative space-y-6 lg:space-y-8">
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.04fr)_minmax(320px,0.72fr)] xl:items-end">
-        <div className="hidden max-w-2xl space-y-5 xl:block">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-on-surface-variant">
-            <Link href="/dashboard" className="transition hover:text-on-surface">
-              Groups
-            </Link>{" "}
-            <span className="px-2 text-white/16">›</span> {group.groupName}
-          </p>
-          <div className="space-y-4">
-            <h1 className="font-headline text-5xl font-extrabold tracking-tight text-on-surface">
-              {group.groupName}
-            </h1>
-            <p className="max-w-xl text-base leading-8 text-on-surface-variant">
-              {getGroupSupportText(group.groupDescription, group.memberCount, group.expenseCount)}
-            </p>
-          </div>
+    <>
+      <GroupSettingsScene
+        group={group}
+        actions={{
+          onRename: isOwner ? actions.openRename : undefined,
+          onInvite: isOwner ? actions.openInvite : undefined,
+          onArchive: isOwner ? actions.openArchive : undefined,
+          onExport: () => void actions.exportCsv(),
+          isExporting: actions.isExporting,
+          exportError: actions.exportError,
+          onLeave: !isOwner && group.currentUserBalanceCents === 0 ? membership.requestLeave : undefined,
+          onOpenMember: isOwner ? membership.openMember : undefined,
+        }}
+      />
+      {actions.dialogs}
+      {membership.dialog}
+    </>
+  );
+}
+
+function GroupSettingsScene({
+  group,
+  actions = {},
+  isMock = false,
+}: {
+  group: GroupSettingsSceneData;
+  actions?: SceneActions;
+  isMock?: boolean;
+}) {
+  const isOwner = group.viewerRole === "owner";
+  const signInNote = "Available when signed in";
+
+  return (
+    <SettingsFrame groupId={group.groupId} groupName={group.groupName}>
+      <div className="space-y-7 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0">
+        <div className="space-y-4 lg:sticky lg:top-8 lg:col-start-2 lg:row-start-1">
+          <GroupTotalsCard group={group} />
           {isMock ? (
-            <span className="inline-flex rounded-full bg-white/6 px-3 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-on-surface-variant">
-              Mock mode
-            </span>
+            <SettingsNotice>
+              Demo data. Sign in to rename, invite people, export, or archive.
+            </SettingsNotice>
           ) : null}
         </div>
 
-        <GroupSpendCard
-          groupName={group.groupName}
-          totalSpendCents={group.totalSpendCents}
-          currency={group.groupCurrency}
-        />
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[minmax(300px,0.82fr)_minmax(0,1.18fr)]">
-        <div className="xl:col-start-1 xl:row-start-1">
-          <CurrentNetPanel
-            youAreOwedCents={youAreOwedCents}
-            youOweCents={youOweCents}
-            currentUserBalanceCents={group.currentUserBalanceCents}
-            currency={group.groupCurrency}
-          />
-        </div>
-
-        <div className="xl:col-start-2 xl:row-span-2">
-          <MemberBalancesCard
-            currency={group.groupCurrency}
-            memberCount={group.memberCount}
-            memberBalances={group.memberBalances}
-          />
-        </div>
-
-        <div className="xl:col-start-1 xl:row-start-2">
-          {actions ?? <StaticSettingsActionsCard viewerRole={group.viewerRole} />}
-        </div>
-      </section>
-    </PageContainer>
-  );
-}
-
-function GroupSpendCard({
-  groupName,
-  totalSpendCents,
-  currency,
-}: {
-  groupName: string;
-  totalSpendCents: number;
-  currency: string;
-}) {
-  return (
-    <SurfaceCard
-      variant="high"
-      className="rounded-[2.35rem] bg-[radial-gradient(circle_at_top_right,rgba(78,222,163,0.12),transparent_32%),linear-gradient(180deg,rgba(42,42,42,0.98),rgba(28,27,27,1))] p-6 sm:p-8 xl:min-h-[13.2rem] xl:px-9 xl:py-8"
-    >
-      <div className="flex h-full flex-col justify-between gap-7">
-        <div className="space-y-3 xl:hidden">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-on-surface-variant">
-            {groupName}
-          </p>
-          <h1 className="font-headline text-[2.3rem] font-extrabold leading-[0.95] tracking-tight text-on-surface sm:text-5xl">
-            Total Group Spend
-          </h1>
-        </div>
-
-        <div className="hidden xl:block text-right">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.3em] text-primary">
-            Total Group Spend
-          </p>
-        </div>
-
-        <div className="xl:text-right">
-          <p className="font-headline text-4xl font-extrabold tracking-tight text-primary sm:text-5xl xl:text-[3.6rem] xl:text-on-surface">
-            {formatMoneyFromCents(totalSpendCents, currency)}
-          </p>
-        </div>
-      </div>
-    </SurfaceCard>
-  );
-}
-
-function CurrentNetPanel({
-  youAreOwedCents,
-  youOweCents,
-  currentUserBalanceCents,
-  currency,
-}: {
-  youAreOwedCents: number;
-  youOweCents: number;
-  currentUserBalanceCents: number;
-  currency: string;
-}) {
-  const netTone = getNetTone(currentUserBalanceCents);
-
-  return (
-    <>
-      <div className="space-y-4 xl:hidden">
-        <CompactBalanceCard label="You are owed" valueCents={youAreOwedCents} tone="positive" currency={currency} />
-        <CompactBalanceCard label="You owe" valueCents={youOweCents} tone="negative" currency={currency} />
-      </div>
-
-      <SurfaceCard variant="low" className="hidden rounded-[2rem] p-7 xl:block">
-        <div className="space-y-6">
-          <ExpandedBalanceRow label="You are owed" valueCents={youAreOwedCents} tone="positive" currency={currency} />
-          <ExpandedBalanceRow label="You owe" valueCents={youOweCents} tone="negative" currency={currency} />
-        </div>
-
-        <div className="mt-6 rounded-[1.4rem] bg-black/16 px-4 py-4">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-            Net position
-          </p>
-          <p
-            className={cn(
-              "mt-2 font-headline text-lg font-bold tracking-tight",
-              netTone === "positive" && "text-primary",
-              netTone === "negative" && "text-secondary",
-              netTone === "neutral" && "text-on-surface",
-            )}
+        <div className="space-y-7 lg:col-start-1 lg:row-start-1">
+          <SettingsSection
+            title="Group"
+            description={!isMock && !isOwner ? "Only the group owner can rename this group." : undefined}
           >
-            {formatSignedMoneyFromCents(currentUserBalanceCents, currency)}
-          </p>
-        </div>
-      </SurfaceCard>
-    </>
-  );
-}
-
-function CompactBalanceCard({
-  label,
-  valueCents,
-  tone,
-  currency,
-}: {
-  label: string;
-  valueCents: number;
-  tone: "positive" | "negative";
-  currency: string;
-}) {
-  const Icon = tone === "positive" ? TrendingUp : TrendingDown;
-
-  return (
-    <SurfaceCard variant="high" className="rounded-[2rem] p-5 sm:p-6">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <p className="text-sm text-on-surface-variant">{label}</p>
-          <p
-            className={cn(
-              "mt-4 font-headline text-[2rem] font-extrabold tracking-tight",
-              tone === "positive" ? "text-primary" : "text-secondary",
+            {actions.onRename ? (
+              <SettingsRow
+                icon={Pencil}
+                title="Name"
+                description={group.groupName}
+                onClick={actions.onRename}
+              />
+            ) : (
+              <SettingsRow icon={Pencil} title="Name" description={group.groupName} />
             )}
-          >
-            {formatMoneyFromCents(valueCents, currency)}
-          </p>
-        </div>
-        <div
-          className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-2xl ring-1",
-            tone === "positive"
-              ? "bg-primary/10 text-primary ring-primary/15"
-              : "bg-secondary/10 text-secondary ring-secondary/15",
-          )}
-        >
-          <Icon className="h-5 w-5" />
+            <SettingsRow
+              icon={Coins}
+              title="Currency"
+              trailing={<span className="text-sm text-on-surface-variant">{group.groupCurrency}</span>}
+            />
+          </SettingsSection>
+
+          <MembersSection group={group} actions={actions} isMock={isMock} />
+
+          <SettingsSection title="Export">
+            {actions.onExport ? (
+              <SettingsRow
+                icon={Download}
+                title="Download expenses as CSV"
+                description={
+                  actions.isExporting ? "Preparing your file…" : "Every expense and payment, ready for a spreadsheet."
+                }
+                onClick={actions.onExport}
+                disabled={actions.isExporting}
+              />
+            ) : (
+              <SettingsRow icon={Download} tone="muted" title="Download expenses as CSV" description={signInNote} />
+            )}
+          </SettingsSection>
+          {actions.exportError ? <SettingsNotice tone="error">{actions.exportError}</SettingsNotice> : null}
+
+          <SettingsSection title="Danger zone" tone="danger">
+            {isOwner ? (
+              actions.onArchive ? (
+                <SettingsRow
+                  icon={Trash2}
+                  tone="danger"
+                  title="Archive group"
+                  description="Hide it for everyone. Requires typing the group name."
+                  onClick={actions.onArchive}
+                />
+              ) : (
+                <SettingsRow icon={Trash2} tone="muted" title="Archive group" description={signInNote} />
+              )
+            ) : actions.onLeave ? (
+              <SettingsRow
+                icon={LogOut}
+                tone="danger"
+                title="Leave group"
+                description="You're settled up, so you can leave any time."
+                onClick={actions.onLeave}
+              />
+            ) : (
+              <SettingsRow
+                icon={LogOut}
+                tone="danger"
+                title="Leave group"
+                description={
+                  <>
+                    Settle your <Money cents={group.currentUserBalanceCents} currency={group.groupCurrency} /> balance
+                    before leaving.
+                  </>
+                }
+              />
+            )}
+          </SettingsSection>
         </div>
       </div>
-    </SurfaceCard>
+    </SettingsFrame>
   );
 }
 
-function ExpandedBalanceRow({
-  label,
-  valueCents,
-  tone,
-  currency,
-}: {
-  label: string;
-  valueCents: number;
-  tone: "positive" | "negative";
-  currency: string;
-}) {
-  const Icon = tone === "positive" ? TrendingUp : TrendingDown;
+function GroupTotalsCard({ group }: { group: GroupSettingsSceneData }) {
+  const standing = describeBalance(group.currentUserBalanceCents);
 
   return (
-    <div className="flex items-center gap-4">
-      <div
-        className={cn(
-          "flex h-12 w-12 items-center justify-center rounded-2xl ring-1",
-          tone === "positive"
-            ? "bg-primary/10 text-primary ring-primary/15"
-            : "bg-secondary/10 text-secondary ring-secondary/15",
-        )}
-      >
-        <Icon className="h-5 w-5" />
-      </div>
-      <div>
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">{label}</p>
-        <p
-          className={cn(
-            "mt-1 font-headline text-[2rem] font-extrabold tracking-tight",
-            tone === "positive" ? "text-primary" : "text-secondary",
-          )}
-        >
-          {formatMoneyFromCents(valueCents, currency)}
-        </p>
-      </div>
-    </div>
-  );
-}
+    <section aria-label="Group totals" className="rounded-3xl bg-surface-container-low p-5">
+      <p className="text-sm text-on-surface-variant">Total spent</p>
+      <p className="mt-0.5 font-headline text-3xl font-bold tracking-tight text-on-surface">
+        <Money cents={group.totalSpendCents} currency={group.groupCurrency} />
+      </p>
+      <p className="mt-1 text-xs text-on-surface-variant">
+        {group.expenseCount} {group.expenseCount === 1 ? "expense" : "expenses"} · {group.memberCount}{" "}
+        {group.memberCount === 1 ? "member" : "members"}
+      </p>
 
-function MemberBalancesCard({
-  currency,
-  memberCount,
-  memberBalances,
-}: {
-  currency: string;
-  memberCount: number;
-  memberBalances: GroupSettingsBalanceMember[];
-}) {
-  return (
-    <SurfaceCard variant="low" className="rounded-[2.1rem] p-0">
-      <div className="flex items-center justify-between gap-4 px-5 pb-5 pt-5 sm:px-6 sm:pt-6">
-        <div>
-          <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface sm:text-2xl xl:hidden">
-            Member Balances
-          </h2>
-          <p className="hidden text-[0.68rem] font-semibold uppercase tracking-[0.28em] text-on-surface-variant xl:block">
-            Member Balances
-          </p>
-        </div>
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-          {memberCount} member{memberCount === 1 ? "" : "s"}
-          <span className="hidden xl:inline"> total</span>
+      <div className="mt-4 space-y-3 border-t border-white/[0.06] pt-4">
+        <p className="text-sm text-on-surface">
+          <span className="text-on-surface-variant">Your balance: </span>
+          <span className="font-semibold">{standing.label}</span>
+          {group.currentUserBalanceCents !== 0 ? (
+            <>
+              {" "}
+              <Money
+                cents={group.currentUserBalanceCents}
+                currency={group.groupCurrency}
+                tone={standing.tone}
+                className="font-headline font-bold"
+              />
+            </>
+          ) : null}
         </p>
-      </div>
-
-      <div className="space-y-2 px-2 pb-2 sm:px-3 sm:pb-3">
-        {memberBalances.length > 0 ? (
-          memberBalances.map((member) => (
-            <MemberBalanceRow key={member.id} member={member} currency={currency} />
-          ))
-        ) : (
-          <div className="rounded-[1.65rem] bg-surface-container-high px-5 py-5 text-sm leading-7 text-on-surface-variant">
-            No other member balances are visible yet. Balances appear here once more members join the group.
+        <dl className="grid grid-cols-2 gap-3">
+          <div>
+            <dt className="text-xs text-on-surface-variant">You paid</dt>
+            <dd className="mt-0.5 text-sm font-semibold text-on-surface">
+              <Money cents={group.currentUserPaidCents} currency={group.groupCurrency} />
+            </dd>
           </div>
-        )}
+          <div>
+            <dt className="text-xs text-on-surface-variant">Your share</dt>
+            <dd className="mt-0.5 text-sm font-semibold text-on-surface">
+              <Money cents={group.currentUserOwedCents} currency={group.groupCurrency} />
+            </dd>
+          </div>
+        </dl>
       </div>
-    </SurfaceCard>
+    </section>
   );
 }
 
-function MemberBalanceRow({
-  member,
-  currency,
-}: {
-  member: GroupSettingsBalanceMember;
-  currency: string;
-}) {
-  const descriptor = getMemberDescriptor(member, currency);
-  const avatarStyle = buildAvatarStyle(member.imageUrl);
+/** Other members' net positions stay neutral; only the viewer's own row is colored. */
+function MemberBalance({ cents, currency }: { cents: number; currency: string }) {
+  const standing = describeMemberBalance(cents);
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[1.7rem] bg-surface-container-high px-4 py-4 transition hover:bg-surface-container-highest sm:px-5 sm:py-5">
-      <div className="flex min-w-0 items-center gap-4">
-        <div
-          className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/8 font-headline text-sm font-bold sm:h-14 sm:w-14 sm:text-base",
-            avatarStyle
-              ? "bg-surface-container-high text-transparent"
-              : descriptor.tone === "positive"
-                ? "bg-[linear-gradient(135deg,rgba(78,222,163,0.4),rgba(16,185,129,0.95))] text-on-primary"
-                : descriptor.tone === "negative"
-                  ? "bg-[linear-gradient(135deg,rgba(255,181,158,0.4),rgba(127,42,13,0.96))] text-white"
-                  : "bg-[linear-gradient(135deg,rgba(57,57,57,1),rgba(42,42,42,1))] text-on-surface",
-          )}
-          style={avatarStyle}
-          aria-label={member.name}
-          title={member.name}
-        >
-          {avatarStyle ? null : getInitials(member.name)}
-        </div>
+    <span className="flex flex-col items-end text-right">
+      <span className="text-xs leading-4 text-on-surface-variant">{standing.label}</span>
+      {cents !== 0 ? (
+        <Money cents={cents} currency={currency} className="font-headline text-sm font-bold text-on-surface" />
+      ) : null}
+    </span>
+  );
+}
 
-        <div className="min-w-0">
-          <p className="truncate font-headline text-[0.98rem] font-bold tracking-tight text-on-surface sm:text-lg">
-            {member.name}
-          </p>
-          <span
-            className={cn(
-              "mt-1 inline-flex rounded-full px-2 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.16em]",
-              descriptor.tone === "positive" && "bg-primary/12 text-primary",
-              descriptor.tone === "negative" && "bg-secondary/12 text-secondary",
-              descriptor.tone === "neutral" && "bg-white/6 text-on-surface-variant",
-            )}
-          >
-            {descriptor.chip}
+function RoleBadge() {
+  return (
+    <span className="ml-2 rounded-full bg-primary/12 px-2 py-0.5 align-middle text-xs font-medium text-primary">
+      Owner
+    </span>
+  );
+}
+
+function MembersSection({
+  group,
+  actions,
+  isMock,
+}: {
+  group: GroupSettingsSceneData;
+  actions: SceneActions;
+  isMock: boolean;
+}) {
+  const isOwner = group.viewerRole === "owner";
+  const you = describeBalance(group.currentUserBalanceCents);
+  const description = isMock
+    ? undefined
+    : isOwner
+      ? "Tap a member to see their balance. Members can be removed once they're settled up."
+      : "Only the group owner can invite or remove members.";
+
+  return (
+    <SettingsSection title={`Members · ${group.memberCount}`} description={description}>
+      {actions.onInvite ? (
+        <SettingsRow
+          icon={UserPlus}
+          tone="primary"
+          title="Invite people"
+          description="Share a link or send an email invite"
+          onClick={actions.onInvite}
+        />
+      ) : null}
+
+      <SettingsRow
+        leading={<UserAvatar name="You" size="sm" />}
+        title={
+          <>
+            You
+            {isOwner ? <RoleBadge /> : null}
+          </>
+        }
+        trailing={
+          <span className="flex flex-col items-end text-right">
+            <span className="text-xs leading-4 text-on-surface-variant">{you.label}</span>
+            {group.currentUserBalanceCents !== 0 ? (
+              <Money
+                cents={group.currentUserBalanceCents}
+                currency={group.groupCurrency}
+                tone={you.tone}
+                className="font-headline text-sm font-bold"
+              />
+            ) : null}
           </span>
-        </div>
-      </div>
+        }
+      />
 
-      <div className="shrink-0 text-right">
-        <p className="text-[0.62rem] font-semibold uppercase tracking-[0.22em] text-on-surface-variant">
-          {descriptor.label}
-        </p>
-        <p
-          className={cn(
-            "mt-2 font-headline text-lg font-extrabold tracking-tight sm:text-[1.65rem]",
-            descriptor.tone === "positive" && "text-primary",
-            descriptor.tone === "negative" && "text-secondary",
-            descriptor.tone === "neutral" && "text-on-surface",
-          )}
-        >
-          {descriptor.valueLabel}
-        </p>
-      </div>
-    </div>
+      {group.memberBalances.map((member) => {
+        const rowProps = {
+          leading: <UserAvatar imageUrl={member.imageUrl} name={member.name} size="sm" />,
+          title: (
+            <>
+              {member.name}
+              {member.role === "owner" ? <RoleBadge /> : null}
+            </>
+          ),
+          description: member.email ? <span className="block truncate">{member.email}</span> : undefined,
+          trailing: <MemberBalance cents={member.balanceCents} currency={group.groupCurrency} />,
+        };
+
+        return actions.onOpenMember ? (
+          <SettingsRow key={member.id} {...rowProps} onClick={() => actions.onOpenMember?.(member)} />
+        ) : (
+          <SettingsRow key={member.id} {...rowProps} />
+        );
+      })}
+    </SettingsSection>
   );
 }
 
-function SettingsSectionFrame({
-  children,
-}: {
-  children: ReactNode;
-}) {
+function GroupSettingsSkeleton() {
   return (
-    <div className="space-y-4">
-      <div className="px-1">
-        <h2 className="font-headline text-xl font-semibold tracking-tight text-on-surface xl:hidden">
-          Settings
-        </h2>
-      </div>
-
-      <SurfaceCard variant="low" className="rounded-[2rem] p-4 sm:p-5">
-        <p className="hidden px-2 text-[0.68rem] font-semibold uppercase tracking-[0.26em] text-on-surface-variant xl:block">
-          Group Settings
-        </p>
-        {children}
-      </SurfaceCard>
-    </div>
-  );
-}
-
-function SettingsActionButton({
-  badge,
-  detail,
-  disabled = false,
-  Icon,
-  label,
-  onClick,
-  tone = "default",
-}: {
-  badge?: string;
-  detail: string;
-  disabled?: boolean;
-  Icon: typeof Pencil;
-  label: string;
-  onClick?: () => void;
-  tone?: "default" | "danger";
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center justify-between rounded-[1.55rem] px-4 py-4 text-left transition",
-        "hover:bg-surface-container-high active:scale-[0.99] disabled:cursor-not-allowed disabled:active:scale-100",
-        tone === "danger"
-          ? "bg-secondary/6 text-secondary hover:bg-secondary/12"
-          : "text-on-surface",
-      )}
-    >
-      <span className="flex min-w-0 items-center gap-4">
-        <span
-          className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl",
-            tone === "danger" ? "bg-secondary/12" : "bg-white/4",
-          )}
-        >
-          <Icon className="h-4.5 w-4.5" />
-        </span>
-        <span className="min-w-0 space-y-1">
-          <span className="block font-headline text-[0.98rem] font-bold tracking-tight">
-            {label}
-          </span>
-          <span className="block text-xs leading-6 text-on-surface-variant">{detail}</span>
-        </span>
-      </span>
-
-      <span className="ml-4 flex shrink-0 items-center gap-3">
-        {badge ? (
-          <span className="rounded-full bg-white/6 px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.18em] text-on-surface-variant">
-            {badge}
-          </span>
-        ) : null}
-        <ChevronRight className="h-4.5 w-4.5 text-on-surface-variant" />
-      </span>
-    </button>
-  );
-}
-
-function DialogNotice({
-  children,
-  tone = "neutral",
-}: {
-  children: ReactNode;
-  tone?: "error" | "neutral" | "success";
-}) {
-  return (
-    <div
-      className={cn(
-        "rounded-[1.4rem] border px-4 py-3 text-sm leading-6",
-        tone === "error" && "border-error/20 bg-error/8 text-error",
-        tone === "success" && "border-primary/20 bg-primary/10 text-on-surface",
-        tone === "neutral" && "border-white/6 bg-white/[0.03] text-on-surface-variant",
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-function StaticSettingsActionsCard({
-  viewerRole,
-}: {
-  viewerRole: "owner" | "member";
-}) {
-  const stubNote =
-    viewerRole === "owner"
-      ? "Settings actions stay live-only in the configured workspace. Mock mode keeps the same layout without running destructive flows."
-      : "Owner-only controls stay visible for layout parity. In live mode, export remains available while protected actions stay disabled.";
-
-  return (
-    <SettingsSectionFrame>
-      <div className="space-y-2">
-        {SETTINGS_ACTIONS.map((action) => (
-          <SettingsActionButton
-            key={action.label}
-            Icon={action.Icon}
-            label={action.label}
-            tone={action.tone}
-            detail="Mock mode preview"
-            disabled
-            badge={action.label === "Export CSV" ? "Live only" : "Owner only"}
-          />
+    <div role="status" aria-label="Loading group settings" className="space-y-7 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8 lg:space-y-0">
+      <SkeletonBlock className="h-40 w-full rounded-3xl lg:col-start-2 lg:row-start-1" />
+      <div className="space-y-7 lg:col-start-1 lg:row-start-1">
+        {[2, 4, 1].map((rows, index) => (
+          <div key={index} className="space-y-2">
+            <SkeletonBlock className="h-4 w-24 rounded-md" />
+            <div className="space-y-1 rounded-3xl bg-surface-container-low p-2">
+              {Array.from({ length: rows }, (_, rowIndex) => (
+                <div key={rowIndex} className="flex items-center gap-3 px-2 py-2">
+                  <SkeletonBlock className="h-10 w-10 shrink-0 rounded-xl" />
+                  <div className="flex-1 space-y-2">
+                    <SkeletonBlock className="h-4 w-1/2 rounded-md" />
+                    <SkeletonBlock className="h-3 w-1/3 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
-
-      <div className="mt-4 rounded-[1.45rem] bg-black/16 px-4 py-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/6 text-on-surface-variant">
-            <Wallet className="h-4.5 w-4.5" />
-          </div>
-          <p className="text-sm leading-6 text-on-surface-variant">{stubNote}</p>
-        </div>
-      </div>
-    </SettingsSectionFrame>
-  );
-}
-
-function LiveSettingsActionsCard({
-  groupCurrency,
-  groupId,
-  groupName,
-  viewerRole,
-}: {
-  groupCurrency: string;
-  groupId: string;
-  groupName: string;
-  viewerRole: "owner" | "member";
-}) {
-  const router = useRouter();
-  const convex = useConvex();
-  const renameGroup = useMutation(api.groups.rename);
-  const createInvite = useMutation(api.invites.create);
-  const sendEmailInvite = useMutation(api.invites.sendEmailInvite);
-  const archiveGroup = useMutation(api.groups.archive);
-  const [openDialog, setOpenDialog] = useState<"archive" | "members" | "rename" | null>(null);
-  const [renameDraft, setRenameDraft] = useState(groupName);
-  const [renameError, setRenameError] = useState<string | null>(null);
-  const [isRenaming, setIsRenaming] = useState(false);
-  const [inviteEmailDraft, setInviteEmailDraft] = useState("");
-  const [inviteError, setInviteError] = useState<string | null>(null);
-  const [inviteNotice, setInviteNotice] = useState<string | null>(null);
-  const [isCopyingInvite, setIsCopyingInvite] = useState(false);
-  const [isSendingInvite, setIsSendingInvite] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
-  const [archiveConfirmation, setArchiveConfirmation] = useState("");
-  const [archiveError, setArchiveError] = useState<string | null>(null);
-  const [isArchiving, setIsArchiving] = useState(false);
-  const isOwner = viewerRole === "owner";
-  const composerData = useQuery(
-    api.invites.getGroupComposerData,
-    openDialog === "members" ? { groupId: groupId as Id<"groups"> } : "skip",
-  );
-  const inviteLink = composerData?.activeInvite
-    ? buildInviteLink(composerData.activeInvite.token)
-    : null;
-  const inviteActionLabel = composerData?.activeInvite
-    ? "Copy current invite link"
-    : "Generate and copy invite link";
-  const emailActionLabel = composerData?.activeInvite
-    ? "Send invite email"
-    : "Generate and send invite";
-  const matchesArchiveConfirmation = archiveConfirmation.trim() === groupName;
-
-  function closeDialog() {
-    setOpenDialog(null);
-    setRenameError(null);
-    setInviteError(null);
-    setArchiveError(null);
-  }
-
-  function openRenameDialog() {
-    if (!isOwner) {
-      return;
-    }
-
-    setRenameDraft(groupName);
-    setRenameError(null);
-    setOpenDialog("rename");
-  }
-
-  function openMembersDialog() {
-    if (!isOwner) {
-      return;
-    }
-
-    setInviteEmailDraft("");
-    setInviteError(null);
-    setInviteNotice(null);
-    setOpenDialog("members");
-  }
-
-  function openArchiveDialog() {
-    if (!isOwner) {
-      return;
-    }
-
-    setArchiveConfirmation("");
-    setArchiveError(null);
-    setOpenDialog("archive");
-  }
-
-  async function handleRename(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    setIsRenaming(true);
-    setRenameError(null);
-
-    try {
-      await renameGroup({
-        groupId: groupId as Id<"groups">,
-        name: renameDraft,
-      });
-      closeDialog();
-    } catch (error) {
-      setRenameError(getErrorMessage(error));
-    } finally {
-      setIsRenaming(false);
-    }
-  }
-
-  async function handleCopyInviteLink() {
-    setIsCopyingInvite(true);
-    setInviteError(null);
-    setInviteNotice(null);
-
-    try {
-      const activeInvite = composerData?.activeInvite;
-      const invite =
-        activeInvite ??
-        (await createInvite({
-          groupId: groupId as Id<"groups">,
-        }));
-
-      if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard access is unavailable in this browser session.");
-      }
-
-      await navigator.clipboard.writeText(buildInviteLink(invite.token));
-      setInviteNotice(
-        activeInvite
-          ? "Copied the current single-use invite link."
-          : "Generated and copied a fresh single-use invite link.",
-      );
-    } catch (error) {
-      setInviteError(getErrorMessage(error));
-    } finally {
-      setIsCopyingInvite(false);
-    }
-  }
-
-  async function handleSendInviteEmail(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    setIsSendingInvite(true);
-    setInviteError(null);
-    setInviteNotice(null);
-
-    try {
-      const email = inviteEmailDraft.trim();
-
-      if (!email) {
-        throw new Error("Enter an email address to send an invite.");
-      }
-
-      const hadActiveInvite = Boolean(composerData?.activeInvite);
-
-      await sendEmailInvite({
-        groupId: groupId as Id<"groups">,
-        email,
-      });
-
-      setInviteEmailDraft("");
-      setInviteNotice(
-        hadActiveInvite
-          ? `Sent the current invite link to ${email}.`
-          : `Generated and emailed a fresh invite link to ${email}.`,
-      );
-    } catch (error) {
-      setInviteError(getErrorMessage(error));
-    } finally {
-      setIsSendingInvite(false);
-    }
-  }
-
-  async function handleExportCsv() {
-    setIsExporting(true);
-    setExportError(null);
-
-    try {
-      const exportData = await convex.query(api.exports.getGroupExpenseExport, {
-        groupId: groupId as Id<"groups">,
-      });
-      const csv = buildExpenseExportCsv(exportData.rows as ExpenseExportRow[]);
-      const blob = new Blob([csv], {
-        type: "text/csv;charset=utf-8;",
-      });
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = downloadUrl;
-      link.download = createExportFileName(exportData.groupName, exportData.generatedAt);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      setExportError(getErrorMessage(error));
-    } finally {
-      setIsExporting(false);
-    }
-  }
-
-  async function handleArchiveGroup(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (!matchesArchiveConfirmation) {
-      setArchiveError(`Type "${groupName}" to confirm archiving this group.`);
-      return;
-    }
-
-    setIsArchiving(true);
-    setArchiveError(null);
-
-    try {
-      await archiveGroup({
-        groupId: groupId as Id<"groups">,
-      });
-
-      startTransition(() => {
-        router.push("/dashboard");
-      });
-    } catch (error) {
-      setArchiveError(getErrorMessage(error));
-    } finally {
-      setIsArchiving(false);
-    }
-  }
-
-  const footerNote = isOwner
-    ? "This group uses one current single-use invite link. Copying or emailing reuses the current pending link when possible, and generating or sending a fresh invite later rotates the previous pending one."
-    : "Only the group owner can rename the group, manage invites, or archive it. Expense CSV export stays available to every active member.";
-
-  return (
-    <>
-      <SettingsSectionFrame>
-        <div className="space-y-2">
-          <SettingsActionButton
-            Icon={Pencil}
-            label="Edit Group Name"
-            detail={
-              isOwner
-                ? "Rename the group everywhere it appears."
-                : "Only the group owner can rename this group."
-            }
-            badge={isOwner ? undefined : "Owner only"}
-            disabled={!isOwner}
-            onClick={openRenameDialog}
-          />
-          <SettingsActionButton
-            Icon={UserPlus}
-            label="Add Members"
-            detail={
-              isOwner
-                ? "Review the roster, copy the invite link, or send one email invite."
-                : "Only the group owner can manage the roster and invite link."
-            }
-            badge={isOwner ? undefined : "Owner only"}
-            disabled={!isOwner}
-            onClick={openMembersDialog}
-          />
-          <SettingsActionButton
-            Icon={Download}
-            label="Export CSV"
-            detail={`Download an expense-level ${groupCurrency} CSV export.`}
-            badge={isExporting ? "Working" : undefined}
-            disabled={isExporting}
-            onClick={handleExportCsv}
-          />
-          <SettingsActionButton
-            Icon={Trash2}
-            label="Delete Group"
-            detail={
-              isOwner
-                ? "Archive the group and remove it from the active dashboard."
-                : "Only the group owner can archive this group."
-            }
-            tone="danger"
-            badge={isOwner ? undefined : "Owner only"}
-            disabled={!isOwner}
-            onClick={openArchiveDialog}
-          />
-        </div>
-
-        {exportError ? (
-          <div className="mt-4">
-            <DialogNotice tone="error">{exportError}</DialogNotice>
-          </div>
-        ) : null}
-
-        <div className="mt-4 rounded-[1.45rem] bg-black/16 px-4 py-4">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/6 text-on-surface-variant">
-              <Wallet className="h-4.5 w-4.5" />
-            </div>
-            <p className="text-sm leading-6 text-on-surface-variant">{footerNote}</p>
-          </div>
-        </div>
-      </SettingsSectionFrame>
-
-      <ResponsiveDialog
-        open={openDialog === "rename"}
-        onClose={closeDialog}
-        eyebrow="Edit Group Name"
-        title="Rename this group"
-        description="Keep the name short and clear. The updated title appears on the dashboard, detail screen, and settings page."
-      >
-        <form className="space-y-5" onSubmit={handleRename}>
-          <FilledInput
-            label="Group Name"
-            value={renameDraft}
-            onChange={(event) => setRenameDraft(event.target.value)}
-            maxLength={60}
-            placeholder="Iceland Expedition"
-            autoFocus
-          />
-
-          {renameError ? <DialogNotice tone="error">{renameError}</DialogNotice> : null}
-
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button variant="ghost" size="lg" onClick={closeDialog} disabled={isRenaming}>
-              Cancel
-            </Button>
-            <Button type="submit" size="lg" disabled={isRenaming}>
-              {isRenaming ? "Saving..." : "Save Name"}
-            </Button>
-          </div>
-        </form>
-      </ResponsiveDialog>
-
-      <ResponsiveDialog
-        open={openDialog === "members"}
-        onClose={closeDialog}
-        eyebrow="Add Members"
-        title="Invite new members"
-        description="Review the current roster, copy the current invite link, or send one invite email when delivery is configured."
-      >
-        {composerData === undefined ? (
-          <ScreenState
-            state="loading"
-            title="Loading members"
-            description="Checking the active roster and current invite-link status."
-            className="max-w-none rounded-[1.8rem]"
-          />
-        ) : composerData === null || !composerData.canInvite ? (
-          <ScreenState
-            state="unavailable"
-            title="Invite tools unavailable"
-            description="This group is no longer available, or you no longer have permission to manage invites."
-            className="max-w-none rounded-[1.8rem]"
-          />
-        ) : (
-          <div className="space-y-5">
-            {inviteError ? <DialogNotice tone="error">{inviteError}</DialogNotice> : null}
-            {inviteNotice ? <DialogNotice tone="success">{inviteNotice}</DialogNotice> : null}
-
-            <SurfaceCard variant="low" className="space-y-4 rounded-[1.75rem] p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-2">
-                  <p className="text-[0.68rem] uppercase tracking-[0.24em] text-primary">Invite Status</p>
-                  <h3 className="font-headline text-2xl font-bold tracking-tight text-on-surface">
-                    {composerData.activeInvite ? "Current invite link is ready" : "No pending invite link yet"}
-                  </h3>
-                  <p className="text-sm leading-7 text-on-surface-variant">
-                    This group uses one current single-use invite link. Copying or emailing reuses the current pending link when available. Generating or sending a fresh invite later rotates the previous pending one.
-                  </p>
-                </div>
-                <div className="rounded-[1.2rem] bg-white/[0.03] px-4 py-3 text-sm text-on-surface-variant">
-                  {composerData.activeInvite
-                    ? `Expires ${formatInviteExpiry(composerData.activeInvite.expiresAt)}`
-                    : "Created only when you copy or send"}
-                </div>
-              </div>
-
-              {inviteLink ? (
-                <div className="rounded-[1.25rem] border border-white/6 bg-surface-container-lowest/70 px-4 py-3 text-sm text-on-surface-variant break-all">
-                  {inviteLink}
-                </div>
-              ) : null}
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <Button
-                  size="lg"
-                  onClick={handleCopyInviteLink}
-                  disabled={isCopyingInvite || isSendingInvite}
-                >
-                  <Copy className="h-4.5 w-4.5" />
-                  {isCopyingInvite ? "Copying..." : inviteActionLabel}
-                </Button>
-                <p className="text-xs leading-6 text-on-surface-variant">
-                  One pending token per group, reused until it is accepted, expires, or you rotate it.
-                </p>
-              </div>
-            </SurfaceCard>
-
-            <SurfaceCard variant="low" className="rounded-[1.75rem] p-5">
-              {composerData.inviteEmailEnabled ? (
-                <form className="space-y-5" onSubmit={handleSendInviteEmail}>
-                  <FilledInput
-                    label="Invite by Email"
-                    type="email"
-                    value={inviteEmailDraft}
-                    onChange={(event) => setInviteEmailDraft(event.target.value)}
-                    placeholder="teammate@example.com"
-                    hint="Sending by email uses the same current single-use invite token."
-                  />
-                  <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-                    <Button
-                      type="submit"
-                      size="lg"
-                      disabled={isSendingInvite || isCopyingInvite}
-                    >
-                      <Mail className="h-4.5 w-4.5" />
-                      {isSendingInvite ? "Sending..." : emailActionLabel}
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <DialogNotice>
-                  Invite email delivery is unavailable in this Convex environment. Copy-link fallback is still fully supported.
-                </DialogNotice>
-              )}
-            </SurfaceCard>
-
-            <SurfaceCard variant="low" className="rounded-[1.75rem] p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-[0.68rem] uppercase tracking-[0.24em] text-primary">Current Roster</p>
-                  <h3 className="mt-2 font-headline text-2xl font-bold tracking-tight text-on-surface">
-                    {composerData.memberCount} member{composerData.memberCount === 1 ? "" : "s"}
-                  </h3>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                {composerData.members.map((member) => {
-                  const avatarStyle = buildAvatarStyle(member.imageUrl);
-
-                  return (
-                    <div
-                      key={String(member.id)}
-                      className="flex items-center justify-between gap-4 rounded-[1.35rem] bg-surface-container-high px-4 py-4"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <div
-                          className={cn(
-                            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/8 font-headline text-sm font-bold",
-                            avatarStyle
-                              ? "bg-surface-container-high text-transparent"
-                              : "bg-[linear-gradient(135deg,rgba(78,222,163,0.32),rgba(16,185,129,0.94))] text-on-primary",
-                          )}
-                          style={avatarStyle}
-                          aria-label={member.name}
-                          title={member.name}
-                        >
-                          {avatarStyle ? null : getInitials(member.name)}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate font-headline text-lg font-bold tracking-tight text-on-surface">
-                            {member.name}
-                          </p>
-                          <p className="truncate text-sm text-on-surface-variant">{member.email}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {member.role === "owner" ? (
-                          <span className="rounded-full bg-primary/12 px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.18em] text-primary">
-                            Owner
-                          </span>
-                        ) : null}
-                        {member.isCurrentUser ? (
-                          <span className="rounded-full bg-white/6 px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.18em] text-on-surface-variant">
-                            You
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </SurfaceCard>
-          </div>
-        )}
-      </ResponsiveDialog>
-
-      <ResponsiveDialog
-        open={openDialog === "archive"}
-        onClose={closeDialog}
-        tone="danger"
-        eyebrow="Delete Group"
-        title="Archive this group"
-        description="Delete is a soft archive in this MVP. Memberships, invites, expenses, and shares stay stored, but the group leaves active queries and the dashboard."
-      >
-        <form className="space-y-5" onSubmit={handleArchiveGroup}>
-          <DialogNotice>
-            Type the exact group name to confirm. After archiving, the active invite link will stop working and you’ll return to the dashboard.
-          </DialogNotice>
-
-          <FilledInput
-            label="Type Group Name"
-            value={archiveConfirmation}
-            onChange={(event) => setArchiveConfirmation(event.target.value)}
-            placeholder={groupName}
-            autoFocus
-          />
-
-          {archiveError ? <DialogNotice tone="error">{archiveError}</DialogNotice> : null}
-
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Button variant="ghost" size="lg" onClick={closeDialog} disabled={isArchiving}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="secondary"
-              size="lg"
-              disabled={isArchiving || !matchesArchiveConfirmation}
-              className="border-secondary/30 bg-secondary/12 text-secondary hover:bg-secondary/18"
-            >
-              {isArchiving ? "Archiving..." : "Archive Group"}
-            </Button>
-          </div>
-        </form>
-      </ResponsiveDialog>
-    </>
+      <span className="sr-only">Loading…</span>
+    </div>
   );
 }

@@ -10,7 +10,7 @@ export default function NotFound() {
       title="That ledger page does not exist"
       subtitle="This path is outside the current Split-It route map."
       footer={
-        <div className="text-center text-xs uppercase tracking-[0.2em] text-on-surface-variant">
+        <div className="text-center text-xs font-medium text-on-surface-variant">
           404 · tonal fallback
         </div>
       }

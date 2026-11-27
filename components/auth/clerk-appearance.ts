@@ -15,10 +15,10 @@ const authElements = {
     "flex min-h-15 items-center justify-center gap-3 rounded-[1.1rem] border border-white/5 px-5 text-[0.98rem] font-semibold transition duration-200 bg-white text-[#121212] shadow-[0_14px_35px_rgba(255,255,255,0.08)] hover:bg-white/92 md:bg-surface-container-high md:text-on-surface md:hover:bg-surface-bright disabled:pointer-events-none disabled:opacity-60",
   socialButtonsBlockButtonText: "font-headline text-[0.98rem] font-semibold",
   dividerLine: "bg-white/8",
-  dividerText: "text-[0.64rem] font-semibold uppercase tracking-[0.28em] text-on-surface-variant/70",
-  formFieldLabel: "mb-2 text-[0.64rem] font-semibold uppercase tracking-[0.24em] text-on-surface-variant/78",
+  dividerText: "text-xs font-semibold text-on-surface-variant",
+  formFieldLabel: "mb-2 text-xs font-semibold text-on-surface-variant",
   formFieldInput:
-    "min-h-14 rounded-[1.15rem] border border-white/6 bg-surface-container px-4 text-[0.98rem] text-on-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition outline-none placeholder:text-on-surface-variant/42 hover:border-white/10 focus:border-primary/45 focus:ring-0",
+    "min-h-14 rounded-[1.15rem] border border-white/6 bg-surface-container px-4 text-[0.98rem] text-on-surface shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition outline-none placeholder:text-on-surface-variant hover:border-white/10 focus:border-primary/45 focus:ring-0",
   formFieldInputShowPasswordButton: "text-on-surface-variant transition hover:text-on-surface",
   formFieldErrorText: "mt-2 text-sm text-error",
   formButtonPrimary:

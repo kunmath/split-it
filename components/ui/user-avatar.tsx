@@ -38,7 +38,7 @@ export function UserAvatar({ imageUrl, name, size = "md", className }: UserAvata
         className,
       )}
       style={backgroundStyle}
-      aria-label={name}
+      aria-hidden="true"
       title={name}
     >
       {backgroundStyle ? null : getInitials(name)}

@@ -17,34 +17,14 @@ export function ShellSessionCard() {
     return (
       <div className="rounded-[1.5rem] bg-surface-container-low p-4">
         <p className="font-headline text-sm font-semibold text-on-surface">Alex Rivera</p>
-        <p className="mt-1 text-[0.68rem] uppercase tracking-[0.22em] text-on-surface-variant">
-          Placeholder Session
+        <p className="mt-1 text-xs text-on-surface-variant">
+          Demo session
         </p>
       </div>
     );
   }
 
   return mode === "live" ? <LiveShellSessionCard /> : <ClerkShellSessionCard />;
-}
-
-export function ShellSessionAvatar() {
-  const { isClerkConfigured, mode } = usePlaceholderMode();
-
-  if (!isClerkConfigured) {
-    return <UserAvatar name="Alex Rivera" size="md" />;
-  }
-
-  return mode === "live" ? <LiveShellSessionAvatar /> : <ClerkShellSessionAvatar />;
-}
-
-export function ShellMobileSessionControls() {
-  const { isClerkConfigured, mode } = usePlaceholderMode();
-
-  if (!isClerkConfigured) {
-    return null;
-  }
-
-  return mode === "live" ? <LiveShellMobileSessionControls /> : <ClerkShellMobileSessionControls />;
 }
 
 function useResolvedProfile() {
@@ -106,52 +86,3 @@ function ClerkShellSessionCard() {
   );
 }
 
-function LiveShellSessionAvatar() {
-  const { displayName, imageUrl } = useResolvedProfile();
-
-  return <UserAvatar imageUrl={imageUrl} name={displayName} size="md" />;
-}
-
-function ClerkShellSessionAvatar() {
-  const { displayName } = useClerkProfile();
-
-  return <UserAvatar name={displayName} size="md" />;
-}
-
-function LiveShellMobileSessionControls() {
-  const { displayName, imageUrl } = useResolvedProfile();
-
-  return (
-    <div className="flex items-center gap-2">
-      <UserAvatar imageUrl={imageUrl} name={displayName} size="md" />
-      <SignOutButton redirectUrl="/sign-in">
-        <button
-          type="button"
-          className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/8 bg-transparent px-3 text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-on-surface-variant transition hover:bg-white/4 hover:text-on-surface"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Sign out
-        </button>
-      </SignOutButton>
-    </div>
-  );
-}
-
-function ClerkShellMobileSessionControls() {
-  const { displayName } = useClerkProfile();
-
-  return (
-    <div className="flex items-center gap-2">
-      <UserAvatar name={displayName} size="md" />
-      <SignOutButton redirectUrl="/sign-in">
-        <button
-          type="button"
-          className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/8 bg-transparent px-3 text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-on-surface-variant transition hover:bg-white/4 hover:text-on-surface"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Sign out
-        </button>
-      </SignOutButton>
-    </div>
-  );
-}

@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from "react";
+import { forwardRef, type HTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -8,13 +8,13 @@ type SurfaceCardProps = HTMLAttributes<HTMLDivElement> & {
   variant?: SurfaceVariant;
 };
 
-export function SurfaceCard({
-  className,
-  variant = "high",
-  ...props
-}: SurfaceCardProps) {
+export const SurfaceCard = forwardRef<HTMLDivElement, SurfaceCardProps>(function SurfaceCard(
+  { className, variant = "high", ...props },
+  ref,
+) {
   return (
     <div
+      ref={ref}
       className={cn(
         "relative overflow-hidden rounded-[2rem] p-6 text-on-surface",
         variant === "low" && "bg-surface-container-low",
@@ -27,4 +27,4 @@ export function SurfaceCard({
       {...props}
     />
   );
-}
+});

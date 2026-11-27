@@ -1,98 +1,78 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { Coins, Plus } from "lucide-react";
-import Link from "next/link";
+import { useMutation, useQuery } from "convex/react";
+import { Plus, Users } from "lucide-react";
+import { useState } from "react";
 
+import { GroupList, GroupRow, GroupRowSkeleton } from "@/components/groups/compact-group-card";
+import { CreateGroupDialog, useCreateGroupDialog } from "@/components/groups/create-group-dialog";
+import {
+  buildLocalGroup,
+  mapLiveGroup,
+  mockGroups,
+  type CreateGroupDraft,
+  type GroupListItem,
+} from "@/components/groups/group-list-data";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
-import { CompactGroupCard } from "@/components/groups/compact-group-card";
+import { MobileTopBar } from "@/components/shell/mobile-top-bar";
 import { PageContainer } from "@/components/shell/page-container";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
-import { SurfaceCard } from "@/components/ui/surface-card";
 import { api } from "@/convex/_generated/api";
-import { iconMap } from "@/lib/icon-map";
-import { dashboardGroups, type IconKey, type StatTone } from "@/lib/placeholder-data";
-import { cn, formatCurrencyFromCents, getInitials } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
-type GroupListItem = {
-  id: string;
-  name: string;
-  memberLabel: string;
-  contextLabel: string;
-  balanceLabel: string;
-  balanceTone: StatTone;
-  icon: IconKey;
-  accentCount: number;
-  isOwner: boolean;
-  href: string;
+type GroupsIndexScreenProps = {
+  initialCreateOpen?: boolean;
 };
 
-function buildGroupHref(id: string, name: string, description?: string) {
-  const params = new URLSearchParams({ name });
+type GroupFilter = "all" | "owed" | "owe";
 
-  if (description?.trim()) {
-    params.set("description", description.trim());
-  }
+const FILTERS: Array<{ value: GroupFilter; label: string; matches: (group: GroupListItem) => boolean }> = [
+  { value: "all", label: "All", matches: () => true },
+  { value: "owed", label: "You're owed", matches: (group) => group.balanceCents > 0 },
+  { value: "owe", label: "You owe", matches: (group) => group.balanceCents < 0 },
+];
 
-  return `/groups/${id}?${params.toString()}`;
-}
-
-function formatBalanceLabel(valueCents: number, currency = "USD") {
-  if (valueCents === 0) {
-    return "Settled";
-  }
-
-  return `${valueCents > 0 ? "+" : "-"}${formatCurrencyFromCents(Math.abs(valueCents), currency)}`;
-}
-
-function mapMockGroups(): GroupListItem[] {
-  return dashboardGroups.map((group) => ({
-    id: group.id,
-    name: group.name,
-    memberLabel: `${group.memberCount} ${group.memberCount === 1 ? "member" : "members"}`,
-    contextLabel: group.context,
-    balanceLabel: group.balanceLabel,
-    balanceTone: group.balanceTone,
-    icon: group.icon,
-    accentCount: group.accentCount ?? Math.max(group.memberCount - 2, 0),
-    isOwner: true,
-    href: `/groups/${group.id}`,
-  }));
-}
-
-export function GroupsIndexScreen() {
+export function GroupsIndexScreen({ initialCreateOpen = false }: GroupsIndexScreenProps) {
   const { mode } = usePlaceholderMode();
 
-  if (mode !== "live") {
-    return <GroupsIndexScene groups={mapMockGroups()} isMock />;
+  if (mode === "live") {
+    return <LiveGroupsIndexScreen initialCreateOpen={initialCreateOpen} />;
   }
 
-  return <LiveGroupsIndexScreen />;
+  return <MockGroupsIndexScreen initialCreateOpen={initialCreateOpen} />;
 }
 
-function LiveGroupsIndexScreen() {
-  const currentUser = useQuery(api.users.current);
-  const groups = useQuery(
-    api.groups.listActiveForCurrentUser,
-    currentUser === undefined ? "skip" : {},
-  );
+function MockGroupsIndexScreen({ initialCreateOpen = false }: GroupsIndexScreenProps) {
+  const [groups, setGroups] = useState<GroupListItem[]>(mockGroups);
 
-  if (currentUser === undefined || groups === undefined) {
-    return (
-      <PageContainer className="space-y-6">
-        <ScreenState
-          state="loading"
-          title="Loading groups"
-          description="Pulling your active ledgers into one place."
-        />
-      </PageContainer>
-    );
+  async function handleCreateGroup(draft: CreateGroupDraft) {
+    const group = buildLocalGroup(draft);
+    setGroups((current) => [group, ...current]);
+    return group.id;
+  }
+
+  return <GroupsIndexScene initialCreateOpen={initialCreateOpen} groups={groups} onCreateGroup={handleCreateGroup} />;
+}
+
+function LiveGroupsIndexScreen({ initialCreateOpen = false }: GroupsIndexScreenProps) {
+  const currentUser = useQuery(api.users.current);
+  const groups = useQuery(api.groups.listActiveForCurrentUser, currentUser ? {} : "skip");
+  const createGroup = useMutation(api.groups.create);
+
+  async function handleCreateGroup(draft: CreateGroupDraft) {
+    return createGroup({
+      name: draft.name,
+      description: draft.description || undefined,
+      currency: draft.currency,
+      iconKey: draft.iconKey,
+    });
   }
 
   if (currentUser === null) {
     return (
-      <PageContainer className="space-y-6">
+      <PageContainer size="narrow">
+        <MobileTopBar variant="tab" title="Groups" />
         <ScreenState
           state="loading"
           title="Syncing your workspace"
@@ -102,215 +82,140 @@ function LiveGroupsIndexScreen() {
     );
   }
 
-  const groupItems: GroupListItem[] = groups.map((group) => ({
-    id: group._id,
-    name: group.name,
-    memberLabel: `${group.memberCount} ${group.memberCount === 1 ? "member" : "members"}`,
-    contextLabel:
-      group.description?.trim() ||
-      (group.expenseCount > 0
-        ? `${group.expenseCount} shared ${group.expenseCount === 1 ? "expense" : "expenses"} tracked`
-        : "Ready for the first shared expense"),
-    balanceLabel: formatBalanceLabel(group.balanceCents, group.currency),
-    balanceTone: group.balanceCents === 0 ? "neutral" : group.balanceCents > 0 ? "positive" : "negative",
-    icon: group.iconKey,
-    accentCount: Math.max(group.memberCount - 2, 0),
-    isOwner: group.role === "owner",
-    href: buildGroupHref(group._id, group.name, group.description),
-  }));
-
-  return <GroupsIndexScene groups={groupItems} />;
+  return (
+    <GroupsIndexScene
+      initialCreateOpen={initialCreateOpen}
+      groups={groups === undefined ? null : groups.map(mapLiveGroup)}
+      onCreateGroup={handleCreateGroup}
+    />
+  );
 }
 
-function GroupsIndexScene({
-  groups,
-  isMock = false,
-}: {
-  groups: GroupListItem[];
-  isMock?: boolean;
-}) {
+type GroupsIndexSceneProps = {
+  initialCreateOpen: boolean;
+  /** Null while loading. */
+  groups: GroupListItem[] | null;
+  onCreateGroup: (draft: CreateGroupDraft) => Promise<string>;
+};
+
+function GroupsIndexScene({ initialCreateOpen, groups, onCreateGroup }: GroupsIndexSceneProps) {
+  const createDialog = useCreateGroupDialog(initialCreateOpen);
+  const [filter, setFilter] = useState<GroupFilter>("all");
+  const [highlightGroupId, setHighlightGroupId] = useState<string | null>(null);
+
+  function handleCreated(groupId: string) {
+    setHighlightGroupId(groupId);
+    setFilter("all");
+    createDialog.close();
+  }
+
+  const activeFilter = FILTERS.find((option) => option.value === filter) ?? FILTERS[0]!;
+  const visibleGroups = groups?.filter(activeFilter.matches) ?? [];
+
   return (
-    <PageContainer className="page-glow relative space-y-5 sm:space-y-8 lg:space-y-10">
-      <section className="space-y-3">
-        <p className="hidden text-[0.68rem] uppercase tracking-[0.28em] text-on-surface-variant sm:block">
-          Shared Ledgers
-        </p>
-        <div className="flex items-center justify-between gap-3 lg:items-end lg:gap-4">
-          <div>
-            <h1 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface sm:text-5xl">
-              All Groups
-            </h1>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-on-surface-variant sm:mt-3 sm:text-sm sm:leading-7">
-              Browse every active split, jump back into a ledger, or start a new one from the dashboard composer.
-            </p>
-          </div>
-          <Link
-            href="/dashboard?create=1"
-            className={cn(buttonVariants({ variant: "primary", size: "lg" }), "hidden shrink-0 sm:inline-flex")}
+    <PageContainer size="narrow">
+      <MobileTopBar
+        variant="tab"
+        title="Groups"
+        actions={
+          <button
+            type="button"
+            onClick={createDialog.openDialog}
+            className="relative inline-flex h-9 items-center gap-1.5 rounded-full border border-white/8 bg-surface-container-high px-3.5 text-sm font-semibold text-on-surface transition after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
           >
-            <Plus className="h-4.5 w-4.5" />
-            New Group
-          </Link>
-        </div>
-      </section>
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New group
+          </button>
+        }
+      />
 
-      <section className="space-y-4 sm:space-y-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="font-headline text-xl font-bold tracking-tight text-on-surface sm:text-3xl">
-              Active Groups
-            </h2>
-            <p className="mt-0.5 text-xs text-on-surface-variant sm:mt-1 sm:text-sm">
-              {groups.length} active {groups.length === 1 ? "group" : "groups"} in view
-              {isMock ? " · mock data" : ""}
-            </p>
+      <header className="mb-8 hidden items-end justify-between gap-4 lg:flex">
+        <h1 className="font-headline text-4xl font-extrabold tracking-tight text-on-surface">Groups</h1>
+        <Button onClick={createDialog.openDialog}>
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          New group
+        </Button>
+      </header>
+
+      {groups === null ? (
+        <div role="status">
+          <span className="sr-only">Loading groups…</span>
+          <GroupList>
+            <GroupRowSkeleton />
+            <GroupRowSkeleton />
+            <GroupRowSkeleton />
+            <GroupRowSkeleton />
+          </GroupList>
+        </div>
+      ) : groups.length === 0 ? (
+        <EmptyGroups onCreate={createDialog.openDialog} />
+      ) : (
+        <div className="space-y-4">
+          <div role="group" aria-label="Filter groups" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5">
+            {FILTERS.map((option) => {
+              const count = groups.filter(option.matches).length;
+              const active = option.value === filter;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setFilter(option.value)}
+                  className={cn(
+                    "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-4 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                    active
+                      ? "bg-on-surface text-surface"
+                      : "bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
+                  )}
+                >
+                  {option.label}
+                  <span className={cn("tabular-nums", active ? "text-surface/70" : "text-on-surface-variant")}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        </div>
 
-        <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
-          {groups.length === 0 ? (
-            <EmptyGroupsState />
+          {visibleGroups.length === 0 ? (
+            <p className="rounded-3xl bg-surface-container-low px-4 py-5 text-sm text-on-surface-variant">
+              {filter === "owed" ? "No group owes you money right now." : "You don't owe money in any group."}
+            </p>
           ) : (
-            groups.map((group) => <GroupCard key={group.id} group={group} />)
+            <GroupList>
+              {visibleGroups.map((group) => (
+                <GroupRow key={group.id} group={group} highlighted={group.id === highlightGroupId} />
+              ))}
+            </GroupList>
           )}
         </div>
-      </section>
+      )}
+
+      <CreateGroupDialog
+        open={createDialog.open}
+        onClose={createDialog.close}
+        onCreate={onCreateGroup}
+        onCreated={handleCreated}
+      />
     </PageContainer>
   );
 }
 
-function GroupCard({ group }: { group: GroupListItem }) {
-  const Icon = iconMap[group.icon];
-
+function EmptyGroups({ onCreate }: { onCreate: () => void }) {
   return (
-    <>
-      <CompactGroupCard
-        href={group.href}
-        icon={group.icon}
-        name={group.name}
-        memberLabel={group.memberLabel}
-        balanceLabel={group.balanceLabel}
-        balanceTone={group.balanceTone}
-      />
-
-      <Link href={group.href} className="group hidden sm:block">
-        <SurfaceCard
-          variant="high"
-          className="min-h-[16rem] rounded-[2rem] p-5 transition duration-200 hover:bg-surface-bright sm:p-6"
-        >
-          <div className="relative flex h-full flex-col justify-between gap-8 overflow-hidden">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-surface-container-low text-on-surface-variant">
-                <Icon
-                  className={cn(
-                    "h-5 w-5",
-                    group.balanceTone === "negative" ? "text-secondary" : "text-primary",
-                  )}
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                {group.accentCount > 0 ? (
-                  <GroupAccentCluster name={group.name} accentCount={group.accentCount} />
-                ) : null}
-                {group.isOwner ? (
-                  <span className="hidden rounded-full bg-white/6 px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.2em] text-on-surface-variant xl:inline-flex">
-                    Owner
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <h3 className="font-headline text-[1.7rem] font-bold tracking-tight text-on-surface">
-                  {group.name}
-                </h3>
-                <p className="mt-1 text-sm text-on-surface-variant">{group.memberLabel}</p>
-              </div>
-              <p className="max-w-[18rem] text-sm italic text-on-surface-variant/90">{group.contextLabel}</p>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-[0.62rem] uppercase tracking-[0.24em] text-on-surface-variant">
-                Balance
-              </p>
-              <p
-                className={cn(
-                  "font-headline text-[2rem] font-extrabold tracking-tight",
-                  group.balanceTone === "positive" && "text-primary",
-                  group.balanceTone === "negative" && "text-secondary",
-                  group.balanceTone === "neutral" && "text-on-surface",
-                )}
-              >
-                {group.balanceLabel}
-              </p>
-            </div>
-
-            <div
-              className={cn(
-                "pointer-events-none absolute -bottom-8 -right-8 h-28 w-28 rounded-full blur-3xl transition group-hover:opacity-100",
-                group.balanceTone === "negative" ? "bg-secondary/12" : "bg-primary/10",
-              )}
-            />
-          </div>
-        </SurfaceCard>
-      </Link>
-    </>
-  );
-}
-
-function GroupAccentCluster({ name, accentCount }: { name: string; accentCount: number }) {
-  const initials = getInitials(name);
-  const first = initials[0] ?? "S";
-  const second = initials[1] ?? first;
-
-  return (
-    <div className="hidden items-center xl:flex">
-      <div className="flex items-center -space-x-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-surface bg-primary/18 text-[0.65rem] font-semibold text-primary">
-          {first}
-        </span>
-        <span className="flex h-8 w-8 items-center justify-center rounded-full border border-surface bg-secondary/16 text-[0.65rem] font-semibold text-secondary">
-          {second}
-        </span>
-      </div>
-      {accentCount > 0 ? (
-        <span className="ml-2 inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-white/6 px-2 text-[0.62rem] font-semibold text-on-surface-variant">
-          +{accentCount}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-function EmptyGroupsState() {
-  return (
-    <SurfaceCard variant="hero" className="rounded-[2rem]">
-      <div className="flex h-full flex-col justify-between gap-6">
-        <div className="flex h-14 w-14 items-center justify-center rounded-[1.15rem] bg-primary/14 text-primary">
-          <Coins className="h-6 w-6" />
-        </div>
-
-        <div className="space-y-3">
-          <h3 className="font-headline text-3xl font-extrabold tracking-tight text-on-surface">
-            No groups yet
-          </h3>
-          <p className="max-w-xl text-sm leading-7 text-on-surface-variant">
-            Start with rent, a trip, or a dinner rotation. Once the group exists, it appears here reactively.
-          </p>
-        </div>
-
-        <div>
-          <Link
-            href="/dashboard?create=1"
-            className={buttonVariants({ variant: "primary", size: "lg" })}
-          >
-            <Plus className="h-4.5 w-4.5" />
-            Create Group
-          </Link>
-        </div>
-      </div>
-    </SurfaceCard>
+    <section className="rounded-3xl bg-surface-container-low px-5 py-8 text-center sm:px-8">
+      <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/14 text-primary">
+        <Users className="h-6 w-6" aria-hidden="true" />
+      </span>
+      <h2 className="mt-4 font-headline text-xl font-bold text-on-surface">No groups yet</h2>
+      <p className="mx-auto mt-1.5 max-w-sm text-sm leading-6 text-on-surface-variant">
+        Groups keep shared expenses and balances in one place.
+      </p>
+      <Button size="lg" className="mt-5" onClick={onCreate}>
+        <Plus className="h-4.5 w-4.5" aria-hidden="true" />
+        Create a group
+      </Button>
+    </section>
   );
 }

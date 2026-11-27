@@ -13,7 +13,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
     <AuthShell
       mode="invite"
       footer={
-        <p className="text-[0.68rem] uppercase tracking-[0.24em] text-on-surface-variant">
+        <p className="text-xs font-medium text-on-surface-variant">
           secure token · {tokenPreview}
         </p>
       }

@@ -61,39 +61,44 @@ export function ScreenState({
 
   return (
     <SurfaceCard
-      variant="high"
+      variant="low"
+      role={state === "loading" ? "status" : state === "error" ? "alert" : undefined}
       className={cn(
-        "mx-auto max-w-2xl space-y-4 rounded-[2.2rem]",
+        "mx-auto max-w-xl space-y-4 rounded-3xl p-6 sm:p-8",
         align === "center" && "text-center",
         className,
       )}
     >
       <div
         className={cn(
-          "flex h-16 w-16 items-center justify-center rounded-full",
+          "flex h-12 w-12 items-center justify-center rounded-2xl [&_svg]:h-6 [&_svg]:w-6",
           align === "center" ? "mx-auto" : "mx-0",
           config.iconWrapClassName,
         )}
+        aria-hidden="true"
       >
-        {icon ?? <DefaultIcon className={cn("h-7 w-7", config.iconClassName)} />}
+        {icon ?? <DefaultIcon className={config.iconClassName} />}
       </div>
 
-      <div className="space-y-3">
-        {eyebrow ? (
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-on-surface-variant">
-            {eyebrow}
-          </p>
-        ) : null}
-        <h1 className="font-headline text-3xl font-bold tracking-tight text-on-surface">
+      <div className="space-y-1.5">
+        {eyebrow ? <p className="text-xs font-semibold text-on-surface-variant">{eyebrow}</p> : null}
+        <h1 className="font-headline text-xl font-bold tracking-tight text-on-surface sm:text-2xl">
           {title}
         </h1>
-        <p className="text-sm leading-7 text-on-surface-variant">{description}</p>
+        <p
+          className={cn(
+            "text-sm leading-6 text-on-surface-variant",
+            align === "center" && "mx-auto max-w-sm",
+          )}
+        >
+          {description}
+        </p>
       </div>
 
       {actions ? (
         <div
           className={cn(
-            "flex flex-wrap gap-3",
+            "flex flex-wrap gap-3 pt-1",
             align === "center" ? "justify-center" : "justify-start",
           )}
         >
