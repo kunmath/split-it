@@ -8,7 +8,7 @@ import {
   ReceiptText,
   Trash2,
 } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { ComposerDateSheet } from "@/components/expenses/composer-date-sheet";
 import { ComposerHeader } from "@/components/expenses/composer-header";
@@ -23,11 +23,12 @@ import {
 import { ComposerPayerSheet } from "@/components/expenses/composer-payer-sheet";
 import { ComposerSplitSheet } from "@/components/expenses/composer-split-sheet";
 import { useComposerState, type ComposerState } from "@/components/expenses/use-composer-state";
-import { useKeyboardInset } from "@/components/expenses/use-keyboard-inset";
-import { useBackNavigation } from "@/components/shell/mobile-top-bar";
+import { useExitComposer } from "@/components/expenses/use-exit-composer";
 import { Button } from "@/components/ui/button";
 import { Money } from "@/components/ui/money";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
+import { useHistoryLayer } from "@/components/ui/use-history-layer";
+import { useKeyboardInset } from "@/components/ui/use-keyboard-inset";
 import { iconMap } from "@/lib/icon-map";
 import { cn } from "@/lib/utils";
 
@@ -46,17 +47,47 @@ export function ExpenseComposerScene({ data, onSaveExpense, onDeleteExpense }: E
   const amountRef = useRef<HTMLInputElement>(null);
   const descriptionRef = useRef<HTMLInputElement>(null);
   const keyboardInset = useKeyboardInset();
-  const leaveComposer = useBackNavigation(`/groups/${data.groupId}`);
+  const exitComposer = useExitComposer(data.groupId);
+  const [leaving, setLeaving] = useState(false);
   const closeSheet = () => setOpenSheet(null);
+  const isBusy = state.isSaving || state.isDeleting;
+  const guardDraft = state.isDirty && !leaving;
+
+  function leaveComposer() {
+    setLeaving(true);
+    exitComposer();
+  }
 
   function requestClose() {
-    if (state.isDirty && !state.isSaving && !state.isDeleting) {
+    if (state.isDirty && !isBusy) {
       setOpenSheet("discard");
       return;
     }
 
     leaveComposer();
   }
+
+  // System Back on a dirty draft asks before discarding (sheets above it close first).
+  const handleGuardPop = useCallback(() => {
+    if (!isBusy) {
+      setOpenSheet("discard");
+    }
+  }, [isBusy]);
+  useHistoryLayer(guardDraft && openSheet !== "discard", handleGuardPop);
+
+  useEffect(() => {
+    if (!guardDraft) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [guardDraft]);
 
   const { fieldErrors, isEditMode, currency } = state;
   const CategoryIcon = (() => {
@@ -357,7 +388,6 @@ function SplitSentence({
           ariaLabel={`Split ${modeLabel}${splitProblem ? `, ${splitProblem}` : ""}. Change split`}
         >
           {modeLabel}
-          {splitProblem && selectedIds.length > 0 ? <span className="font-medium"> · {splitProblem}</span> : null}
         </SentenceToken>
         <span>among</span>
         <SentenceToken

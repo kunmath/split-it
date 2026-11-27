@@ -18,7 +18,7 @@ function subscribe(onChange: () => void) {
   };
 }
 
-function getSnapshot() {
+function getInsetSnapshot() {
   const viewport = window.visualViewport;
 
   if (!viewport) {
@@ -26,6 +26,10 @@ function getSnapshot() {
   }
 
   return Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop));
+}
+
+function getHeightSnapshot() {
+  return Math.round(window.visualViewport?.height ?? window.innerHeight);
 }
 
 function getServerSnapshot() {
@@ -38,5 +42,10 @@ function getServerSnapshot() {
  * which don't resize the layout viewport when the keyboard opens.
  */
 export function useKeyboardInset() {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  return useSyncExternalStore(subscribe, getInsetSnapshot, getServerSnapshot);
+}
+
+/** Height of the visible viewport in px (0 during SSR). */
+export function useVisualViewportHeight() {
+  return useSyncExternalStore(subscribe, getHeightSnapshot, getServerSnapshot);
 }

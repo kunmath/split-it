@@ -61,6 +61,43 @@ describe("groups.listPeopleBalances", () => {
     ]);
   });
 
+  it("keeps a person whose balances offset across groups", async () => {
+    const { asAlice, asBob, groupId, aliceId, bobId } = await setUpGroup();
+    const otherGroupId = await asAlice.mutation(api.groups.create, { name: "Flat" });
+    const invite = await asAlice.mutation(api.invites.create, { groupId: otherGroupId });
+    await asBob.mutation(api.invites.accept, { token: invite.token });
+
+    // Trip: Bob owes Alice ₹100. Flat: Alice owes Bob ₹100. Net 0, but both groups stay open.
+    await asAlice.mutation(api.expenses.createExpense, {
+      groupId,
+      description: "Snacks",
+      amountCents: 20_000,
+      paidBy: aliceId,
+      splitType: "equal",
+      participantIds: [aliceId, bobId],
+      expenseAt: Date.now(),
+    });
+    await asBob.mutation(api.expenses.createExpense, {
+      groupId: otherGroupId,
+      description: "Soap",
+      amountCents: 20_000,
+      paidBy: bobId,
+      splitType: "equal",
+      participantIds: [aliceId, bobId],
+      expenseAt: Date.now(),
+    });
+
+    const people = await asAlice.query(api.groups.listPeopleBalances, {});
+    expect(people).toHaveLength(1);
+    expect(people[0]).toMatchObject({ userId: bobId, name: "Bob", balanceCents: 0 });
+    expect(people[0]!.groups.map((group) => [group.groupId, group.balanceCents]).sort()).toEqual(
+      [
+        [groupId, 10_000],
+        [otherGroupId, -10_000],
+      ].sort(),
+    );
+  });
+
   it("is empty when everyone is settled", async () => {
     const { asAlice } = await setUpGroup();
     expect(await asAlice.query(api.groups.listPeopleBalances, {})).toEqual([]);

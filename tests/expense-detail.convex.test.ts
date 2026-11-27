@@ -112,7 +112,7 @@ describe("getEntryDetail", () => {
     expect(detail!.notes).toBe("Cash");
   });
 
-  it("rejects users who are not members of the group", async () => {
+  it("returns null for users who are not members of the group", async () => {
     const { t, asAlice, groupId, aliceId } = await setUpGroupWithThreeMembers();
     const asMallory = t.withIdentity({
       subject: "user_mallory",
@@ -131,7 +131,15 @@ describe("getEntryDetail", () => {
       expenseAt: Date.now(),
     });
 
-    await expect(asMallory.query(api.expenses.getEntryDetail, { expenseId })).rejects.toThrow();
+    expect(await asMallory.query(api.expenses.getEntryDetail, { expenseId })).toBeNull();
+  });
+
+  it("returns null for ids that aren't ledger entries", async () => {
+    const { asAlice, groupId } = await setUpGroupWithThreeMembers();
+
+    expect(await asAlice.query(api.expenses.getEntryDetail, { expenseId: "not-an-id" })).toBeNull();
+    // A well-formed id from another table must not throw a validator error either.
+    expect(await asAlice.query(api.expenses.getEntryDetail, { expenseId: groupId })).toBeNull();
   });
 
   it("returns null once the entry has been deleted", async () => {

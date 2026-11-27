@@ -596,19 +596,31 @@ export const listPageForGroup = query({
 /**
  * Read-only view of a single ledger entry (expense or settlement) for any
  * active member of its group. `canEdit` mirrors requireExpenseEditPermission.
+ * Returns null for unknown ids, deleted entries and viewers without access, so
+ * deep links render a clean "unavailable" state instead of throwing.
  */
 export const getEntryDetail = query({
   args: {
-    expenseId: v.id("expenses"),
+    expenseId: v.string(),
   },
   handler: async (ctx, args) => {
-    const expense = await ctx.db.get(args.expenseId);
+    const expenseId = ctx.db.normalizeId("expenses", args.expenseId);
+    const expense = expenseId === null ? null : await ctx.db.get(expenseId);
 
     if (expense === null) {
       return null;
     }
 
-    const access = await requireGroupMember(ctx, expense.groupId);
+    let access: Awaited<ReturnType<typeof requireGroupMember>>;
+    try {
+      access = await requireGroupMember(ctx, expense.groupId);
+    } catch (error) {
+      if (error instanceof ConvexError) {
+        return null;
+      }
+      throw error;
+    }
+
     const shares = await ctx.db
       .query("expenseShares")
       .withIndex("by_expense", (q) => q.eq("expenseId", expense._id))
@@ -616,18 +628,20 @@ export const getEntryDetail = query({
 
     const userIds = new Set<Id<"users">>([expense.paidBy, ...shares.map((share) => share.userId)]);
     const users = await Promise.all([...userIds].map((userId) => ctx.db.get(userId)));
-    const nameLookup = new Map<Id<"users">, string>();
+    const userLookup = new Map<Id<"users">, Doc<"users">>();
     for (const user of users) {
       if (user !== null) {
-        nameLookup.set(user._id, user.name);
+        userLookup.set(user._id, user);
       }
     }
-    const nameOf = (userId: Id<"users">) => nameLookup.get(userId) ?? "Former member";
+    const nameOf = (userId: Id<"users">) => userLookup.get(userId)?.name ?? "Former member";
+    const imageOf = (userId: Id<"users">) => userLookup.get(userId)?.imageUrl;
 
     const shareRows = shares
       .map((share) => ({
         userId: share.userId,
         name: nameOf(share.userId),
+        imageUrl: imageOf(share.userId),
         shareCents: share.shareCents,
         isCurrentUser: share.userId === access.user._id,
       }))
@@ -650,6 +664,7 @@ export const getEntryDetail = query({
       paidBy: {
         id: expense.paidBy,
         name: nameOf(expense.paidBy),
+        imageUrl: imageOf(expense.paidBy),
         isCurrentUser: expense.paidBy === access.user._id,
       },
       shares: shareRows,

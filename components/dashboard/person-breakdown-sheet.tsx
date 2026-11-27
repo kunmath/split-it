@@ -17,13 +17,20 @@ function firstName(name: string) {
 function describeTotal(person: PersonBalanceItem) {
   const amount = formatMoneyFromCents(Math.abs(person.balanceCents), person.currency);
   const name = firstName(person.name);
+  if (person.balanceCents === 0) {
+    return `Your balances with ${name} offset overall, but each group below still needs settling.`;
+  }
+
+  if (person.groups.length === 1) {
+    return "Settle up here, or open the group to see the expenses behind it.";
+  }
 
   return person.balanceCents > 0
     ? `Overall, ${name} owes you ${amount} across ${person.groups.length} groups.`
     : `Overall, you owe ${name} ${amount} across ${person.groups.length} groups.`;
 }
 
-/** Per-group breakdown for a person whose balance spans several groups. Settling happens per group. */
+/** Per-group breakdown of a person's balance. Settling happens per group. */
 export function PersonBreakdownSheet({ person, onClose }: { person: PersonBalanceItem | null; onClose: () => void }) {
   return (
     <ResponsiveDialog

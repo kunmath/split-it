@@ -156,7 +156,7 @@ function GroupExpenseRow({
         type="button"
         aria-haspopup="dialog"
         onClick={() => onOpen(expense)}
-        className={cn(rowClass, "bg-primary/[0.05] ring-1 ring-inset ring-primary/10 hover:bg-primary/[0.09]")}
+        className={cn(rowClass, "hover:bg-white/4")}
       >
         <span className="sr-only">{dateLabel}, </span>
         <DateBlock timestamp={expense.expenseAt} />

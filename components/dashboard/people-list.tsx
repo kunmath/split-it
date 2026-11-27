@@ -1,7 +1,6 @@
 "use client";
 
 import { ChevronRight } from "lucide-react";
-import Link from "next/link";
 import { useId, useState } from "react";
 
 import { PersonBreakdownSheet } from "@/components/dashboard/person-breakdown-sheet";
@@ -70,50 +69,32 @@ export function PeopleList({ people }: { people: PersonBalanceItem[] }) {
 
 function PersonRow({ person, onOpenBreakdown }: { person: PersonBalanceItem; onOpenBreakdown: () => void }) {
   const tone = toneFromCents(person.balanceCents);
-  const multiGroup = person.groups.length > 1;
-  const content = (
-    <>
-      <UserAvatar name={person.name} imageUrl={person.imageUrl} size="md" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-headline text-base font-semibold text-on-surface">{person.name}</span>
-        <span className="block truncate text-xs text-on-surface-variant">{describeGroups(person.groups)}</span>
-      </span>
-      <span className="shrink-0 text-right">
-        <span className={cn("block text-xs", toneTextClass[tone])}>
-          {tone === "positive" ? "owes you" : "you owe"}
-        </span>
-        <Money
-          cents={person.balanceCents}
-          currency={person.currency}
-          tone={tone}
-          className="block font-headline text-base font-bold"
-        />
-      </span>
-      {multiGroup ? <ChevronRight className="-mr-1 h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden="true" /> : null}
-    </>
-  );
-
-  if (multiGroup) {
-    return (
-      <li>
-        <button type="button" aria-haspopup="dialog" onClick={onOpenBreakdown} className={cn(rowClass, interactiveRowClass)}>
-          {content}
-        </button>
-      </li>
-    );
-  }
-
-  const target = person.groups[0];
 
   return (
     <li>
-      {target ? (
-        <Link href={target.href} className={cn(rowClass, interactiveRowClass)}>
-          {content}
-        </Link>
-      ) : (
-        <div className={rowClass}>{content}</div>
-      )}
+      <button type="button" aria-haspopup="dialog" onClick={onOpenBreakdown} className={cn(rowClass, interactiveRowClass)}>
+        <UserAvatar name={person.name} imageUrl={person.imageUrl} size="md" />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-headline text-base font-semibold text-on-surface">{person.name}</span>
+          <span className="block truncate text-xs text-on-surface-variant">{describeGroups(person.groups)}</span>
+        </span>
+        {tone === "neutral" ? (
+          <span className="shrink-0 text-right text-xs text-on-surface-variant">balances offset</span>
+        ) : (
+          <span className="shrink-0 text-right">
+            <span className={cn("block text-xs", toneTextClass[tone])}>
+              {tone === "positive" ? "owes you" : "you owe"}
+            </span>
+            <Money
+              cents={person.balanceCents}
+              currency={person.currency}
+              tone={tone}
+              className="block font-headline text-base font-bold"
+            />
+          </span>
+        )}
+        <ChevronRight className="-mr-1 h-4 w-4 shrink-0 text-on-surface-variant" aria-hidden="true" />
+      </button>
     </li>
   );
 }

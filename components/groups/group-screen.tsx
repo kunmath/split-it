@@ -181,6 +181,17 @@ function GroupScene({
   const [balancesOpen, setBalancesOpen] = useState(false);
   const [openEntry, setOpenEntry] = useState<GroupExpense | null>(null);
   const isSettleOpen = shouldAutoOpen || localSettleOpen;
+  // `?entry=<id>` deep-links to one ledger entry (e.g. from Activity).
+  const entryParam = searchParams.get("entry");
+  // Hides the linked entry right away on close, before router.replace drops the param.
+  const [dismissedEntryParam, setDismissedEntryParam] = useState<string | null>(null);
+  if (dismissedEntryParam !== null && entryParam !== dismissedEntryParam) {
+    setDismissedEntryParam(null);
+  }
+  const linkedEntryId = entryParam !== dismissedEntryParam ? entryParam : null;
+  const entryId = openEntry?.id ?? linkedEntryId;
+  const entrySummary =
+    openEntry ?? group.recentExpenses.find((expense) => expense.id === linkedEntryId) ?? null;
 
   const urlPreset: SettleUpPreset | null =
     shouldAutoOpen && withParam
@@ -210,6 +221,16 @@ function GroupScene({
       next.delete("with");
       const query = next.toString();
       router.replace(query ? `${pathname}?${query}` : pathname);
+    }
+  };
+  const closeEntry = () => {
+    setOpenEntry(null);
+    if (entryParam) {
+      setDismissedEntryParam(entryParam);
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete("entry");
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     }
   };
 
@@ -289,17 +310,21 @@ function GroupScene({
 
       {isMock ? (
         <MockGroupEntrySheet
-          entry={openEntry}
+          entryId={entryId}
+          summary={entrySummary}
           groupId={group.groupId}
+          groupIconKey={group.iconKey}
           currency={group.groupCurrency}
-          onClose={() => setOpenEntry(null)}
+          onClose={closeEntry}
         />
       ) : (
         <LiveGroupEntrySheet
-          entry={openEntry}
+          entryId={entryId}
+          summary={entrySummary}
           groupId={group.groupId}
+          groupIconKey={group.iconKey}
           currency={group.groupCurrency}
-          onClose={() => setOpenEntry(null)}
+          onClose={closeEntry}
         />
       )}
 

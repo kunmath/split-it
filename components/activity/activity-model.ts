@@ -1,3 +1,4 @@
+import { formatMoneyFromCents } from "@/lib/format";
 import type { ActivityPlaceholder } from "@/lib/placeholder-data";
 
 export type ActivityItem = ActivityPlaceholder & {
@@ -113,6 +114,51 @@ export function payeeLabel(activity: ActivityItem) {
   }
 
   return shortName(activity.counterpartyName);
+}
+
+/** Opens the exact ledger entry (`?entry=`) unless it was deleted; otherwise the group. */
+export function activityHref(activity: ActivityItem) {
+  const groupHref = `/groups/${activity.groupId}`;
+
+  if (!activity.expenseId || activity.action === "deleted") {
+    return groupHref;
+  }
+
+  return `${groupHref}?${new URLSearchParams({ entry: activity.expenseId }).toString()}`;
+}
+
+/** Row title: the expense name, or "Priya paid you" for payments. */
+export function activityTitle(activity: ActivityItem) {
+  if (activity.kind === "settlement") {
+    return `${payerLabel(activity)} paid ${payeeLabel(activity)}`;
+  }
+
+  return activity.description;
+}
+
+/** Row subtitle: who did what, and where ("Sarah added · Iceland Expedition"). */
+export function activityMeta(activity: ActivityItem) {
+  const parts: string[] = [];
+
+  if (activity.action === "deleted") {
+    parts.push(`${actorLabel(activity)} deleted`);
+  } else if (activity.action === "updated") {
+    parts.push(`${actorLabel(activity)} edited`);
+  } else if (activity.kind === "expense") {
+    parts.push(`${actorLabel(activity)} added`);
+  }
+
+  parts.push(activity.groupName);
+
+  if (
+    activity.action === "updated" &&
+    activity.previousAmountCents != null &&
+    activity.previousAmountCents !== activity.amountCents
+  ) {
+    parts.push(`was ${formatMoneyFromCents(activity.previousAmountCents, activity.groupCurrency)}`);
+  }
+
+  return parts.join(" · ");
 }
 
 export type ActivityOutcome = {

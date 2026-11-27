@@ -46,6 +46,8 @@ export function buildMockActivityFeed(
     return [
       {
         id: `activity-${pick.groupId}-${expense.id}`,
+        // Same id as the group ledger entry, so `?entry=` deep links resolve in the demo group screen.
+        expenseId: expense.id,
         groupId: scene.groupId,
         groupName: scene.groupName,
         groupCurrency: scene.groupCurrency,

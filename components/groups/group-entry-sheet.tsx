@@ -16,7 +16,9 @@ import { showToast } from "@/components/ui/toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { getExpenseIconKey } from "@/lib/expense-icons";
 import { iconMap } from "@/lib/icon-map";
+import type { IconKey } from "@/lib/placeholder-data";
 import { cn } from "@/lib/utils";
 
 const fullDateFormat = new Intl.DateTimeFormat("en-US", {
@@ -36,20 +38,47 @@ const dangerButtonClass =
   "border-secondary/40 bg-secondary/10 text-secondary hover:bg-secondary/20 hover:text-secondary";
 
 type EntrySheetProps = {
-  /** The tapped ledger row; its summary renders instantly while the detail loads. */
-  entry: GroupExpense | null;
+  /** The entry to show; null when the sheet is closed. */
+  entryId: string | null;
+  /**
+   * The tapped ledger row; its summary renders instantly while the detail loads. Deep links to
+   * entries that aren't in the loaded ledger page have none and wait for the detail instead.
+   */
+  summary: GroupExpense | null;
   groupId: string;
+  groupIconKey: IconKey;
   currency: string;
   onClose: () => void;
 };
 
-export function MockGroupEntrySheet({ entry, groupId, currency, onClose }: EntrySheetProps) {
-  const detail = entry ? getMockEntryDetail(groupId, entry.id) : null;
+/** Rebuilds a ledger row from the detail, for deep links that arrive without one. */
+function summaryFromDetail(detail: GroupEntryDetail, groupIconKey: IconKey): GroupExpense {
+  const recipient = detail.kind === "settlement" ? detail.shares[0] : undefined;
+
+  return {
+    id: detail.id,
+    description: detail.description,
+    amountCents: detail.amountCents,
+    expenseAt: detail.expenseAt,
+    paidByName: detail.paidBy.name,
+    paidByCurrentUser: detail.paidBy.isCurrentUser,
+    currentUserNetCents: detail.currentUserNetCents,
+    splitType: detail.splitType,
+    kind: detail.kind,
+    counterpartyName: recipient?.name ?? null,
+    counterpartyIsCurrentUser: recipient?.isCurrentUser ?? false,
+    participantCount: detail.shares.length,
+    iconKey: getExpenseIconKey(detail.description, groupIconKey),
+  };
+}
+
+export function MockGroupEntrySheet({ entryId, summary, groupId, groupIconKey, currency, onClose }: EntrySheetProps) {
+  const detail = entryId ? getMockEntryDetail(groupId, entryId) : null;
 
   return (
     <EntrySheetFrame
-      key={entry?.id ?? "closed"}
-      entry={entry}
+      key={entryId ?? "closed"}
+      entry={summary ?? (detail ? summaryFromDetail(detail, groupIconKey) : null)}
       detail={detail}
       groupId={groupId}
       currency={currency}
@@ -62,18 +91,23 @@ export function MockGroupEntrySheet({ entry, groupId, currency, onClose }: Entry
   );
 }
 
-export function LiveGroupEntrySheet({ entry, groupId, currency, onClose }: EntrySheetProps) {
-  const detail = useQuery(
-    api.expenses.getEntryDetail,
-    entry ? { expenseId: entry.id as Id<"expenses"> } : "skip",
-  );
+export function LiveGroupEntrySheet({ entryId, summary, groupId, groupIconKey, currency, onClose }: EntrySheetProps) {
+  const result = useQuery(api.expenses.getEntryDetail, entryId ? { expenseId: entryId } : "skip");
   const deleteExpense = useMutation(api.expenses.deleteExpense);
+  // Entries from another group (e.g. a hand-edited link) are treated as unavailable here.
+  const detail: GroupEntryDetail | null | undefined =
+    result === undefined
+      ? undefined
+      : result === null || String(result.groupId) !== groupId
+        ? null
+        : { ...result, groupId: String(result.groupId) };
+  const entry = summary ?? (detail ? summaryFromDetail(detail, groupIconKey) : null);
 
   return (
     <EntrySheetFrame
-      key={entry?.id ?? "closed"}
+      key={entryId ?? "closed"}
       entry={entry}
-      detail={detail === undefined ? undefined : detail === null ? null : { ...detail, groupId: String(detail.groupId) }}
+      detail={detail}
       groupId={groupId}
       currency={currency}
       onClose={onClose}
@@ -96,9 +130,13 @@ function EntrySheetFrame({
   currency,
   onClose,
   onDelete,
-}: EntrySheetProps & {
+}: {
+  entry: GroupExpense | null;
   /** undefined while loading, null when the entry no longer exists. */
   detail: GroupEntryDetail | null | undefined;
+  groupId: string;
+  currency: string;
+  onClose: () => void;
   onDelete: () => Promise<void>;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -303,7 +341,7 @@ function ExpenseBody({
       <section aria-label="Shares">
         <p className="text-xs font-semibold text-on-surface-variant">
           {splitTypeLabel[splitType]}
-          {detail ? ` · ${detail.shares.length} ${detail.shares.length === 1 ? "share" : "shares"}` : null}
+          {detail ? ` · ${detail.shares.length} ${detail.shares.length === 1 ? "person" : "people"}` : null}
         </p>
         {detail === undefined ? (
           <div className="mt-2 space-y-3" aria-busy="true" aria-label="Loading shares">
@@ -321,7 +359,7 @@ function ExpenseBody({
               const isPayer = share.userId === detail.paidBy.id;
               return (
                 <li key={share.userId} className="flex min-h-11 items-center gap-3 py-1.5">
-                  <UserAvatar name={share.isCurrentUser ? "You" : share.name} size="sm" />
+                  <UserAvatar name={share.name} imageUrl={share.imageUrl} size="sm" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-on-surface">
                       {share.isCurrentUser ? "You" : share.name}

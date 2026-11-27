@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  activityHref,
+  activityMeta,
+  activityTitle,
   actorLabel,
   formatDayLabel,
   getActivityOutcome,
@@ -9,6 +12,7 @@ import {
   type ActivityItem,
 } from "../components/activity/activity-model";
 import { MOCK_ACTIVITY_PICKS, buildMockActivityFeed } from "../components/activity/mock-activity";
+import { getMockGroupSceneData } from "../components/groups/group-mock-data";
 import type { GroupExpense, GroupSceneData } from "../components/groups/group-types";
 
 const NOW = new Date(2026, 10, 26, 15, 0, 0).getTime();
@@ -99,7 +103,40 @@ describe("activity outcome wording", () => {
   });
 });
 
+describe("activity row content", () => {
+  it("links to the exact entry unless it was deleted or has no entry id", () => {
+    expect(activityHref(activity({ expenseId: "exp_1" }))).toBe("/groups/g?entry=exp_1");
+    expect(activityHref(activity({ expenseId: "exp_1", action: "deleted" }))).toBe("/groups/g");
+    expect(activityHref(activity({ expenseId: null }))).toBe("/groups/g");
+  });
+
+  it("puts the expense name or the payment sentence first, then who did it and where", () => {
+    expect(activityTitle(activity({}))).toBe("Dinner");
+    expect(activityMeta(activity({}))).toBe("Sarah added · Trip");
+    expect(activityMeta(activity({ action: "updated", previousAmountCents: 600 }))).toBe("Sarah edited · Trip · was ₹6.00");
+    expect(activityMeta(activity({ action: "deleted", actorName: "Marcus Vale" }))).toBe("Marcus deleted · Trip");
+
+    const payment = activity({ kind: "settlement", paidByName: "Priya Nair", counterpartyIsCurrentUser: true });
+    expect(activityTitle(payment)).toBe("Priya paid you");
+    expect(activityMeta(payment)).toBe("Trip");
+    expect(activityTitle(activity({ kind: "settlement", paidByCurrentUser: true, counterpartyName: "Elena Rodriguez" }))).toBe(
+      "You paid Elena",
+    );
+  });
+});
+
 describe("demo activity feed", () => {
+  it("deep-links every demo row to an entry that exists in that group's demo ledger", () => {
+    const feed = buildMockActivityFeed(getMockGroupSceneData, NOW);
+    expect(feed).toHaveLength(MOCK_ACTIVITY_PICKS.length);
+
+    for (const item of feed) {
+      const ledgerIds = getMockGroupSceneData(item.groupId).recentExpenses.map((entry) => entry.id);
+      expect(ledgerIds).toContain(item.expenseId);
+      expect(activityHref(item)).toBe(`/groups/${item.groupId}?entry=${item.expenseId}`);
+    }
+  });
+
   const MOCK_GROUP_IDS = ["modern-loft-4b", "tokyo-trip-24", "shared-groceries", "friday-dinners"];
 
   function ledgerEntry(description: string, overrides: Partial<GroupExpense> = {}): GroupExpense {

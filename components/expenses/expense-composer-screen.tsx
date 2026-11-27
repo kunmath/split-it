@@ -3,26 +3,26 @@
 import { useMutation, useQuery } from "convex/react";
 import { Users } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { startTransition, useContext, useState } from "react";
+import { useState } from "react";
 
 import { ExpenseComposerScene } from "@/components/expenses/composer-scene";
 import {
   buildSavedExpenseMessage,
   type ComposerMember,
   type ComposerSceneData,
+  type ExistingExpenseDraft,
   type ExpenseDraft,
   type SplitType,
 } from "@/components/expenses/composer-model";
+import { useExitComposer } from "@/components/expenses/use-exit-composer";
 import { usePlaceholderMode } from "@/components/providers/app-providers";
-import { InAppHistoryContext } from "@/components/shell/mobile-top-bar";
 import { buttonVariants } from "@/components/ui/button";
 import { ScreenState } from "@/components/ui/screen-state";
 import { SkeletonBlock } from "@/components/ui/skeletons";
 import { showToast } from "@/components/ui/toast";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { getMockGroupSceneData } from "@/components/groups/group-mock-data";
+import { getMockEntryDetail, getMockGroupSceneData } from "@/components/groups/group-mock-data";
 
 type ExpenseComposerScreenProps = {
   groupId: string;
@@ -39,29 +39,48 @@ function buildMockComposerData(groupId: string, expenseId?: string): ComposerSce
     role: member.role,
     isCurrentUser: member.isCurrentUser,
   }));
-  const [viewer, second, third] = members;
 
   return {
     groupId,
     groupName: group.groupName,
     groupCurrency: group.groupCurrency,
     members,
-    expense: expenseId
-      ? {
-          id: expenseId,
-          description: "Dinner at Prime",
-          amountCents: 12_000,
-          paidBy: viewer?.id ?? "",
-          splitType: "exact",
-          expenseAt: new Date("2024-10-27T12:00:00.000Z").getTime(),
-          notes: "Booked the corner table; tip included.",
-          shares: [
-            { userId: viewer?.id ?? "", shareCents: 4_500 },
-            { userId: second?.id ?? "", shareCents: 3_500 },
-            { userId: third?.id ?? "", shareCents: 4_000 },
-          ],
-        }
-      : null,
+    expense: expenseId ? buildMockExpenseDraft(groupId, expenseId, members) : null,
+  };
+}
+
+/** The demo ledger entry the user tapped, or a sample expense when the id isn't in the ledger. */
+function buildMockExpenseDraft(groupId: string, expenseId: string, members: ComposerMember[]): ExistingExpenseDraft {
+  const entry = getMockEntryDetail(groupId, expenseId);
+
+  if (entry) {
+    return {
+      id: expenseId,
+      description: entry.description,
+      amountCents: entry.amountCents,
+      paidBy: entry.paidBy.id,
+      splitType: entry.splitType,
+      expenseAt: entry.expenseAt,
+      notes: entry.notes ?? undefined,
+      shares: entry.shares.map((share) => ({ userId: share.userId, shareCents: share.shareCents })),
+    };
+  }
+
+  const [viewer, second, third] = members;
+
+  return {
+    id: expenseId,
+    description: "Dinner at Prime",
+    amountCents: 12_000,
+    paidBy: viewer?.id ?? "",
+    splitType: "exact",
+    expenseAt: new Date("2024-10-27T12:00:00.000Z").getTime(),
+    notes: "Booked the corner table; tip included.",
+    shares: [
+      { userId: viewer?.id ?? "", shareCents: 4_500 },
+      { userId: second?.id ?? "", shareCents: 3_500 },
+      { userId: third?.id ?? "", shareCents: 4_000 },
+    ],
   };
 }
 
@@ -119,22 +138,6 @@ function buildSceneData(data: {
               shareCents: share.shareCents,
             })),
           },
-  };
-}
-
-/** Leaves the composer: back to wherever the user came from, else replace with the group page. */
-function useExitComposer(groupId: string) {
-  const router = useRouter();
-  const hasInAppHistory = useContext(InAppHistoryContext);
-
-  return () => {
-    startTransition(() => {
-      if (hasInAppHistory) {
-        router.back();
-      } else {
-        router.replace(`/groups/${groupId}`);
-      }
-    });
   };
 }
 

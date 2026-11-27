@@ -6,9 +6,23 @@ import { ArrowDownLeft, ArrowUpRight, Check, ChevronDown, Plus } from "lucide-re
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { getShortName } from "@/components/groups/group-types";
+import {
+  applySuggestion,
+  changeDirection,
+  getOverpayment,
+  initialSettleUpState,
+  parseAmountToCents,
+  selectPerson,
+  typeAmount,
+  type SettleUpDirection,
+  type SettleUpPreset,
+  type SettleUpState,
+  type SettleUpSuggestion,
+} from "@/components/groups/settle-up-model";
 import { Button } from "@/components/ui/button";
 import { Money } from "@/components/ui/money";
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
+import { showToast } from "@/components/ui/toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { api } from "@/convex/_generated/api";
 import { formatMoneyFromCents } from "@/lib/format";
@@ -21,18 +35,7 @@ export type SettleUpMember = {
   isCurrentUser: boolean;
 };
 
-export type SettleUpSuggestion = {
-  counterpartyId: string;
-  counterpartyName: string;
-  counterpartyImageUrl?: string;
-  amountCents: number;
-  direction: "youPay" | "youReceive";
-};
-
-export type SettleUpPreset = {
-  counterpartyId: string;
-  direction: SettleUpSuggestion["direction"];
-};
+export type { SettleUpPreset, SettleUpSuggestion };
 
 type SettleUpDialogProps = {
   open: boolean;
@@ -50,25 +53,6 @@ type CreateSettlementArgs = FunctionArgs<typeof api.settlements.create>;
 type CreateSettlement = (
   args: CreateSettlementArgs,
 ) => Promise<FunctionReturnType<typeof api.settlements.create>>;
-
-type Direction = SettleUpSuggestion["direction"];
-
-const AMOUNT_PATTERN = /^\d+(?:\.\d{1,2})?$/;
-
-function parseAmountToCents(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed || !AMOUNT_PATTERN.test(trimmed)) {
-    return null;
-  }
-  const [wholePart, fractionalPart = ""] = trimmed.split(".");
-  const wholeCents = Number(wholePart) * 100;
-  const fractionalCents = Number(fractionalPart.padEnd(2, "0"));
-  const totalCents = wholeCents + fractionalCents;
-  if (!Number.isSafeInteger(totalCents) || totalCents <= 0) {
-    return null;
-  }
-  return totalCents;
-}
 
 function getCurrencySymbol(currency: string) {
   try {
@@ -99,7 +83,7 @@ function LiveSettleUpDialog(props: Omit<SettleUpDialogProps, "isMock">) {
   return <SettleUpDialogScene {...props} createSettlement={createSettlement} />;
 }
 
-const DIRECTION_OPTIONS: Array<{ value: Direction; label: string; Icon: typeof ArrowUpRight }> = [
+const DIRECTION_OPTIONS: Array<{ value: SettleUpDirection; label: string; Icon: typeof ArrowUpRight }> = [
   { value: "youPay", label: "I paid someone", Icon: ArrowUpRight },
   { value: "youReceive", label: "Someone paid me", Icon: ArrowDownLeft },
 ];
@@ -121,6 +105,7 @@ function SettleUpDialogScene({
   const noteId = useId();
   const memberLabelId = useId();
   const othersId = useId();
+  const overpaymentId = useId();
   const currentUser = useMemo(() => members.find((member) => member.isCurrentUser), [members]);
   const otherMembers = useMemo(
     () => members.filter((member) => !member.isCurrentUser),
@@ -129,21 +114,12 @@ function SettleUpDialogScene({
   const allNames = members.map((member) => member.name);
   const shortName = (name: string) => getShortName(name, allNames);
 
-  const [direction, setDirection] = useState<Direction>("youPay");
-  const [counterpartyId, setCounterpartyId] = useState<string>("");
-  const [amount, setAmount] = useState<string>("");
-  // Who the typed amount belongs to; picking someone else replaces it with their suggestion.
-  const [amountTypedFor, setAmountTypedFor] = useState<string | null>(null);
-  const [showOthers, setShowOthers] = useState(false);
+  const [selection, setSelection] = useState<SettleUpState>(() => initialSettleUpState(suggestions, preset));
   const [note, setNote] = useState<string>("");
   const [showNote, setShowNote] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const findSuggestion = (personId: string, forDirection: Direction) =>
-    suggestions.find(
-      (suggestion) => suggestion.counterpartyId === personId && suggestion.direction === forDirection,
-    );
+  const { direction, counterpartyId, amount, showOthers } = selection;
 
   useEffect(() => {
     if (!open) {
@@ -153,28 +129,16 @@ function SettleUpDialogScene({
     setIsSubmitting(false);
     setNote("");
     setShowNote(false);
-    setAmountTypedFor(null);
-
-    const presetSuggestion = preset ? findSuggestion(preset.counterpartyId, preset.direction) : undefined;
-    const initial =
-      presetSuggestion ??
-      (preset ? undefined : suggestions.find((suggestion) => suggestion.direction === "youPay") ?? suggestions[0]);
-
-    if (initial) {
-      setDirection(initial.direction);
-      setCounterpartyId(initial.counterpartyId);
-      setAmount((initial.amountCents / 100).toFixed(2));
-      setShowOthers(false);
-    } else {
-      setDirection(preset?.direction ?? "youPay");
-      setCounterpartyId(preset?.counterpartyId ?? "");
-      setAmount("");
-      setShowOthers(Boolean(preset?.counterpartyId));
-    }
+    setSelection(initialSettleUpState(suggestions, preset));
     // Only reset when the dialog transitions to open so the user's edits aren't
     // overwritten by live query updates while it is showing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  const update = (transition: (state: SettleUpState) => SettleUpState) => {
+    setSelection(transition);
+    setError(null);
+  };
 
   const directionSuggestions = suggestions.filter((suggestion) => suggestion.direction === direction);
   const suggestedIds = new Set(directionSuggestions.map((suggestion) => suggestion.counterpartyId));
@@ -187,37 +151,7 @@ function SettleUpDialogScene({
   const isPaying = direction === "youPay";
   const currencySymbol = getCurrencySymbol(groupCurrency);
 
-  /** Selects a person and syncs the amount to what they're owed in this direction. */
-  const selectPerson = (personId: string, forDirection: Direction = direction) => {
-    setCounterpartyId(personId);
-    setError(null);
-    if (personId && amountTypedFor === personId) {
-      return;
-    }
-    const match = personId ? findSuggestion(personId, forDirection) : undefined;
-    setAmount(match ? (match.amountCents / 100).toFixed(2) : "");
-    setAmountTypedFor(null);
-  };
-
-  const changeDirection = (next: Direction) => {
-    if (next === direction) {
-      return;
-    }
-    setDirection(next);
-    const nextSuggestions = suggestions.filter((suggestion) => suggestion.direction === next);
-    const keepPerson = counterpartyId && findSuggestion(counterpartyId, next);
-    const person = keepPerson ? counterpartyId : nextSuggestions[0]?.counterpartyId ?? counterpartyId;
-    const personIsSuggested = nextSuggestions.some((suggestion) => suggestion.counterpartyId === person);
-    setShowOthers(Boolean(person) && !personIsSuggested && nextSuggestions.length > 0);
-    selectPerson(person, next);
-  };
-
-  const applySuggestion = (suggestion: SettleUpSuggestion) => {
-    setCounterpartyId(suggestion.counterpartyId);
-    setAmount((suggestion.amountCents / 100).toFixed(2));
-    setAmountTypedFor(null);
-    setError(null);
-  };
+  const overpayment = getOverpayment(selection, suggestions);
 
   const handleSubmit = async () => {
     if (isSubmitting) {
@@ -259,7 +193,8 @@ function SettleUpDialogScene({
               note: note.trim() || undefined,
             },
       );
-      setAmount("");
+      const name = counterparty ? shortName(counterparty.name) : "them";
+      showToast(`Recorded ${formatMoneyFromCents(amountCents, groupCurrency)} ${isPaying ? "to" : "from"} ${name}`);
       setNote("");
       onClose();
     } catch (caught) {
@@ -307,7 +242,7 @@ function SettleUpDialogScene({
                 type="button"
                 role="radio"
                 aria-checked={active}
-                onClick={() => changeDirection(value)}
+                onClick={() => update((state) => changeDirection(state, suggestions, value))}
                 className={cn(
                   "flex min-h-11 items-center justify-center gap-1.5 rounded-xl px-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
                   active
@@ -334,7 +269,7 @@ function SettleUpDialogScene({
                   <li key={`${suggestion.counterpartyId}-${suggestion.direction}`}>
                     <button
                       type="button"
-                      onClick={() => applySuggestion(suggestion)}
+                      onClick={() => update((state) => applySuggestion(state, suggestion))}
                       aria-pressed={selected}
                       className={cn(
                         "flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 py-1.5 text-left ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
@@ -379,7 +314,7 @@ function SettleUpDialogScene({
               type="button"
               aria-expanded={showOthers}
               aria-controls={othersId}
-              onClick={() => setShowOthers((current) => !current)}
+              onClick={() => setSelection((state) => ({ ...state, showOthers: !state.showOthers }))}
               className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-full px-2 text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
             >
               Someone else
@@ -398,7 +333,7 @@ function SettleUpDialogScene({
                     key={member.id}
                     type="button"
                     aria-pressed={selected}
-                    onClick={() => selectPerson(member.id)}
+                    onClick={() => update((state) => selectPerson(state, suggestions, member.id))}
                     className={cn(
                       "flex min-h-11 items-center gap-2 rounded-full py-1 pl-1 pr-3.5 text-sm font-medium ring-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
                       selected
@@ -444,14 +379,24 @@ function SettleUpDialogScene({
               placeholder="0.00"
               value={amount}
               aria-invalid={error && amountCents === null ? true : undefined}
+              aria-describedby={overpayment ? overpaymentId : undefined}
               onChange={(event) => {
-                setAmount(event.target.value.replace(/[^\d.]/g, ""));
-                setAmountTypedFor(counterpartyId || null);
-                setError(null);
+                const value = event.target.value;
+                update((state) => typeAmount(state, value));
               }}
               className="w-full min-w-0 border-none bg-transparent font-headline text-2xl font-bold tabular-nums text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none"
             />
           </div>
+          {overpayment && counterparty ? (
+            <p id={overpaymentId} className="text-xs text-on-surface-variant">
+              <OverpaymentHint
+                excessCents={overpayment.excessCents}
+                currency={groupCurrency}
+                name={shortName(counterparty.name)}
+                isPaying={isPaying}
+              />
+            </p>
+          ) : null}
         </div>
 
         {showNote ? (
@@ -496,5 +441,29 @@ function SettleUpDialogScene({
         </div>
       </form>
     </ResponsiveDialog>
+  );
+}
+
+function OverpaymentHint({
+  excessCents,
+  currency,
+  name,
+  isPaying,
+}: {
+  excessCents: number;
+  currency: string;
+  name: string;
+  isPaying: boolean;
+}) {
+  const excess = <Money cents={excessCents} currency={currency} className="font-semibold text-on-surface" />;
+
+  return isPaying ? (
+    <>
+      {excess} more than you owe {name} — {name} will then owe you that.
+    </>
+  ) : (
+    <>
+      {excess} more than {name} owes you — you&apos;ll then owe {name} that.
+    </>
   );
 }

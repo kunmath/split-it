@@ -37,7 +37,8 @@ export function GroupBalanceStrip({
   const suggestions = [...group.suggestedSettlements].sort(
     (left, right) => right.amountCents - left.amountCents,
   );
-  const visible = suggestions.slice(0, maxLines);
+  // A "+1 more" row takes the same space as the line it hides, so only collapse two or more.
+  const visible = suggestions.length > maxLines + 1 ? suggestions.slice(0, maxLines) : suggestions;
   const hiddenCount = suggestions.length - visible.length;
   const canSettle = group.memberCount > 1;
 

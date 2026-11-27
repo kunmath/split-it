@@ -1,4 +1,4 @@
-import type { SettleUpSuggestion } from "@/components/groups/settle-up-dialog";
+import type { SettleUpSuggestion } from "@/components/groups/settle-up-model";
 import type { IconKey } from "@/lib/placeholder-data";
 
 export type GroupMember = {
@@ -40,8 +40,8 @@ export type GroupEntryDetail = {
   kind: "expense" | "settlement";
   splitType: "equal" | "exact" | "shares";
   notes: string | null;
-  paidBy: { id: string; name: string; isCurrentUser: boolean };
-  shares: Array<{ userId: string; name: string; shareCents: number; isCurrentUser: boolean }>;
+  paidBy: { id: string; name: string; imageUrl?: string; isCurrentUser: boolean };
+  shares: Array<{ userId: string; name: string; imageUrl?: string; shareCents: number; isCurrentUser: boolean }>;
   currentUserNetCents: number;
   canEdit: boolean;
 };

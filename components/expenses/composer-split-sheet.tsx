@@ -39,6 +39,7 @@ export function ComposerSplitSheet({ open, onClose, state }: ComposerSplitSheetP
   const allSelected = selectedIds.length === members.length;
   const splitError = fieldErrors.participants ?? fieldErrors.exactShares ?? fieldErrors.shares;
   const splitStatusId = useId();
+  const canSubmit = state.splitSummary.canSubmit;
 
   return (
     <ResponsiveDialog
@@ -46,6 +47,7 @@ export function ComposerSplitSheet({ open, onClose, state }: ComposerSplitSheetP
       onClose={onClose}
       title={totalCents > 0 ? `Split ${formatMoneyFromCents(totalCents, currency)}` : "Split"}
       size="compact"
+      className="scroll-pb-40"
     >
       <div role="radiogroup" aria-label="Split type" className="grid grid-cols-3 gap-1 rounded-2xl bg-surface-container-lowest p-1">
         {SPLIT_OPTIONS.map((option) => {
@@ -225,7 +227,8 @@ export function ComposerSplitSheet({ open, onClose, state }: ComposerSplitSheetP
         <div id={splitStatusId}>
           <SplitStatus state={state} />
         </div>
-        {splitError ? (
+        {/* The status line already explains an unbalanced split; only add errors it doesn't cover. */}
+        {splitError && canSubmit ? (
           <p role="alert" className="text-sm text-secondary">
             {splitError}
           </p>
@@ -233,11 +236,11 @@ export function ComposerSplitSheet({ open, onClose, state }: ComposerSplitSheetP
         <Button
           size="lg"
           fullWidth
-          variant={state.splitSummary.canSubmit ? "primary" : "ghost"}
+          variant={canSubmit ? "primary" : "ghost"}
           onClick={onClose}
-          aria-describedby={state.splitSummary.canSubmit ? undefined : splitStatusId}
+          aria-describedby={canSubmit ? undefined : splitStatusId}
         >
-          Done
+          {canSubmit ? "Done" : "Close"}
         </Button>
       </div>
     </ResponsiveDialog>
@@ -276,6 +279,10 @@ function SplitStatus({ state }: { state: ComposerState }) {
   if (splitType === "exact") {
     if (exactDifferenceCents === null) {
       return <StatusLine tone="warning">Enter a valid total first</StatusLine>;
+    }
+
+    if (state.exactRows.some((row) => row.isInvalid || (row.isSelected && row.needsAmount))) {
+      return <StatusLine tone="warning">{state.splitSummary.detail}</StatusLine>;
     }
 
     if (exactDifferenceCents === 0) {

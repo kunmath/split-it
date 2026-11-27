@@ -692,7 +692,11 @@ export const listPeopleBalances = query({
       }
     }
 
-    const entries = [...people.values()].filter((entry) => entry.balanceCents !== 0);
+    // Keep counterparties whose group balances cancel out across groups (net 0): each group still
+    // has an open debt that needs settling there.
+    const entries = [...people.values()].filter((entry) =>
+      entry.groups.some((group) => group.balanceCents !== 0),
+    );
     const counterparties = await Promise.all(entries.map((entry) => ctx.db.get(entry.userId)));
 
     return entries
