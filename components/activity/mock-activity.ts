@@ -23,7 +23,7 @@ export const MOCK_ACTIVITY_PICKS: FeedPick[] = [
   { groupId: "modern-loft-4b", description: "Electricity bill", hoursAgo: 74 },
   { groupId: "shared-groceries", description: "Cleaning supplies", hoursAgo: 98 },
   { groupId: "friday-dinners", description: "Weekend brunch", hoursAgo: 146 },
-  { groupId: "modern-loft-4b", description: "Internet – October", hoursAgo: 194 },
+  { groupId: "modern-loft-4b", description: "Wi-Fi bill", hoursAgo: 194 },
 ];
 
 /** `loadScene` is `getMockGroupSceneData`; injected so the mapping can be tested in isolation. */

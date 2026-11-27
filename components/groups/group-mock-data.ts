@@ -40,7 +40,7 @@ const HOUSEHOLD_SEEDS: ExpenseSeed[] = [
   { description: "Settlement", amount: 350, hoursAgo: 26, payer: 1, iconKey: "home", settlement: true, note: "Paid over UPI" },
   { description: "Electricity bill", amount: 3120, hoursAgo: 74, payer: 2, iconKey: "home", note: "Two-month billing cycle" },
   { description: "Dinner at Toit", amount: 2640, hoursAgo: 100, payer: 3, iconKey: "utensils", excludesYou: true, participants: 3 },
-  { description: "Internet – October", amount: 1180, hoursAgo: 194, payer: 0, iconKey: "home" },
+  { description: "Wi-Fi bill", amount: 1180, hoursAgo: 194, payer: 0, iconKey: "home" },
   { description: "Cleaning supplies", amount: 640, hoursAgo: 360, payer: 1, iconKey: "cart" },
   { description: "Water cans", amount: 360, hoursAgo: 672, payer: 2, iconKey: "home" },
   { description: "Weekend brunch", amount: 1920, hoursAgo: 864, payer: 0, iconKey: "utensils" },
