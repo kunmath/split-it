@@ -272,4 +272,44 @@ describe("settlements", () => {
       }),
     ).rejects.toThrow();
   });
+
+  it("asks before the other party records the same payment again", async () => {
+    const { t, asAlice, asBob, groupId, aliceId, bobId } = await setUpGroupWithTwoMembers();
+    const countSettlements = () =>
+      t.run(async (ctx) =>
+        (await ctx.db.query("expenses").collect()).filter((expense) => expense.kind === "settlement").length,
+      );
+
+    // Bob records paying Alice; Alice then records receiving the same transfer.
+    await asBob.mutation(api.settlements.create, { groupId, toUserId: aliceId, amountCents: 500 });
+    await expect(
+      asAlice.mutation(api.settlements.create, {
+        groupId,
+        fromUserId: bobId,
+        toUserId: aliceId,
+        amountCents: 500,
+      }),
+    ).rejects.toThrow(/DUPLICATE_SETTLEMENT/);
+    expect(await countSettlements()).toBe(1);
+
+    // A different amount, or the same person recording another payment, is a separate transfer.
+    await asAlice.mutation(api.settlements.create, {
+      groupId,
+      fromUserId: bobId,
+      toUserId: aliceId,
+      amountCents: 300,
+    });
+    await asBob.mutation(api.settlements.create, { groupId, toUserId: aliceId, amountCents: 500 });
+    expect(await countSettlements()).toBe(3);
+
+    // Confirming records a genuinely separate payment of the same amount.
+    await asAlice.mutation(api.settlements.create, {
+      groupId,
+      fromUserId: bobId,
+      toUserId: aliceId,
+      amountCents: 500,
+      confirmDuplicate: true,
+    });
+    expect(await countSettlements()).toBe(4);
+  });
 });

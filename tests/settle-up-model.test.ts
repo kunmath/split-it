@@ -6,6 +6,7 @@ import {
   getOverpayment,
   initialSettleUpState,
   parseAmountToCents,
+  normalizeAmountInput,
   selectPerson,
   typeAmount,
   type SettleUpSuggestion,
@@ -106,11 +107,24 @@ describe("settle-up model", () => {
     expect(state).toMatchObject({ counterpartyId: "jordan", amount: "320.00", typedFor: null });
   });
 
-  it("strips anything but digits and a decimal point from typed amounts", () => {
+  it("strips a currency symbol and digit grouping from typed amounts", () => {
     const state = typeAmount(initialSettleUpState([youOweMarcus]), "₹1,200.5");
 
     expect(state.amount).toBe("1200.5");
     expect(parseAmountToCents(state.amount)).toBe(120_050);
+    expect(typeAmount(state, "1,20,000").amount).toBe("120000");
+    expect(typeAmount(state, "12,").amount).toBe("12");
+  });
+
+  it("keeps amounts that stripping would change as typed, so they stay invalid", () => {
+    const state = initialSettleUpState([youOweMarcus]);
+
+    for (const value of ["-12.50", "12,50", "12a"]) {
+      const next = typeAmount(state, value);
+      expect(next.amount).toBe(value);
+      expect(normalizeAmountInput(value)).toBeNull();
+      expect(parseAmountToCents(next.amount)).toBeNull();
+    }
   });
 
   it("reports how far an amount goes past the debt in the selected direction", () => {

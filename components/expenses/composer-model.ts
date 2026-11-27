@@ -272,36 +272,54 @@ const MAX_RECONSTRUCTED_WEIGHT = 100;
  * Smallest integer weights (each ≤ 100) that reproduce the saved cents exactly
  * through the same proportional split the backend uses, e.g. 3334/3333/3333 → 1/1/1.
  * Falls back to the cents reduced by their GCD when no small ratio fits.
+ * A participant whose share rounded down to zero cents keeps a weight, so they stay in the split.
  */
 export function reconstructShareWeights(shareCents: number[]): number[] {
   if (shareCents.length === 0) {
     return [];
   }
 
-  if (shareCents.some((cents) => !Number.isSafeInteger(cents) || cents <= 0)) {
+  if (shareCents.some((cents) => !Number.isSafeInteger(cents) || cents < 0)) {
     return shareCents.map(() => 1);
   }
 
   const totalCents = shareCents.reduce((sum, cents) => sum + cents, 0);
-  const minCents = Math.min(...shareCents);
+
+  if (totalCents === 0) {
+    return shareCents.map(() => 1);
+  }
+
+  const reproduces = (weights: number[]) =>
+    splitByShares(totalCents, weights).every((cents, index) => cents === shareCents[index]);
+  const positiveCents = shareCents.filter((cents) => cents > 0);
+  const minCents = Math.min(...positiveCents);
 
   for (let minWeight = 1; minWeight <= MAX_RECONSTRUCTED_WEIGHT; minWeight += 1) {
-    const weights = shareCents.map((cents) => Math.max(1, Math.round((cents * minWeight) / minCents)));
+    const weights = shareCents.map((cents) =>
+      cents === 0 ? 1 : Math.max(1, Math.round((cents * minWeight) / minCents)),
+    );
 
     if (weights.some((weight) => weight > MAX_RECONSTRUCTED_WEIGHT)) {
       break;
     }
 
-    const reproduced = splitByShares(totalCents, weights);
-
-    if (reproduced.every((cents, index) => cents === shareCents[index])) {
+    if (reproduces(weights)) {
       const divisor = gcdArray(weights);
       return weights.map((weight) => weight / divisor);
     }
   }
 
-  const divisor = gcdArray(shareCents);
-  return shareCents.map((cents) => cents / divisor);
+  const divisor = gcdArray(positiveCents);
+  const zeroCount = shareCents.length - positiveCents.length;
+
+  if (zeroCount === 0) {
+    return shareCents.map((cents) => cents / divisor);
+  }
+
+  // Zero-cent participants get weight 1; scaling everyone else by this factor keeps each
+  // zero-cent share below one cent and loses the rounding to the others, reproducing the saved split.
+  const scale = divisor * (zeroCount + 1) + 1;
+  return shareCents.map((cents) => (cents === 0 ? 1 : (cents / divisor) * scale));
 }
 
 export function buildInitialShareInputs(
@@ -343,6 +361,18 @@ export function buildExactRows(
   });
 }
 
+/** A share weight typed as a plain decimal ("2", "0.5", ".5"); NaN for anything else, e.g. "2abc" or "Infinity". */
+export function parseShareInput(value: string) {
+  const trimmed = value.trim();
+
+  if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(trimmed)) {
+    return Number.NaN;
+  }
+
+  const share = Number(trimmed);
+  return Number.isFinite(share) ? share : Number.NaN;
+}
+
 export function buildShareRows(
   members: ComposerMember[],
   shareInputs: Record<string, string>,
@@ -350,12 +380,12 @@ export function buildShareRows(
 ): ShareRow[] {
   return members.map((member) => {
     const input = shareInputs[member.id] ?? "";
-    const parsedShare = parseFloat(input);
+    const parsedShare = parseShareInput(input);
     const isSelected = selectedIds.includes(member.id);
-    const isInvalid =
-      isSelected && input.trim().length > 0 && (isNaN(parsedShare) || parsedShare <= 0);
-    const needsAmount = isSelected && (isNaN(parsedShare) || parsedShare <= 0);
-    const share = !isNaN(parsedShare) && parsedShare > 0 ? parsedShare : 0;
+    const isValidShare = Number.isFinite(parsedShare) && parsedShare > 0;
+    const isInvalid = isSelected && input.trim().length > 0 && !isValidShare;
+    const needsAmount = isSelected && !isValidShare;
+    const share = isValidShare ? parsedShare : 0;
 
     return { member, input, parsedShare, isSelected, isInvalid, needsAmount, share };
   });

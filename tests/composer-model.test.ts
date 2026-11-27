@@ -10,6 +10,7 @@ import {
   deriveSplitSummary,
   formatDateChipLabel,
   parseAmountInputToCents,
+  parseShareInput,
   reconstructShareWeights,
   shiftDateInputValue,
   type ComposerMember,
@@ -95,6 +96,46 @@ describe("composer model", () => {
     expect(reconstructShareWeights([1_001, 1_000])).toEqual([1, 1]);
     expect(reconstructShareWeights([5_003, 1])).toEqual([5_003, 1]);
     expect(reconstructShareWeights([2_002, 2_000])).toEqual([1_001, 1_000]);
+  });
+
+  it("keeps a participant whose share rounded to zero cents without changing the saved split", () => {
+    // 0.1 : 1 of ₹0.02 is saved as 0 / 2 cents.
+    const saved = buildSharesCents(2, [0.1, 1]);
+    expect(saved).toEqual([0, 2]);
+
+    const rebuilt = reconstructShareWeights(saved);
+    expect(rebuilt.every((weight) => weight > 0)).toBe(true);
+    expect(buildSharesCents(2, rebuilt)).toEqual(saved);
+
+    for (const [total, weights] of [
+      [3, [0.01, 0.01, 50]],
+      [7, [1, 1_000, 1_000]],
+      [1, [1, 1, 1]],
+    ] as const) {
+      const cents = buildSharesCents(total, [...weights]);
+      expect(cents).toContain(0);
+      const weightsBack = reconstructShareWeights(cents);
+      expect(weightsBack.every((weight) => weight > 0)).toBe(true);
+      expect(buildSharesCents(total, weightsBack)).toEqual(cents);
+    }
+  });
+
+  it("only accepts whole plain numbers as share weights", () => {
+    expect(parseShareInput("2")).toBe(2);
+    expect(parseShareInput(" 0.5 ")).toBe(0.5);
+    expect(parseShareInput(".5")).toBe(0.5);
+    expect(parseShareInput("3.")).toBe(3);
+
+    for (const value of ["2abc", "Infinity", "1e3", "-1", "", "1.2.3", "9".repeat(400)]) {
+      expect(parseShareInput(value)).toBeNaN();
+    }
+
+    const rows = buildShareRows(members, { a: "2abc", b: "Infinity", c: "0.5" }, ["a", "b", "c"]);
+    expect(rows.map((row) => [row.isInvalid, row.share])).toEqual([
+      [true, 0],
+      [true, 0],
+      [false, 0.5],
+    ]);
   });
 
   it("describes the saved expense for the confirmation toast", () => {

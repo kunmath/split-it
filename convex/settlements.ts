@@ -4,6 +4,11 @@ import { mutation } from "./_generated/server";
 import { logExpenseEvent } from "./lib/activityEvents";
 import { applyExpenseToAggregates } from "./lib/balances";
 import { requireGroupMember } from "./lib/permissions";
+import {
+  DUPLICATE_SETTLEMENT_ERROR,
+  DUPLICATE_SETTLEMENT_WINDOW_MS,
+  type DuplicateSettlementErrorData,
+} from "./lib/settlementDuplicates";
 import { assertGroupIsActive, validateAmountCents } from "./lib/validate";
 
 function sanitizeNote(value: string | undefined) {
@@ -28,6 +33,11 @@ export const create = mutation({
     fromUserId: v.optional(v.id("users")),
     amountCents: v.number(),
     note: v.optional(v.string()),
+    /**
+     * Records the payment even though the other party already recorded one like it recently.
+     * Without it, that case is rejected so both people can't log the same transfer.
+     */
+    confirmDuplicate: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const access = await requireGroupMember(ctx, args.groupId);
@@ -60,6 +70,39 @@ export const create = mutation({
     const amountCents = validateAmountCents(args.amountCents);
     const note = sanitizeNote(args.note);
     const now = Date.now();
+
+    if (!args.confirmDuplicate) {
+      // The payer and the recipient can each record the same transfer ("I paid" / "they paid me").
+      // A matching payment the other party recorded recently is most likely that transfer, so ask first.
+      const sameAmount = await ctx.db
+        .query("expenses")
+        .withIndex("by_group_amount", (q) =>
+          q.eq("groupId", args.groupId).eq("amountCents", amountCents),
+        )
+        .collect();
+      const candidates = sameAmount.filter(
+        (expense) =>
+          expense.kind === "settlement" &&
+          expense.paidBy === fromUserId &&
+          expense.createdBy === counterpartyId &&
+          expense._creationTime >= now - DUPLICATE_SETTLEMENT_WINDOW_MS,
+      );
+
+      for (const candidate of candidates) {
+        const shares = await ctx.db
+          .query("expenseShares")
+          .withIndex("by_expense", (q) => q.eq("expenseId", candidate._id))
+          .collect();
+
+        if (shares.some((share) => share.userId === args.toUserId)) {
+          throw new ConvexError({
+            code: DUPLICATE_SETTLEMENT_ERROR,
+            message: "The other person already recorded this payment",
+            recordedAt: candidate.expenseAt,
+          } satisfies DuplicateSettlementErrorData);
+        }
+      }
+    }
 
     const expenseId = await ctx.db.insert("expenses", {
       groupId: args.groupId,

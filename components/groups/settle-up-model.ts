@@ -151,10 +151,30 @@ export function applySuggestion(state: SettleUpState, suggestion: SettleUpSugges
   };
 }
 
+/**
+ * Strips a leading currency symbol and digit grouping ("₹1,200.5" → "1200.5", "1,20,000" → "120000").
+ * A trailing comma is dropped as grouping still being typed. Returns null for anything the stripping
+ * would change the meaning of, such as a sign ("-12.50") or a comma that isn't grouping ("12,50").
+ */
+export function normalizeAmountInput(value: string) {
+  const unprefixed = value.trim().replace(/^\p{Sc}\s*/u, "").replace(/,$/, "");
+
+  if (/^\d*(?:\.\d*)?$/.test(unprefixed)) {
+    return unprefixed;
+  }
+
+  if (/^\d{1,3}(?:,\d{2,3})*,\d{3}(?:\.\d*)?$/.test(unprefixed)) {
+    return unprefixed.replace(/,/g, "");
+  }
+
+  return null;
+}
+
 export function typeAmount(state: SettleUpState, value: string): SettleUpState {
   return {
     ...state,
-    amount: value.replace(/[^\d.]/g, ""),
+    // Unsupported input is kept as typed so it reads as invalid instead of silently becoming another amount.
+    amount: normalizeAmountInput(value) ?? value,
     typedFor: state.counterpartyId
       ? { counterpartyId: state.counterpartyId, direction: state.direction }
       : null,

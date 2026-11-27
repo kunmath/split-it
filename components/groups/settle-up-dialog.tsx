@@ -2,6 +2,7 @@
 
 import { useMutation } from "convex/react";
 import type { FunctionArgs, FunctionReturnType } from "convex/server";
+import { ConvexError } from "convex/values";
 import { ArrowDownLeft, ArrowUpRight, Check, ChevronDown, Plus } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -11,6 +12,7 @@ import {
   changeDirection,
   getOverpayment,
   initialSettleUpState,
+  normalizeAmountInput,
   parseAmountToCents,
   selectPerson,
   typeAmount,
@@ -25,6 +27,10 @@ import { ResponsiveDialog } from "@/components/ui/responsive-dialog";
 import { showToast } from "@/components/ui/toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { api } from "@/convex/_generated/api";
+import {
+  isDuplicateSettlementErrorData,
+  type DuplicateSettlementErrorData,
+} from "@/convex/lib/settlementDuplicates";
 import { formatMoneyFromCents } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +70,10 @@ function getCurrencySymbol(currency: string) {
   } catch {
     return currency;
   }
+}
+
+function formatRecordedDate(timestamp: number) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(timestamp);
 }
 
 export function SettleUpDialog({
@@ -106,6 +116,7 @@ function SettleUpDialogScene({
   const memberLabelId = useId();
   const othersId = useId();
   const overpaymentId = useId();
+  const amountHintId = useId();
   const currentUser = useMemo(() => members.find((member) => member.isCurrentUser), [members]);
   const otherMembers = useMemo(
     () => members.filter((member) => !member.isCurrentUser),
@@ -118,11 +129,17 @@ function SettleUpDialogScene({
   const [note, setNote] = useState<string>("");
   const [showNote, setShowNote] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [duplicate, setDuplicate] = useState<DuplicateSettlementErrorData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submittingRef = useRef(false);
   const openRef = useRef(open);
+  // Counts openings, so a payment's result only touches the opening that recorded it.
+  const openingRef = useRef(0);
   useEffect(() => {
     openRef.current = open;
+    if (open) {
+      openingRef.current += 1;
+    }
   }, [open]);
   const { direction, counterpartyId, amount, showOthers } = selection;
 
@@ -131,6 +148,7 @@ function SettleUpDialogScene({
       return;
     }
     setError(null);
+    setDuplicate(null);
     setNote("");
     setShowNote(false);
     setSelection(initialSettleUpState(suggestions, preset));
@@ -142,6 +160,7 @@ function SettleUpDialogScene({
   const update = (transition: (state: SettleUpState) => SettleUpState) => {
     setSelection(transition);
     setError(null);
+    setDuplicate(null);
   };
 
   const directionSuggestions = suggestions.filter((suggestion) => suggestion.direction === direction);
@@ -156,8 +175,9 @@ function SettleUpDialogScene({
   const currencySymbol = getCurrencySymbol(groupCurrency);
 
   const overpayment = getOverpayment(selection, suggestions);
+  const amountUnreadable = amount.trim() !== "" && normalizeAmountInput(amount) === null;
 
-  const handleSubmit = async () => {
+  const handleSubmit = async ({ confirmDuplicate = false }: { confirmDuplicate?: boolean } = {}) => {
     // A ref, not state: it survives the sheet closing/reopening and blocks a double tap in the same frame.
     if (submittingRef.current) {
       return;
@@ -179,9 +199,14 @@ function SettleUpDialogScene({
       return;
     }
 
+    const opening = openingRef.current;
+    const isSameOpening = () => openRef.current && openingRef.current === opening;
+    const name = counterparty ? shortName(counterparty.name) : "them";
+
     submittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
+    setDuplicate(null);
     try {
       await createSettlement(
         isPaying
@@ -190,6 +215,7 @@ function SettleUpDialogScene({
               toUserId: counterpartyId as CreateSettlementArgs["toUserId"],
               amountCents,
               note: note.trim() || undefined,
+              confirmDuplicate: confirmDuplicate || undefined,
             }
           : {
               groupId: groupId as CreateSettlementArgs["groupId"],
@@ -197,17 +223,32 @@ function SettleUpDialogScene({
               toUserId: currentUser!.id as CreateSettlementArgs["toUserId"],
               amountCents,
               note: note.trim() || undefined,
+              confirmDuplicate: confirmDuplicate || undefined,
             },
       );
-      const name = counterparty ? shortName(counterparty.name) : "them";
       showToast(`Recorded ${formatMoneyFromCents(amountCents, groupCurrency)} ${isPaying ? "to" : "from"} ${name}`);
-      setNote("");
-      onClose();
+      // A dismissed (or since reopened) sheet keeps its current draft; the toast is the confirmation.
+      if (isSameOpening()) {
+        setNote("");
+        onClose();
+      }
     } catch (caught) {
-      const message =
-        caught instanceof Error ? caught.message : "Could not record settlement.";
-      setError(message);
-      if (!openRef.current) {
+      const duplicateData =
+        caught instanceof ConvexError && isDuplicateSettlementErrorData(caught.data) ? caught.data : null;
+      const message = duplicateData
+        ? `${name} already recorded this payment.`
+        : caught instanceof ConvexError && typeof caught.data === "string"
+          ? caught.data
+          : caught instanceof Error
+            ? caught.message
+            : "Could not record settlement.";
+      if (isSameOpening()) {
+        if (duplicateData) {
+          setDuplicate(duplicateData);
+        } else {
+          setError(message);
+        }
+      } else {
         // The sheet was dismissed while recording; don't let the failure go unnoticed.
         showToast(`Payment not recorded — ${message}`);
       }
@@ -393,8 +434,8 @@ function SettleUpDialogScene({
               autoComplete="off"
               placeholder="0.00"
               value={amount}
-              aria-invalid={error && amountCents === null ? true : undefined}
-              aria-describedby={overpayment ? overpaymentId : undefined}
+              aria-invalid={amountUnreadable || (error && amountCents === null) ? true : undefined}
+              aria-describedby={amountUnreadable ? amountHintId : overpayment ? overpaymentId : undefined}
               onChange={(event) => {
                 const value = event.target.value;
                 update((state) => typeAmount(state, value));
@@ -402,7 +443,11 @@ function SettleUpDialogScene({
               className="w-full min-w-0 border-none bg-transparent font-headline text-2xl font-bold tabular-nums text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none"
             />
           </div>
-          {overpayment && counterparty ? (
+          {amountUnreadable ? (
+            <p id={amountHintId} className="text-xs text-error">
+              Enter a positive amount like 1,200.50.
+            </p>
+          ) : overpayment && counterparty ? (
             <p id={overpaymentId} className="text-xs text-on-surface-variant">
               <OverpaymentHint
                 excessCents={overpayment.excessCents}
@@ -436,6 +481,31 @@ function SettleUpDialogScene({
           <p className="rounded-2xl bg-error/10 px-4 py-3 text-sm text-error" role="alert">
             {error}
           </p>
+        ) : null}
+
+        {duplicate && counterparty && amountCents !== null ? (
+          <div className="space-y-3 rounded-2xl bg-secondary/10 px-4 py-3 text-sm text-on-surface" role="alert">
+            <p>
+              {shortName(counterparty.name)} already recorded{" "}
+              <Money cents={amountCents} currency={groupCurrency} className="font-semibold" />{" "}
+              {isPaying ? "from you" : "to you"} on {formatRecordedDate(duplicate.recordedAt)}. Record it only if this
+              is a separate payment.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="ghost" size="md" onClick={() => setDuplicate(null)} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              <Button
+                variant="ghost"
+                size="md"
+                disabled={isSubmitting}
+                onClick={() => void handleSubmit({ confirmDuplicate: true })}
+                className="border-secondary/40 text-secondary hover:bg-secondary/20 hover:text-secondary"
+              >
+                Record anyway
+              </Button>
+            </div>
+          </div>
         ) : null}
 
         <div className="sticky bottom-0 -mx-5 -mb-5 space-y-2 bg-[linear-gradient(180deg,rgba(28,27,27,0.6),rgba(28,27,27,0.98)_16px)] px-5 pb-5 pt-4 md:static md:mx-0 md:mb-0 md:bg-none md:p-0">

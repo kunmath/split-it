@@ -9,10 +9,12 @@ type ComposerHeaderProps = {
   title: string;
   /** Leaves the composer (or asks to discard a dirty draft first). */
   onClose: () => void;
+  /** Blocks leaving while a save is in flight. */
+  closeDisabled?: boolean;
 };
 
 /** Sticky top bar on mobile; a plain heading row above the card on desktop. */
-export function ComposerHeader({ title, onClose }: ComposerHeaderProps) {
+export function ComposerHeader({ title, onClose, closeDisabled = false }: ComposerHeaderProps) {
   return (
     <header
       className={cn(
@@ -24,8 +26,9 @@ export function ComposerHeader({ title, onClose }: ComposerHeaderProps) {
         <button
           type="button"
           onClick={onClose}
+          disabled={closeDisabled}
           aria-label="Close"
-          className={cn(topBarIconButtonClass, "-ml-2 text-on-surface lg:ml-0 lg:bg-white/5")}
+          className={cn(topBarIconButtonClass, "-ml-2 text-on-surface disabled:opacity-50 lg:ml-0 lg:bg-white/5")}
         >
           <X className="h-5 w-5" />
         </button>

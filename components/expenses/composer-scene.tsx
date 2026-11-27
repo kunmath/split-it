@@ -59,7 +59,12 @@ export function ExpenseComposerScene({ data, onSaveExpense, onDeleteExpense }: E
   }
 
   function requestClose() {
-    if (state.isDirty && !isBusy) {
+    // Leaving mid-save would drop the draft and its error if the save then fails, so Close waits for it.
+    if (state.isSaving) {
+      return;
+    }
+
+    if (state.isDirty && !state.isDeleting) {
       setOpenSheet("discard");
       return;
     }
@@ -132,7 +137,11 @@ export function ExpenseComposerScene({ data, onSaveExpense, onDeleteExpense }: E
         noValidate
         className="mx-auto w-full max-w-2xl pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0"
       >
-        <ComposerHeader title={isEditMode ? "Edit expense" : "Add expense"} onClose={requestClose} />
+        <ComposerHeader
+          title={isEditMode ? "Edit expense" : "Add expense"}
+          onClose={requestClose}
+          closeDisabled={state.isSaving}
+        />
 
         <div className="lg:mt-6 lg:rounded-3xl lg:bg-surface-container-low lg:p-8 lg:ring-1 lg:ring-white/5">
           <p className="mt-3 truncate text-sm text-on-surface-variant lg:mt-0">
